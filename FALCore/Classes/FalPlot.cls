@@ -11,7 +11,7 @@ Attribute VB_Exposed = True
 ' Class: FalPlot
 ' Author: Florent ALBANY
 ' Date: 2025-08-25
-' Version: 1.0
+' Version: 2.0
 '
 ' Description:
 ' This class provides a comprehensive set of methods and properties for creating,
@@ -27,17 +27,22 @@ Attribute VB_Exposed = True
 ' Dim rng As Range
 ' Set rng = ActiveSheet.Range("A1:B10")
 '
+' ' Create a chart and assign it to the class
 ' Set plot.Chart = ActiveSheet.Shapes.AddChart2(240, xlXYScatterLines).Chart
-' plot.Chart.SetSourceData Source:=rng
+' plot.SetSourceData rng
 '
+' ' Set properties
 ' plot.ChartTitle = "My Chart"
 ' plot.X1Title = "X-Axis"
 ' plot.Y1Title = "Y-Axis"
+'
+' ' Apply formatting
 ' plot.FormatChart
 '**************************************************************************************************
 
 Option Explicit
 
+'--- Private members
 Private m_Chart As Chart
 Private m_ChartType As XlChartType
 Private m_ChartTitle As String
@@ -89,6 +94,9 @@ Private m_SquarePlot As Boolean
 Private m_CrossesAt As Double
 Private m_PlotBy As XlRowCol
 
+'--- Public Properties ---
+
+'@brief Gets or sets the Chart object this instance will operate on.
 Public Property Get Chart() As Chart
     Set Chart = m_Chart
 End Property
@@ -97,6 +105,7 @@ Public Property Set Chart(ByVal value As Chart)
     Set m_Chart = value
 End Property
 
+'@brief Gets or sets the chart type.
 Public Property Get ChartType() As XlChartType
     ChartType = m_ChartType
 End Property
@@ -106,6 +115,7 @@ Public Property Let ChartType(ByVal value As XlChartType)
     If Not m_Chart Is Nothing Then m_Chart.ChartType = value
 End Property
 
+'@brief Gets or sets the main title of the chart.
 Public Property Get ChartTitle() As String
     ChartTitle = m_ChartTitle
 End Property
@@ -119,6 +129,7 @@ Public Property Let ChartTitle(ByVal value As String)
     End If
 End Property
 
+'@brief Gets or sets the title for the primary Y-axis.
 Public Property Get Y1Title() As String
     Y1Title = m_Y1Title
 End Property
@@ -132,6 +143,7 @@ Public Property Let Y1Title(ByVal value As String)
     End If
 End Property
 
+'@brief Gets or sets the title for the secondary Y-axis.
 Public Property Get Y2Title() As String
     Y2Title = m_Y2Title
 End Property
@@ -145,6 +157,7 @@ Public Property Let Y2Title(ByVal value As String)
     End If
 End Property
 
+'@brief Gets or sets the title for the primary X-axis.
 Public Property Get X1Title() As String
     X1Title = m_X1Title
 End Property
@@ -158,6 +171,7 @@ Public Property Let X1Title(ByVal value As String)
     End If
 End Property
 
+'@brief Gets or sets the title for the secondary X-axis.
 Public Property Get X2Title() As String
     X2Title = m_X2Title
 End Property
@@ -171,6 +185,7 @@ Public Property Let X2Title(ByVal value As String)
     End If
 End Property
 
+'@brief Gets or sets the scale type for the primary X-axis (e.g., xlLinear, xlLogarithmic).
 Public Property Get X1ScaleType() As XlScaleType
     X1ScaleType = m_X1ScaleType
 End Property
@@ -180,6 +195,7 @@ Public Property Let X1ScaleType(ByVal value As XlScaleType)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlPrimary).ScaleType = value
 End Property
 
+'@brief Gets or sets the scale type for the primary Y-axis.
 Public Property Get Y1ScaleType() As XlScaleType
     Y1ScaleType = m_Y1ScaleType
 End Property
@@ -189,6 +205,7 @@ Public Property Let Y1ScaleType(ByVal value As XlScaleType)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlPrimary).ScaleType = value
 End Property
 
+'@brief Gets or sets the scale type for the secondary X-axis.
 Public Property Get X2ScaleType() As XlScaleType
     X2ScaleType = m_X2ScaleType
 End Property
@@ -198,6 +215,7 @@ Public Property Let X2ScaleType(ByVal value As XlScaleType)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlSecondary).ScaleType = value
 End Property
 
+'@brief Gets or sets the scale type for the secondary Y-axis.
 Public Property Get Y2ScaleType() As XlScaleType
     Y2ScaleType = m_Y2ScaleType
 End Property
@@ -207,6 +225,7 @@ Public Property Let Y2ScaleType(ByVal value As XlScaleType)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlSecondary).ScaleType = value
 End Property
 
+'@brief Gets or sets whether the chart has a legend.
 Public Property Get HasLegend() As Boolean
     HasLegend = m_HasLegend
 End Property
@@ -216,6 +235,7 @@ Public Property Let HasLegend(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.HasLegend = value
 End Property
 
+'@brief Gets or sets whether the chart has a main title.
 Public Property Get HasTitle() As Boolean
     HasTitle = m_HasTitle
 End Property
@@ -225,6 +245,7 @@ Public Property Let HasTitle(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.HasTitle = value
 End Property
 
+'@brief Gets or sets whether the primary X-axis has a title.
 Public Property Get X1HasTitle() As Boolean
     X1HasTitle = m_X1HasTitle
 End Property
@@ -234,6 +255,7 @@ Public Property Let X1HasTitle(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlPrimary).HasTitle = value
 End Property
 
+'@brief Gets or sets whether the primary Y-axis has a title.
 Public Property Get Y1HasTitle() As Boolean
     Y1HasTitle = m_Y1HasTitle
 End Property
@@ -243,6 +265,7 @@ Public Property Let Y1HasTitle(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlPrimary).HasTitle = value
 End Property
 
+'@brief Gets or sets whether the secondary X-axis has a title.
 Public Property Get X2HasTitle() As Boolean
     X2HasTitle = m_X2HasTitle
 End Property
@@ -252,6 +275,7 @@ Public Property Let X2HasTitle(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlSecondary).HasTitle = value
 End Property
 
+'@brief Gets or sets whether the secondary Y-axis has a title.
 Public Property Get Y2HasTitle() As Boolean
     Y2HasTitle = m_Y2HasTitle
 End Property
@@ -261,6 +285,7 @@ Public Property Let Y2HasTitle(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlSecondary).HasTitle = value
 End Property
 
+'@brief Gets or sets whether the primary X-axis line is visible.
 Public Property Get X1ShowAxis() As Boolean
     X1ShowAxis = m_X1ShowAxis
 End Property
@@ -270,6 +295,7 @@ Public Property Let X1ShowAxis(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlPrimary).Format.Line.Visible = IIf(value, msoTrue, msoFalse)
 End Property
 
+'@brief Gets or sets whether the primary Y-axis line is visible.
 Public Property Get Y1ShowAxis() As Boolean
     Y1ShowAxis = m_Y1ShowAxis
 End Property
@@ -279,6 +305,7 @@ Public Property Let Y1ShowAxis(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlPrimary).Format.Line.Visible = IIf(value, msoTrue, msoFalse)
 End Property
 
+'@brief Gets or sets whether the primary X-axis shows major gridlines.
 Public Property Get X1ShowGridLines() As Boolean
     X1ShowGridLines = m_X1ShowGridLines
 End Property
@@ -288,6 +315,7 @@ Public Property Let X1ShowGridLines(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlPrimary).HasMajorGridlines = value
 End Property
 
+'@brief Gets or sets whether the primary Y-axis shows major gridlines.
 Public Property Get Y1ShowGridLines() As Boolean
     Y1ShowGridLines = m_Y1ShowGridLines
 End Property
@@ -297,6 +325,7 @@ Public Property Let Y1ShowGridLines(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlPrimary).HasMajorGridlines = value
 End Property
 
+'@brief Gets or sets the font name for all text elements in the chart.
 Public Property Get FontName() As String
     FontName = m_FontName
 End Property
@@ -304,7 +333,6 @@ End Property
 Public Property Let FontName(ByVal value As String)
     m_FontName = value
     If Not m_Chart Is Nothing Then
-        ' Apply to all text elements
         If m_Chart.HasTitle Then m_Chart.chartTitle.Font.Name = value
         If m_Chart.Axes(xlCategory, xlPrimary).HasTitle Then m_Chart.Axes(xlCategory, xlPrimary).AxisTitle.Font.Name = value
         If m_Chart.Axes(xlValue, xlPrimary).HasTitle Then m_Chart.Axes(xlValue, xlPrimary).AxisTitle.Font.Name = value
@@ -314,6 +342,7 @@ Public Property Let FontName(ByVal value As String)
     End If
 End Property
 
+'@brief Gets or sets the font size for the main chart title.
 Public Property Get TitleFontSize() As Integer
     TitleFontSize = m_TitleFontSize
 End Property
@@ -323,6 +352,7 @@ Public Property Let TitleFontSize(ByVal value As Integer)
     If Not m_Chart Is Nothing Then If m_Chart.HasTitle Then m_Chart.chartTitle.Font.Size = value
 End Property
 
+'@brief Gets or sets the font size for the axis titles.
 Public Property Get XAxisTitleFontSize() As Integer
     XAxisTitleFontSize = m_XAxisTitleFontSize
 End Property
@@ -341,6 +371,7 @@ Public Property Let YAxisTitleFontSize(ByVal value As Integer)
     If Not m_Chart Is Nothing Then If m_Chart.Axes(xlValue, xlPrimary).HasTitle Then m_Chart.Axes(xlValue, xlPrimary).AxisTitle.Font.Size = value
 End Property
 
+'@brief Gets or sets the font size for the axis tick labels.
 Public Property Get XAxisTicksFontSize() As Integer
     XAxisTicksFontSize = m_XAxisTicksFontSize
 End Property
@@ -359,6 +390,7 @@ Public Property Let YAxisTicksFontSize(ByVal value As Integer)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlPrimary).TickLabels.Font.Size = value
 End Property
 
+'@brief Gets or sets the font size for the legend.
 Public Property Get LegendFontSize() As Integer
     LegendFontSize = m_LegendFontSize
 End Property
@@ -368,6 +400,7 @@ Public Property Let LegendFontSize(ByVal value As Integer)
     If Not m_Chart Is Nothing Then If m_Chart.HasLegend Then m_Chart.Legend.Font.Size = value
 End Property
 
+'@brief Gets or sets the position of the legend.
 Public Property Get LegendPosition() As XlLegendPosition
     LegendPosition = m_LegendPosition
 End Property
@@ -377,6 +410,7 @@ Public Property Let LegendPosition(ByVal value As XlLegendPosition)
     If Not m_Chart Is Nothing Then If m_Chart.HasLegend Then m_Chart.Legend.Position = value
 End Property
 
+'@brief Gets or sets whether the legend is included in the chart layout.
 Public Property Get LegendInLayout() As Boolean
     LegendInLayout = m_LegendInLayout
 End Property
@@ -386,6 +420,7 @@ Public Property Let LegendInLayout(ByVal value As Boolean)
     If Not m_Chart Is Nothing Then If m_Chart.HasLegend Then m_Chart.Legend.IncludeInLayout = value
 End Property
 
+'@brief Gets or sets the line weight for the plot area border.
 Public Property Get PlotAreaLineWeight() As Double
     PlotAreaLineWeight = m_PlotAreaLineWeight
 End Property
@@ -395,6 +430,7 @@ Public Property Let PlotAreaLineWeight(ByVal value As Double)
     If Not m_Chart Is Nothing Then m_Chart.PlotArea.Format.Line.Weight = value
 End Property
 
+'@brief Gets or sets the line weight for all series in the chart.
 Public Property Get SeriesLineWeight() As Double
     SeriesLineWeight = m_SeriesLineWeight
 End Property
@@ -409,6 +445,7 @@ Public Property Let SeriesLineWeight(ByVal value As Double)
     End If
 End Property
 
+'@brief Gets or sets the dash style for all series lines.
 Public Property Get SeriesLineDashStyle() As MsoLineDashStyle
     SeriesLineDashStyle = m_SeriesLineDashStyle
 End Property
@@ -423,6 +460,7 @@ Public Property Let SeriesLineDashStyle(ByVal value As MsoLineDashStyle)
     End If
 End Property
 
+'@brief Gets or sets the marker style for all series.
 Public Property Get SeriesMarkerStyle() As XlMarkerStyle
     SeriesMarkerStyle = m_SeriesMarkerStyle
 End Property
@@ -437,6 +475,7 @@ Public Property Let SeriesMarkerStyle(ByVal value As XlMarkerStyle)
     End If
 End Property
 
+'@brief Gets or sets whether data labels are shown for all series.
 Public Property Get HasDataLabels() As Boolean
     HasDataLabels = m_HasDataLabels
 End Property
@@ -451,6 +490,7 @@ Public Property Let HasDataLabels(ByVal value As Boolean)
     End If
 End Property
 
+'@brief Gets or sets the number format for the primary X-axis tick labels.
 Public Property Get X1LabelNumberFormat() As String
     X1LabelNumberFormat = m_X1LabelNumberFormat
 End Property
@@ -460,6 +500,7 @@ Public Property Let X1LabelNumberFormat(ByVal value As String)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlPrimary).TickLabels.NumberFormat = value
 End Property
 
+'@brief Gets or sets the number format for the primary Y-axis tick labels.
 Public Property Get Y1LabelNumberFormat() As String
     Y1LabelNumberFormat = m_Y1LabelNumberFormat
 End Property
@@ -469,6 +510,7 @@ Public Property Let Y1LabelNumberFormat(ByVal value As String)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlPrimary).TickLabels.NumberFormat = value
 End Property
 
+'@brief Gets or sets the number format for the secondary X-axis tick labels.
 Public Property Get X2LabelNumberFormat() As String
     X2LabelNumberFormat = m_X2LabelNumberFormat
 End Property
@@ -478,6 +520,7 @@ Public Property Let X2LabelNumberFormat(ByVal value As String)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlCategory, xlSecondary).TickLabels.NumberFormat = value
 End Property
 
+'@brief Gets or sets the number format for the secondary Y-axis tick labels.
 Public Property Get Y2LabelNumberFormat() As String
     Y2LabelNumberFormat = m_Y2LabelNumberFormat
 End Property
@@ -487,6 +530,7 @@ Public Property Let Y2LabelNumberFormat(ByVal value As String)
     If Not m_Chart Is Nothing Then m_Chart.Axes(xlValue, xlSecondary).TickLabels.NumberFormat = value
 End Property
 
+'@brief Gets or sets the minimum value for the primary Y-axis.
 Public Property Get Y1Min() As Variant
     Y1Min = m_Y1Min
 End Property
@@ -498,6 +542,7 @@ Public Property Let Y1Min(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the maximum value for the primary Y-axis.
 Public Property Get Y1Max() As Variant
     Y1Max = m_Y1Max
 End Property
@@ -509,6 +554,7 @@ Public Property Let Y1Max(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the minimum value for the primary X-axis.
 Public Property Get X1Min() As Variant
     X1Min = m_X1Min
 End Property
@@ -520,6 +566,7 @@ Public Property Let X1Min(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the maximum value for the primary X-axis.
 Public Property Get X1Max() As Variant
     X1Max = m_X1Max
 End Property
@@ -531,6 +578,7 @@ Public Property Let X1Max(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the minimum value for the secondary Y-axis.
 Public Property Get Y2Min() As Variant
     Y2Min = m_Y2Min
 End Property
@@ -542,6 +590,7 @@ Public Property Let Y2Min(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the maximum value for the secondary Y-axis.
 Public Property Get Y2Max() As Variant
     Y2Max = m_Y2Max
 End Property
@@ -553,6 +602,7 @@ Public Property Let Y2Max(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the minimum value for the secondary X-axis.
 Public Property Get X2Min() As Variant
     X2Min = m_X2Min
 End Property
@@ -564,6 +614,7 @@ Public Property Let X2Min(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets the maximum value for the secondary X-axis.
 Public Property Get X2Max() As Variant
     X2Max = m_X2Max
 End Property
@@ -575,6 +626,7 @@ Public Property Let X2Max(ByVal value As Variant)
     End If
 End Property
 
+'@brief Gets or sets whether the plot area should be square.
 Public Property Get SquarePlot() As Boolean
     SquarePlot = m_SquarePlot
 End Property
@@ -590,6 +642,7 @@ Public Property Let SquarePlot(ByVal value As Boolean)
     End If
 End Property
 
+'@brief Gets or sets the value where the axes cross.
 Public Property Get CrossesAt() As Double
     CrossesAt = m_CrossesAt
 End Property
@@ -602,6 +655,7 @@ Public Property Let CrossesAt(ByVal value As Double)
     End If
 End Property
 
+'@brief Gets or sets how the data is plotted (by rows or columns).
 Public Property Get PlotBy() As XlRowCol
     PlotBy = m_PlotBy
 End Property
@@ -613,8 +667,10 @@ Public Property Let PlotBy(ByVal value As XlRowCol)
     End If
 End Property
 
+'--- Private Methods ---
+
 Private Sub Class_Initialize()
-    ' Initialize the class with default values
+    ' @brief Initializes the class with default property values.
     m_ChartType = xlXYScatterLinesNoMarkers
     m_ChartTitle = "Chart Title"
     m_Y1Title = "Y-Axis"
@@ -658,106 +714,83 @@ Private Sub Class_Initialize()
     m_PlotBy = xlColumns
 End Sub
 
+'--- Public Methods ---
+
 Public Sub FormatChart()
-    On Error GoTo ErrHandler
-
-    Dim ser As series
-    Dim axNo As Axis
-
-    With m_Chart
-        .ChartType = m_ChartType
-        .HasTitle = m_HasTitle
-        If .HasTitle Then
-            .chartTitle.Text = m_ChartTitle
-            .chartTitle.Font.Size = m_TitleFontSize
-        End If
-
-        .HasLegend = m_HasLegend
-        If .HasLegend Then
-            With .Legend
-                .Position = m_LegendPosition
-                .IncludeInLayout = m_LegendInLayout
-                .Font.Size = m_LegendFontSize
-            End With
-        End If
-
-        For Each ser In .SeriesCollection
-            With ser
-                .format.line.Weight = m_SeriesLineWeight
-                .format.line.DashStyle = m_SeriesLineDashStyle
-                .MarkerStyle = m_SeriesMarkerStyle
-                .HasDataLabels = m_HasDataLabels
-            End With
-        Next ser
-    End With
-
-    Exit Sub
-ErrHandler:
-    HandleError "Error formatting chart: " & Err.Description
+    ' @brief Applies the current formatting properties to the chart.
+    ' @details This method is a simple wrapper around the more powerful ApplyFormattingFromString method.
+    '          It uses the current state of the class properties to format the chart.
+    Me.ApplyFormattingFromString
 End Sub
 
 Public Sub CreateSmithChart()
+    ' @brief Creates a Smith chart from the currently selected chart.
     On Error GoTo ErrHandler
 
-    Dim srcChart As Chart
-    Dim myChart As Chart
+    If ActiveChart Is Nothing Then
+        Me.HandleError "Please select a chart first."
+        Exit Sub
+    End If
 
-    Set srcChart = GetSelectedChart()
-    If srcChart Is Nothing Then Exit Sub
+    Set m_Chart = Me.CopyChart(ActiveChart)
+    If m_Chart Is Nothing Then
+        Me.HandleError "Failed to copy the chart."
+        Exit Sub
+    End If
 
-    Set myChart = Copy_Chart(srcChart)
-    If myChart Is Nothing Then Call HandleError("Failed to copy the chart."): Exit Sub
-
-    If Not delete_UnMatchingSeries(myChart, ":", False) Then Call HandleError("Failed to clean up Real/Imaginary data."): Exit Sub
-    If Not SmithChart_Formatting(myChart, True) Then Call HandleError("Failed to format the Smith chart."): Exit Sub
-    If Not Delink_ChartData(myChart) Then Call HandleError("Failed to delink chart data."): Exit Sub
+    Me.DeleteUnmatchingSeries ":", False
+    Me.FormatAsSmithChart True
+    Me.DelinkData
 
     Exit Sub
-
 ErrHandler:
-    Call HandleError("An unexpected error occurred in Create_SmithChart.")
+    Me.HandleError "An unexpected error occurred in CreateSmithChart."
 End Sub
 
 Public Sub CreateYLog()
+    ' @brief Creates a copy of the selected chart with a logarithmic Y-axis.
     On Error GoTo ErrHandler
 
-    Dim srcChart As Chart
-    Dim myChart As Chart
+    If ActiveChart Is Nothing Then
+        Me.HandleError "Please select a chart first."
+        Exit Sub
+    End If
 
-    Set srcChart = GetSelectedChart()
-    If srcChart Is Nothing Then Exit Sub
+    Set m_Chart = Me.CopyChart(ActiveChart)
+    If m_Chart Is Nothing Then
+        Me.HandleError "Failed to copy the chart."
+        Exit Sub
+    End If
 
-    Set myChart = Copy_Chart(srcChart)
-    If myChart Is Nothing Then Call HandleError("Failed to copy the chart."): Exit Sub
-
-    If Not Chart_YLog(myChart) Then Call HandleError("Failed to generate logarithmic Y-axis scale."): Exit Sub
-    If Not Delink_ChartData(myChart) Then Call HandleError("Failed to delink chart data."): Exit Sub
+    Me.ApplyYLogScale
+    Me.DelinkData
 
     Exit Sub
-
 ErrHandler:
-    Call HandleError("An unexpected error occurred in Create_YLog.")
+    Me.HandleError "An unexpected error occurred in CreateYLog."
 End Sub
 
 Public Sub CreateDerivative()
+    ' @brief Creates a copy of the selected chart with its series' derivatives.
     On Error GoTo ErrHandler
 
-    Dim srcChart As Chart
-    Dim myChart As Chart
+    If ActiveChart Is Nothing Then
+        Me.HandleError "Please select a chart first."
+        Exit Sub
+    End If
 
-    Set srcChart = GetSelectedChart()
-    If srcChart Is Nothing Then Exit Sub
+    Set m_Chart = Me.CopyChart(ActiveChart)
+    If m_Chart Is Nothing Then
+        Me.HandleError "Failed to copy the chart."
+        Exit Sub
+    End If
 
-    Set myChart = Copy_Chart(srcChart)
-    If myChart Is Nothing Then Call HandleError("Failed to copy the chart."): Exit Sub
-
-    If Not Chart_Derivate(myChart) Then Call HandleError("Failed to generate the derivative."): Exit Sub
-    If Not Delink_ChartData(myChart) Then Call HandleError("Failed to delink chart data."): Exit Sub
+    Me.CalculateDerivative
+    Me.DelinkData
 
     Exit Sub
-
 ErrHandler:
-    Call HandleError("An unexpected error occurred in Create_Derivative.")
+    Me.HandleError "An unexpected error occurred in CreateDerivative."
 End Sub
 
 Public Function ExportAsImage(Optional ByVal imagePath As String = "", Optional ByVal imageFilterIndex As Long = 1) As Boolean
@@ -852,7 +885,7 @@ ErrHandle:
     Set GetSelectedChart = Nothing
 End Function
 
-Public Function Copy_Chart(myChart As Chart, Optional cpyPosition As String = "Right", Optional offsetPosition As Double = 0) As Variant
+Public Function CopyChart(myChart As Chart, Optional cpyPosition As String = "Right", Optional offsetPosition As Double = 0) As Variant
     On Error GoTo ifError
     Dim parentType  As String
     Dim newChart    As Chart
@@ -885,16 +918,16 @@ Public Function Copy_Chart(myChart As Chart, Optional cpyPosition As String = "R
             End Select
     End Select
 
-    Set Copy_Chart = newChart
+    Set CopyChart = newChart
     Exit Function
 ifError:
-    Copy_Chart = CVErr(2001)
+    CopyChart = CVErr(2001)
 End Function
 
-Public Function delete_UnMatchingSeries(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+Public Function DeleteUnmatchingSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
     Dim i       As Integer
 
-    With myChart
+    With m_Chart
         For i = 1 To .FullSeriesCollection.count
             If compareAbsolute Then
                 If .FullSeriesCollection(i).name <> sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
@@ -906,18 +939,18 @@ Public Function delete_UnMatchingSeries(myChart As Chart, sMatch As String, Opti
 
     End With
 
-    delete_UnMatchingSeries = True
+    DeleteUnmatchingSeries = True
 
 End Function
 
-Public Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround As Boolean = True, Optional FormattingOptions As String = "") As Boolean
+Public Function FormatAsSmithChart(Optional AddBackGround As Boolean = True, Optional FormattingOptions As String = "") As Boolean
     Dim cSerie1         As Variant
     Dim cSerie2         As Variant
     Dim picturePath     As String
     Dim isSmithData     As Boolean
     Dim fmtOptions      As String
 
-    With myChart
+    With m_Chart
         For Each cSerie1 In .FullSeriesCollection
             If cSerie1.name Like "*I:*" And Not cSerie1.IsFiltered Then
                 For Each cSerie2 In .FullSeriesCollection
@@ -928,11 +961,11 @@ Public Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround A
                 Next
             End If
         Next
-        If Not isSmithData Then SmithChart_Formatting = False: Exit Function
+        If Not isSmithData Then FormatAsSmithChart = False: Exit Function
 
         fmtOptions = "Y1Min=-1;Y1Max=1;X1Min=-1;X1Max=1;HasTitle=false;HasLegend=false;SquarePlot=1;X1HasTitle=false;Y1HasTitle=false;X1ShowGridLines=false;Y1ShowGridLines=false;X1ShowAxis=false;Y1ShowAxis=false" & _
                         ";X1ScaleType=" & xlLinear & ";Y1ScaleType=" & xlLinear
-        ChartFormatting myChart, fmtOptions & ";" & FormattingOptions
+        Me.ApplyFormattingFromString fmtOptions & ";" & FormattingOptions
 
         For Each cSerie1 In .FullSeriesCollection
             If cSerie1.name Like "*R:*" And Not cSerie1.IsFiltered Then
@@ -958,45 +991,45 @@ Public Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround A
         End If
     End With
 
-    SmithChart_Formatting = True
+    FormatAsSmithChart = True
 End Function
 
-Public Function Delink_ChartData(myChart As Chart) As Boolean
+Public Function DelinkData() As Boolean
     On Error GoTo ifError
     Dim cSerie          As Variant
-    For Each cSerie In myChart.FullSeriesCollection
+    For Each cSerie In m_Chart.FullSeriesCollection
         cSerie.XValues = cSerie.XValues
         cSerie.values = cSerie.values
         cSerie.name = cSerie.name
     Next
-    Delink_ChartData = True
+    DelinkData = True
     Exit Function
 ifError:
-    Delink_ChartData = False
+    DelinkData = False
 End Function
 
-Public Function Chart_YLog(myChart As Chart) As Boolean
-    Chart_YAbsolute myChart
-    myChart.Axes(xlValue, xlPrimary).ScaleType = xlLogarithmic
-    Chart_YLog = True
+Public Function ApplyYLogScale() As Boolean
+    Me.ApplyYAbsoluteValue
+    m_Chart.Axes(xlValue, xlPrimary).ScaleType = xlLogarithmic
+    ApplyYLogScale = True
 End Function
 
-Public Function Chart_YAbsolute(myChart As Chart) As Boolean
+Public Function ApplyYAbsoluteValue() As Boolean
     Dim cSerie          As Variant
-    For Each cSerie In myChart.FullSeriesCollection
+    For Each cSerie In m_Chart.FullSeriesCollection
         cSerie.values = FalArray.a1D_math_Abs(cSerie.values)
     Next
-    Chart_YAbsolute = True
+    ApplyYAbsoluteValue = True
 End Function
 
-Public Function Chart_Derivate(myChart As Chart, Optional XSample As Long = 3) As Boolean
+Public Function CalculateDerivative(Optional XSample As Long = 3) As Boolean
     Dim cSerie          As Variant
     Dim a2D_X           As Variant
     Dim a2D_Y           As Variant
     Dim a2D_XY          As Variant
     Dim a1D_dY          As Variant
 
-    With myChart
+    With m_Chart
         For Each cSerie In .FullSeriesCollection
             a2D_X = FalArray.a1D_To_Columna2D(cSerie.XValues)
             a2D_Y = FalArray.a1D_To_Columna2D(cSerie.values)
@@ -1007,23 +1040,19 @@ Public Function Chart_Derivate(myChart As Chart, Optional XSample As Long = 3) A
             cSerie.name = "d" & cSerie.name
         Next
     End With
-    Chart_Derivate = True
+    CalculateDerivative = True
 End Function
 
-Public Function Selected_Chart() As Variant
+Public Function GetSelectedChart() As Chart
     ' @brief Returns the selected chart object.
-    Select Case TypeName(Selection)
-        Case "ChartArea", "PlotArea", "Chart": Set Selected_Chart = ActiveChart
-        Case "Nothing": Set Selected_Chart = ActiveChart
-        Case Else: Selected_Chart = CVErr(2001)
-    End Select
+    Set GetSelectedChart = Me.GetSelectedChart()
 End Function
 
-Public Function filter_Series(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+Public Function FilterSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
     ' @brief Filters series in a chart based on a match condition.
     Dim i       As Integer
 
-    With myChart
+    With m_Chart
         For i = 1 To .FullSeriesCollection.count
             If compareAbsolute Then
                 .FullSeriesCollection(i).IsFiltered = IIf(.FullSeriesCollection(i).name = sMatch, False, True)
@@ -1032,14 +1061,14 @@ Public Function filter_Series(myChart As Chart, sMatch As String, Optional compa
             End If
         Next i
     End With
-    filter_Series = True
+    FilterSeries = True
 End Function
 
-Public Function delete_MatchingSeries(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+Public Function DeleteMatchingSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
     ' @brief Deletes series in a chart based on a match condition.
     Dim i       As Integer
 
-    With myChart
+    With m_Chart
         For i = 1 To .FullSeriesCollection.count
             If compareAbsolute Then
                 If .FullSeriesCollection(i).name = sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
@@ -1050,13 +1079,13 @@ Public Function delete_MatchingSeries(myChart As Chart, sMatch As String, Option
         Next i
     End With
 
-    delete_MatchingSeries = True
+    DeleteMatchingSeries = True
 End Function
 
-Public Function Resize_ChartFonts(myChart As Chart, Optional fontSize As Double = 14) As Boolean
+Public Function ResizeFonts(Optional fontSize As Double = 14) As Boolean
     ' @brief Resizes all fonts in a chart to a specified size.
-    myChart.ChartArea.format.TextFrame2.TextRange.Font.Size = fontSize
-    Resize_ChartFonts = True
+    m_Chart.ChartArea.format.TextFrame2.TextRange.Font.Size = fontSize
+    ResizeFonts = True
 End Function
 
 Public Function ClearSeries() As Boolean
@@ -1220,7 +1249,7 @@ ErrHandler:
     ColorSeries = False
 End Function
 
-Public Function ChartFormatting(Optional FormattingOptions As Variant) As Boolean
+Public Function ApplyFormattingFromString(Optional FormattingOptions As Variant) As Boolean
     ' @brief Applies a multitude of formatting options to the chart object.
     ' @details This is the main formatting engine. It uses the class properties as defaults,
     '          but allows them to be overridden by a semicolon-delimited string of options.
@@ -1370,19 +1399,19 @@ Public Function ChartFormatting(Optional FormattingOptions As Variant) As Boolea
             .PlotArea.Width = .PlotArea.Height
         End If
 
-        Me.ChartText_Format
+        Me.FormatTextSubscripts
 
     End With
 
-    ChartFormatting = True
+    ApplyFormattingFromString = True
     Exit Function
 
 ErrHandler:
     Me.HandleError "Error while formatting chart: " & Err.Description
-    ChartFormatting = False
+    ApplyFormattingFromString = False
 End Function
 
-Public Function ChartText_Format() As Boolean
+Public Function FormatTextSubscripts() As Boolean
     ' @brief Formats subscripts and superscripts in chart titles and axis titles.
     If m_Chart Is Nothing Then Exit Function
 
@@ -1410,7 +1439,7 @@ Public Function ChartText_Format() As Boolean
             Next
         Next
     End With
-    ChartText_Format = True
+    FormatTextSubscripts = True
 End Function
 
 Private Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal rangeData As Range) As Chart
@@ -1463,9 +1492,9 @@ Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName 
     If m_Chart Is Nothing Then GoTo ifError
 
     Me.AddSeriesFromRange data_src
-    Me.delete_MatchingSeries m_Chart, data_src.Cells(1, 1).value, False
+    Me.DeleteMatchingSeries data_src.Cells(1, 1).value, False
     Me.ColorSeries 1, nbSeriesByGroup, ColorStyle
-    Me.ChartFormatting tempFormattingOptions
+    Me.ApplyFormattingFromString tempFormattingOptions
 
     PlotFromRange = True
     Exit Function
@@ -1482,7 +1511,7 @@ Public Function PlotFromRangeWithFormatting(ByVal data_src As Range, Optional By
         Exit Function
     End If
 
-    If Not Me.ChartFormatting(FormattingOptions) Then
+    If Not Me.ApplyFormattingFromString(FormattingOptions) Then
         Me.HandleError "Failed to apply formatting to the chart."
         PlotFromRangeWithFormatting = False
         Exit Function
@@ -1495,7 +1524,7 @@ ifError:
     PlotFromRangeWithFormatting = False
 End Function
 
-Public Function DataTrace(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
+Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
     ' @brief Automatically detects and plots data from a worksheet.
     On Error GoTo ifError
 
@@ -1555,14 +1584,14 @@ Public Function DataTrace(ByVal wks_src As Worksheet, Optional ByVal DataTopLeft
     If m_Chart Is Nothing Then GoTo ifError
 
     Me.AddSeriesFromRange wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
-    Me.delete_MatchingSeries m_Chart, wks_src.Range(firstcol_name & (firstLine - 1)).value, False
+    Me.DeleteMatchingSeries wks_src.Range(firstcol_name & (firstLine - 1)).value, False
     Me.ColorSeries 1, ((NbColumn / nbseries) - 1), ColorStyle
-    Me.ChartFormatting tempFormattingOptions
+    Me.ApplyFormattingFromString tempFormattingOptions
 
-    DataTrace = True
+    PlotFromWorksheet = True
     Exit Function
 ifError:
-    DataTrace = False
+    PlotFromWorksheet = False
 End Function
 
 Public Function PlotFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Boolean
@@ -1598,6 +1627,132 @@ cleanup:
 ifError:
     PlotFromArray = False
     Resume cleanup
+End Function
+
+Public Function AddTrendline(ByVal seriesIndex As Integer, Optional ByVal trendlineType As XlTrendlineType = xlLinear, Optional ByVal order As Integer = 2, Optional ByVal forecastForward As Double = 0, Optional ByVal forecastBackward As Double = 0, Optional ByVal displayEquation As Boolean = False, Optional ByVal displayRSquared As Boolean = False) As Boolean
+    ' @brief Adds a trendline to a specified series on the chart.
+    ' @param seriesIndex The index number of the series to add the trendline to.
+    ' @param trendlineType (Optional) The type of trendline to add (e.g., xlLinear, xlPolynomial). Defaults to xlLinear.
+    ' @param order (Optional) The polynomial order if the trendlineType is xlPolynomial. Defaults to 2.
+    ' @param forecastForward (Optional) The number of periods to forecast forward. Defaults to 0.
+    ' @param forecastBackward (Optional) The number of periods to forecast backward. Defaults to 0.
+    ' @param displayEquation (Optional) True to display the equation on the chart. Defaults to False.
+    ' @param displayRSquared (Optional) True to display the R-squared value on the chart. Defaults to False.
+    ' @return True if the trendline was added successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' Set plot.Chart = ActiveChart
+    ' plot.AddTrendline seriesIndex:=1, trendlineType:=xlPolynomial, order:=3, displayEquation:=True
+
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then GoTo ErrHandler
+    If seriesIndex < 1 Or seriesIndex > m_Chart.SeriesCollection.Count Then GoTo ErrHandler
+
+    Dim tl As Trendline
+    Set tl = m_Chart.SeriesCollection(seriesIndex).Trendlines.Add(Type:=trendlineType, Order:=order)
+
+    With tl
+        .Forward = forecastForward
+        .Backward = forecastBackward
+        .DisplayEquation = displayEquation
+        .DisplayRSquared = displayRSquared
+    End With
+
+    AddTrendline = True
+    Exit Function
+
+ErrHandler:
+    AddTrendline = False
+End Function
+
+Public Function AddErrorBars(ByVal seriesIndex As Integer, Optional ByVal direction As XlErrorBarDirection = xlY, Optional ByVal include As XlErrorBarInclude = xlErrorBarIncludeBoth, Optional ByVal type As XlErrorBarType = xlErrorBarTypeStDev, Optional ByVal amount As Double = 1) As Boolean
+    ' @brief Adds error bars to a specified series on the chart.
+    ' @param seriesIndex The index number of the series to add the error bars to.
+    ' @param direction (Optional) The direction of the error bars (xlX or xlY). Defaults to xlY.
+    ' @param include (Optional) The parts of the error bar to include (e.g., xlErrorBarIncludeBoth). Defaults to xlErrorBarIncludeBoth.
+    ' @param type (Optional) The type of error bars (e.g., xlErrorBarTypeStDev, xlErrorBarTypeFixedValue). Defaults to xlErrorBarTypeStDev.
+    ' @param amount (Optional) The amount for the error bars, used for fixed value, percentage, and standard deviation types. Defaults to 1.
+    ' @return True if the error bars were added successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' Set plot.Chart = ActiveChart
+    ' plot.AddErrorBars seriesIndex:=1, type:=xlErrorBarTypeFixedValue, amount:=5
+
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then GoTo ErrHandler
+    If seriesIndex < 1 Or seriesIndex > m_Chart.SeriesCollection.Count Then GoTo ErrHandler
+
+    m_Chart.SeriesCollection(seriesIndex).ErrorBar Direction:=direction, Include:=include, Type:=type, Amount:=amount
+
+    AddErrorBars = True
+    Exit Function
+
+ErrHandler:
+    AddErrorBars = False
+End Function
+
+Private Function CreateChartFromRange(ByVal data As Range, ByVal chartType As XlChartType, ByVal chartName As String) As Boolean
+    On Error GoTo ifError
+
+    ' Use the existing CreateChart helper to create the chart sheet
+    Set m_Chart = Me.CreateChart(chartName, data.Parent.Parent)
+    If m_Chart Is Nothing Then GoTo ifError
+
+    ' Set the chart type and source data
+    m_Chart.chartType = chartType
+    m_Chart.SetSourceData Source:=data
+
+    CreateChartFromRange = True
+    Exit Function
+ifError:
+    CreateChartFromRange = False
+End Function
+
+Public Function CreateBarChart(ByVal data As Range, Optional ByVal chartName As String = "Bar Chart", Optional ByVal style As XlChartType = xlBarClustered) As Boolean
+    ' @brief Creates a new bar chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of bar chart to create. Defaults to xlBarClustered.
+    ' @return True if the chart was created successfully, False otherwise.
+    CreateBarChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreatePieChart(ByVal data As Range, Optional ByVal chartName As String = "Pie Chart", Optional ByVal style As XlChartType = xlPie) As Boolean
+    ' @brief Creates a new pie chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of pie chart to create. Defaults to xlPie.
+    ' @return True if the chart was created successfully, False otherwise.
+    CreatePieChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateLineChart(ByVal data As Range, Optional ByVal chartName As String = "Line Chart", Optional ByVal style As XlChartType = xlLine) As Boolean
+    ' @brief Creates a new line chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of line chart to create. Defaults to xlLine.
+    ' @return True if the chart was created successfully, False otherwise.
+    CreateLineChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateAreaChart(ByVal data As Range, Optional ByVal chartName As String = "Area Chart", Optional ByVal style As XlChartType = xlArea) As Boolean
+    ' @brief Creates a new area chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of area chart to create. Defaults to xlArea.
+    ' @return True if the chart was created successfully, False otherwise.
+    CreateAreaChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateSurfaceChart(ByVal data As Range, Optional ByVal chartName As String = "Surface Chart", Optional ByVal style As XlChartType = xlSurface) As Boolean
+    ' @brief Creates a new surface chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of surface chart to create. Defaults to xlSurface.
+    ' @return True if the chart was created successfully, False otherwise.
+    CreateSurfaceChart = Me.CreateChartFromRange(data, style, chartName)
 End Function
 
 Private Function SanitizeFileName(ByVal fileName As String) As String

@@ -9,7 +9,7 @@ This directory contains all the core modules for the FALCore VBA Suite. Each mod
 - **`FalFile.bas`**: A powerful set of utilities for file and folder operations.
 - **`FalLang.bas`**: A module for language-related functions.
 - **`FalLog.bas`**: A flexible logging utility.
-- **`FalPlot.bas`**: A comprehensive set of functions for creating and formatting charts.
+- **`FalPlot.bas`**: A backward-compatible wrapper module for the `FalPlot` class. It provides a procedural interface for creating and formatting charts.
 - **`FalUtils.bas`**: A collection of utility functions.
 - **`FalWork.bas`**: A comprehensive collection of functions for managing Workbooks and Worksheets.
 - **`FalXls.bas`**: A module for Excel-specific functions.

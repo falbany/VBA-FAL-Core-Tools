@@ -11,25 +11,34 @@ FALCore is a comprehensive library of VBA modules designed to accelerate applica
 
 ## Key Features
 
-- **Modular Design**: The suite is organized into distinct modules, each focusing on a specific area (Files, Worksheets, Arrays, Logging, etc.). These modules can be used independently or together.
-- **Robust & Reusable**: Functions are built with error handling and are designed to be easily integrated into any VBA project.
-- **Well-Documented**: All public functions include detailed header comments explaining their purpose, parameters, and usage, making the library easy to learn and use.
-- **Consistent Naming**: The library follows a clear `Fal...` prefix convention for all module names, providing a clean namespace that prevents naming collisions with other libraries or host application functions.
+- **Hybrid Approach**: The library offers both procedural modules and object-oriented classes, providing flexibility for different programming styles.
+- **Modular Design**: The suite is organized into distinct modules and classes, each focusing on a specific area (Files, Worksheets, Arrays, Plotting, etc.).
+- **Robust & Reusable**: Functions and methods are built with error handling and are designed to be easily integrated into any VBA project.
+- **Well-Documented**: All public members include detailed header comments explaining their purpose, parameters, and usage.
+- **Consistent Naming**: The library follows a clear `Fal...` prefix convention, providing a clean namespace.
 
-## Modules Overview
+## Architecture Overview
 
-The FALCore suite is organized into the following modules:
+FALCore is structured into two main components:
 
-- **`FALCore.bas`**: The central "About" module for the suite, containing version information and a general description of the library.
-- **`FalArray.bas`**: An advanced toolkit for creating, manipulating, and querying 1D, 2D, 3D, and 4D arrays. Includes features like JSON conversion, regression analysis, and complex data slicing.
+- **`/FALCore/Classes`**: Contains powerful, object-oriented class modules (`.cls`) for complex tasks.
+- **`/FALCore/Modules`**: Contains a wide range of procedural helper modules (`.bas`).
+
+### Classes Overview
+
+- **`FalPlot.cls`**: A powerful class for creating and manipulating charts. It provides an object-oriented interface for plotting data and customizing every aspect of a chart's appearance.
+
+### Modules Overview
+
+- **`FalPlot.bas`**: A backward-compatible wrapper for the `FalPlot` class. It provides a simple, procedural interface for common plotting tasks.
+- **`FalArray.bas`**: An advanced toolkit for array manipulation.
 - **`FalCSV.bas`**: A module for working with CSV files.
-- **`FalFile.bas`**: A powerful set of utilities for file and folder operations, including reading, writing, copying, moving, sorting, and zipping files.
+- **`FalFile.bas`**: A powerful set of utilities for file and folder operations.
 - **`FalLang.bas`**: A module for language-related functions.
-- **`FalLog.bas`**: A flexible logging utility with configurable debug levels (Error, Warning, Info, Debug) and multiple output destinations (Immediate Window, Text File).
-- **`FalPlot.bas`**: A comprehensive set of functions for creating, manipulating, and formatting advanced charts in Microsoft Excel.
+- **`FalLog.bas`**: A flexible logging utility.
 - **`FalUtils.bas`**: A collection of utility functions.
-- **`FalWork.bas`**: A comprehensive collection of functions for creating, manipulating, and managing Excel Workbooks and Worksheets.
-- **`FalXls.bas`**: A module for Excel-specific functions, such as creating a summary worksheet with hyperlinks to all other worksheets in the current workbook.
+- **`FalWork.bas`**: A comprehensive collection of functions for managing Workbooks and Worksheets.
+- **`FalXls.bas`**: A module for Excel-specific functions.
 
 ## Installation
 
