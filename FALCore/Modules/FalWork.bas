@@ -1,8 +1,8 @@
-Attribute VB_Name = "WorkX"
+Attribute VB_Name = "FalWork"
 
 ' **************************************************************************************
-' Module    : WorkX
-' Author    : Forent ALBANY
+' Module    : FalWork
+' Author    : Florent ALBANY
 ' Website   :
 ' Purpose   : Manipulation of Workbooks and Worksheets
 ' Copyright : The following may be altered and reused as you wish so long as the
@@ -15,34 +15,20 @@ Attribute VB_Name = "WorkX"
 ' **************************************************************************************
 ' 1         2025-07-20              Initial creation with workbook/worksheet functions.
 ' 2         2025-07-28              Add several functions and comments.
+' 3         2025-08-25              Translated to English and refactored for clarity.
 '---------------------------------------------------------------------------------------
 ' Dependencies:
 ' ~~~~~~~~~~~~~~~~
 '   Microsoft Scripting Runtime (for Dictionary object)
+'   FalFile
 ' **************************************************************************************
 
 Option Explicit
 
-
-
-
-
-'/////////////////////////////////////////////////////////////////////////////////////////////////'
-'                            _   _ _____ _     ____  _____ ____                                   '
-'                           | | | | ____| |   |  _ \| ____|  _ \                                  '
-'                           | |_| |  _| | |   | |_) |  _| | |_) |                                 '
-'                           |  _  | |___| |___|  __/| |___|  _ <                                  '
-'                           |_| |_|_____|_____|_|   |_____|_| \_\                                 '
-'/////////////////////////////////////////////////////////////////////////////////////////////////'
-
-
-
-
-
 Private Sub Handle_Error(ByVal ErrMsg As String)
-    ' @brief Affiche un message d'erreur standardise  l'utilisateur.
-    ' @param ErrMsg Le message d'erreur specifique  afficher.
-    MsgBox "Une erreur est survenue :" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Opration impossible"
+    ' @brief Displays a standardized error message to the user.
+    ' @param ErrMsg The specific error message to display.
+    MsgBox "An error occurred:" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Operation Impossible"
 End Sub
 
 
@@ -269,18 +255,6 @@ Public Function Convert_Coords_To_Address(ByVal RowIndex As Long, ByVal ColumnIn
     If Err.Number <> 0 Then Convert_Coords_To_Address = ""
     Err.Clear
 End Function
-
-
-
-
-'/////////////////////////////////////////////////////////////////////////////////////////////////'
-'                       __        _____  ____  _  ______   ___   ___  _  __                       '
-'                       \ \      / / _ \|  _ \| |/ / __ ) / _ \ / _ \| |/ /                       '
-'                        \ \ /\ / / | | | |_) | ' /|  _ \| | | | | | | ' /                        '
-'                         \ V  V /| |_| |  _ <| . \| |_) | |_| | |_| | . \                        '
-'                          \_/\_/  \___/|_| \_\_|\_\____/ \___/ \___/|_|\_\                       '                              
-'/////////////////////////////////////////////////////////////////////////////////////////////////'
-
 
 Public Function Open_Workbook(ByVal wbk_filepath As String) As Workbook
     ' @brief Opens a workbook from a specified path, or returns a reference if it's already open.
@@ -525,7 +499,7 @@ Public Function Sort_Workbooks(ByVal WorkbooksToSort As Variant, ByVal SortKey A
             Case "name": sortData(i, 1) = wbk.Name
             Case "fullname": sortData(i, 1) = wbk.FullName
             Case "date"
-                If wbk.Path <> "" Then sortData(i, 1) = FileDateTime(wbk.FullName) Else sortData(i, 1) = 0
+                If wbk.path <> "" Then sortData(i, 1) = FileDateTime(wbk.FullName) Else sortData(i, 1) = 0
             Case "sheetcount"
                 sortData(i, 1) = wbk.Worksheets.Count
             Case Else
@@ -673,7 +647,7 @@ Public Function Save_Workbook_As(ByVal TargetWorkbook As Workbook, ByVal FilePat
     TargetWorkbook.SaveAs Filename:=FilePath, FileFormat:=FileFormat, ConflictResolution:=xlLocalSessionChanges
 
     ' Check if the save operation was successful.
-    If FileX.FileExist(FilePath) Then
+    If FalFile.FileExist(FilePath) Then
 		If AutoClose Then
 			TargetWorkbook.Close SaveChanges:=False
 		End If
@@ -723,7 +697,7 @@ Public Function Save_Workbooks_As(ByVal WorkbooksToSave As Variant, ByVal BasePa
     ' 2. Iterate through the workbooks and save them.
     For Each wbk In wbksToProcess
         ' Create the full file path using the provided directory and workbook name.
-        saveFile = FileX.Combine_Paths(BasePath, wbk.Name)
+        saveFile = FalFile.Combine_Paths(BasePath, wbk.Name)
 
         ' Use the Save_Workbook_As function to handle the actual saving.
         If Not Save_Workbook_As(wbk, saveFile, FileFormat, AutoClose) Then
@@ -934,24 +908,6 @@ ifError:
     Set Merge_Workbooks = Nothing
     Resume ifExit
 End Function
-
-
-
-
-
-'/////////////////////////////////////////////////////////////////////////////////////////////////'
-'                    __        _____  ____  _  ______  _   _ _____ _____ _____                    '
-'                    \ \      / / _ \|  _ \| |/ / ___|| | | | ____| ____|_   _|                   '
-'                     \ \ /\ / / | | | |_) | ' /\___ \| |_| |  _| |  _|   | |                     '
-'                      \ V  V /| |_| |  _ <| . \ ___) |  _  | |___| |___  | |                     '
-'                       \_/\_/  \___/|_| \_\_|\_\____/|_| |_|_____|_____| |_|                     '
-'/////////////////////////////////////////////////////////////////////////////////////////////////'
-
-
-
-
-
-
 
 Public Function Create_Worksheet(ByVal SheetName As String, Optional ByVal TargetWorkbook As Workbook = Nothing) As Worksheet
     ' @brief Ensures a worksheet with a specific name exists in a workbook, creating it if necessary.
@@ -1289,7 +1245,7 @@ Public Function Activate_Worksheet(ByVal TargetSheet As Worksheet) As Boolean
 
 ifError:
     Call Handle_Error("Failed to activate worksheet '" & TargetSheet.Name & "'. " & vbCrLf & "Error: " & Err.Description)
-    Activate_Sheet = False
+    Activate_Worksheet = False
 End Function
 
 
@@ -1611,8 +1567,9 @@ Public Function Get_Worksheets_From_Workbooks_As_Collection(ByVal TargetWorkbook
 
         If Not ws Is Nothing Then
             compositeKey = wbk.Name & "|" & ws.Name
-            if not collSheets.Exists(compositeKey)
-            collSheets.Add Item:=ws, Key:=compositeKey
+            'if not collSheets.Exists(compositeKey) then
+            '    collSheets.Add Item:=ws, Key:=compositeKey
+            'end if
             On Error GoTo ifError
             Set ws = Nothing ' Reset for next loop
         End If
@@ -1911,4 +1868,11 @@ ifError:
     Call Handle_Error("Failed to merge worksheets. " & vbCrLf & "Error: " & Err.Description)
     Merge_Worksheets = False
     Resume ifExit
+End Function
+
+Public Function SheetExist(ByVal wbk As Workbook, ByVal SheetName As String) As Boolean
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = wbk.Sheets(SheetName)
+    SheetExist = (Not ws Is Nothing)
 End Function

@@ -31,3 +31,10 @@ FALCore is a library of VBA modules for Microsoft Excel. The goal is to provide 
 ## Testing
 
 There is no formal test suite for this project yet. When making changes, please manually test them in Microsoft Excel to ensure that they work as expected.
+
+## Module Dependencies
+
+- **`FalPlot`**: `FalLang`, `FalWork`, `FalArray`, `FalFile`
+- **`FalCSV`**: `FalFile`, `FalArray`
+- **`FalFile`**: `FALCore`, `FalLang`, `FalWork`, `FalArray`
+- **`FalWork`**: `FalFile`

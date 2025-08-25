@@ -1,7 +1,7 @@
-Attribute VB_Name = "ArrayX"
+Attribute VB_Name = "FalArray"
 ' **************************************************************************************
-' Class     : ArrayX
-' Author    : Forent ALBANY
+' Module    : FalArray
+' Author    : Florent ALBANY
 ' Website   :
 ' Purpose   : Manipulation of arrays
 ' Copyright : The following may be altered and reused as you wish so long as the
@@ -13,6 +13,7 @@ Attribute VB_Name = "ArrayX"
 ' Rev       Date(yyyy/mm/dd)        Description
 ' **************************************************************************************
 ' 1         2023-07-00              Initial Release
+' 2         2025-08-25              Translated to English and refactored for clarity.
 '---------------------------------------------------------------------------------------
 ' Revision Propositions:
 ' ~~~~~~~~~~~~~~~~
@@ -189,7 +190,7 @@ Public Function a2D_find_LastNonEmptyRowInColumnFromLine(Arr2D As Variant, Optio
     For i = StartRow To UBound(Arr2D, 1)
         If IsEmpty(Arr2D(i, colNumber)) Then a2D_find_LastNonEmptyRowInColumnFromLine = i: Exit Function
     Next
-    ' Si aucune valeur non vide n'est trouv�e, renvoie 0.
+    ' If no non-empty value is found, return 0.
     a2D_find_LastNonEmptyRowInColumnFromLine = 0
 End Function
 
@@ -230,8 +231,7 @@ Public Function a2D_math_Derivate(Arr2D As Variant, Optional X_Split As Long = 3
     ' Arr2D(1 To X, 1 To 2)
     ' Degree = 1 : linear regression. /!\ firsts and lasts values.
     ' Degree = 2 : Polynomial regression of degree order.
-    'On Error GoTo ArrayError
-    On Error Resume Next
+    On Error GoTo ArrayError
     Dim XTrendEst() As Variant
     Dim YTrendEst() As Variant
     Dim tempArray() As Variant
@@ -242,8 +242,8 @@ Public Function a2D_math_Derivate(Arr2D As Variant, Optional X_Split As Long = 3
     
     ReDim resultArray(1 To UBound(Arr2D), 1 To 2)
     ' Error End Conditions.
-    'If UBound(Arr2D) < X_Split + 1 Then Debug.Print "DerivateArray Function error : UBound(Arr2D) < X_Split + 1": GoTo ArrayError
-    'If X_Split > UBound(Arr2D) / 2 Then Debug.Print "DerivateArray Function error : X_Split > UBound(Arr2D) / 2": GoTo ArrayError
+    If UBound(Arr2D) < X_Split + 1 Then Debug.Print "DerivateArray Function error : UBound(Arr2D) < X_Split + 1": GoTo ArrayError
+    If X_Split > UBound(Arr2D) / 2 Then Debug.Print "DerivateArray Function error : X_Split > UBound(Arr2D) / 2": GoTo ArrayError
     ' WARNINGS.
     If X_Split > UBound(Arr2D) Then DebugPrint "ArrayX", "a2D_Derivate", "WARN, desc = X_Split > UBound(Arr2D) => X_Split = UBound(Arr2D)"
     If UBound(Arr2D) < X_Split + 1 Then DebugPrint "ArrayX", "a2D_Derivate", "WARN, desc = UBound(Arr2D) < X_Split + 1"
@@ -268,11 +268,11 @@ Public Function a2D_math_Derivate(Arr2D As Variant, Optional X_Split As Long = 3
         ' Derivative functions.
         Select Case Degree
             Case 1
-                tempArray = TrendEst(YTrendEst, XTrendEst, 1)   ' A*X+B with A = (1,1) / B = (1,2) / R� = (3,1).
+                tempArray = TrendEst(YTrendEst, XTrendEst, 1)   ' A*X+B with A = (1,1) / B = (1,2) / R² = (3,1).
                 resultArray(XIndex, 1) = Arr2D(XIndex, 1)   ' Copy X Data in ResultArray.
                 resultArray(XIndex, 2) = tempArray(1, 1)        ' Derivative Calculation.
             Case 2
-                tempArray = TrendEst(YTrendEst, XTrendEst, 2)   ' Ax�+Bx+C=Y with A = (1,1) / B = (1,2) / C = (1,3)/ R� = (3,1).
+                tempArray = TrendEst(YTrendEst, XTrendEst, 2)   ' Ax²+Bx+C=Y with A = (1,1) / B = (1,2) / C = (1,3)/ R² = (3,1).
                 resultArray(XIndex, 1) = Arr2D(XIndex, 1)   ' Copy X Data in ResultArray.
                 resultArray(XIndex, 2) = 2 * tempArray(1, 1) * Arr2D(XIndex, 1) + tempArray(1, 2)     ' Derivative calculation.
         End Select
@@ -405,21 +405,6 @@ Public Function a2D_math_Clip(Arr2D As Variant, Optional Low As Variant, Optiona
     a2D_math_Clip = aXD
 End Function
 
-
-' ' # TODO: use a2D_Write() instead
-' Public Function a2D_WriteToSpreadSheet(Arr2D As Variant, Optional TopLeftCellAddress As String = "A1", Optional Workbook_Name As String = "ActiveWorkbook", Optional Worksheet_Name As Variant = "ActiveSheet") As Boolean
-' ' OBSOLETE use a2D_Write() instead
-'     ' Write Arr2D  to Workbooks(Workbook_Name).Worksheets(wks_name).Range(TopLeftCellAddress...
-'     On Error GoTo ifError
-'     If Workbook_Name = "ActiveWorkbook" Then Workbook_Name = ActiveWorkbook.name
-'     If Worksheet_Name = "ActiveSheet" Then Worksheet_Name = ActiveSheet.name
-'     Workbooks(Workbook_Name).Worksheets(Worksheet_Name).Range(TopLeftCellAddress & ":" & LANG_MOD.col(Range(TopLeftCellAddress).column + UBound(Arr2D, 2) - LBound(Arr2D, 2)) & (Range(TopLeftCellAddress).Row + UBound(Arr2D, 1) - LBound(Arr2D, 1))).value = Arr2D
-'     a2D_WriteToSpreadSheet = True
-'     Exit Function
-' ifError:
-'     Debug.Print format(Now, "h:mm:ss    ") & "FUNCTION : [a2D_WriteToSpreadSheet], ERROR"
-' End Function
-
 Public Function a2D_Write(ByVal Arr2D As Variant, ByVal TopLeftCell As Range, Optional ByVal WriteAs As String = "Value") As Boolean
     ' @brief Writes a 2D array to a worksheet starting at a specified cell, as values or formulas.
     ' @param Arr2D The 2D array (or a Range object) containing the data to write.
@@ -521,7 +506,7 @@ Public Function a2D_replace_string(Arr2D As Variant, string1 As String, string2 
     
     For i = xLB1 To xUB1
         For j = xLB2 To xUB2
-            If TypeName(ArrXD(i, j)) = TypeName(string1) Then aXD(i, j) = Replace(aXD(i, j), string1, string2)
+            If TypeName(Arr2D(i, j)) = TypeName(string1) Then aXD(i, j) = Replace(aXD(i, j), string1, string2)
         Next
     Next
     
@@ -651,37 +636,6 @@ Public Function a2D_Find_First(ByVal SearchArray As Variant, ByVal WhatToFind As
 
 End Function
 
-' # TODO: replace by a2D_Find_First()
-Function a2D_find_String(searchString As String, SearchArray As Variant, Optional caseSensitive = True, Optional skipLines As Long = 0) As String
-    ' * brief search for searchString in searchArray
-    ' * return the position of the first found string. "" else
-    Dim i               As Long
-    Dim j               As Long
-    Dim LBRows          As Long
-    Dim UBRows          As Long
-    Dim LBCols          As Long
-    Dim UBCols          As Long
-    
-    If Not IsArray(SearchArray) Then a2D_find_String = "Not An Array": Exit Function
-    LBRows = LBound(SearchArray, 1)
-    UBRows = UBound(SearchArray, 1)
-    LBCols = LBound(SearchArray, 2)
-    UBCols = UBound(SearchArray, 2)
-    
-    If Not caseSensitive Then searchString = UCase(searchString)
-    
-    For i = LBRows + skipLines To UBRows
-        For j = LBCols To UBCols
-            If caseSensitive Then
-                If SearchArray(i, j) = searchString Then a2D_find_String = LANG_MOD.col(j + 1 - LBCols) & i + 1 - LBRows: Exit Function
-            Else
-                If UCase(SearchArray(i, j)) = searchString Then a2D_find_String = LANG_MOD.col(j + 1 - LBCols) & i + 1 - LBRows: Exit Function
-            End If
-        Next j
-    Next i
-    a2D_find_String = ""
-End Function
-
 Public Function a2D_Isolate_XY(Arr2D As Variant, X_Column As Variant, Y_Column As Variant) As Variant
     ' Convert 2DArray(x To X, y to Y) to 2DArray(x to X, X_Column & Y_Column)
     ' X_Column & Y_Column Inputs can be Integer or String. Example : Y_Column = 2 <=> Y_Column = "B".
@@ -746,26 +700,6 @@ Public Function a2D_BaseOptionTransposition(ByVal Arr2D As Variant, ArrayBaseOpt
     Erase resultArray
     Exit Function
 End Function
-
-' # TODO: replace by a2D_Get_Column()
-Public Function a2D_Column_Isolate(Arr2D As Variant, OutColumn As Long) As Variant
-    ' Convert 2D Array(1 To X, 1 to Y) to Array(1 To X, 1 to 1)
-    Dim XIndex As Long
-    Dim resultArray() As Variant
-    ReDim resultArray(1 To UBound(Arr2D), 1 To 1)
-    ' ERROR.
-    If OutColumn > UBound(Arr2D, 2) Then GoTo ArrayError
-    ' 2DArray construction.
-    For XIndex = 1 To UBound(Arr2D)
-        resultArray(XIndex, 1) = Arr2D(XIndex, OutColumn)
-    Next
-    ' Result Array.
-    a2D_Column_Isolate = resultArray
-    Exit Function
-ArrayError:
-    a2D_Column_Isolate = resultArray
-End Function
-
 
 Public Function a2D_Get_Column(ByVal Arr2D As Variant, ByVal ColumnIndex As Long, Optional ByVal As1DArray As Boolean = False) As Variant
     ' @brief Extracts a single column from a 2D array.
@@ -884,31 +818,6 @@ Public Function a2D_Create_NxN(ByVal Size As Long, Optional ByVal FillValue As V
     a2D_Create_NxN = a2D_Create(Size, Size, FillValue)
 End Function
 
-' # TODO: replace by a2D_Create()
-Public Function a2D_Create_MxN(m As Long, n As Long, value As Variant) As Variant
-    '------------------------------------------------------------------------------
-    ' @fn       Public Function a2D_Create_MxN
-    ' @brief    Creates a 2D array with dimensions MxN and initializes it with a specified value.
-    ' @param    M       Long      Number of rows in the 2D array.
-    ' @param    N       Long      Number of columns in the 2D array.
-    ' @param    value   Variant   Value with which the array will be initialized.
-    ' @return   Variant           Initialized 2D array.
-    '------------------------------------------------------------------------------
-    Dim i                   As Integer
-    Dim j                   As Integer
-    Dim aXD                 As Variant
-    
-    ReDim aXD(1 To m, 1 To n)
-
-    For i = 1 To m
-        For j = 1 To n
-            aXD(i, j) = value
-        Next j
-    Next i
-    
-    a2D_Create_MxN = aXD
-End Function
-
 Public Function a2D_Join(Arr2D As Variant, ByVal Delimiter As String, Optional JoinByLine As Boolean = True) As String
     '------------------------------------------------------------------------------
     ' @fn       Function a2D_Join
@@ -1024,45 +933,6 @@ ErrorFunct:
     a2D_Column_CopyTo = resultArray
 End Function
 
-
-' # TODO: use a2D_Insert_Rows() instead
-Public Function a2D_Row_Add(Arr2D As Variant, FirstRowPosition As Long, Optional NbRowsToAdd As Long = 1) As Variant
-    ' Add empty Rows to 2DArray from FirstRowPosition.
-' TO VALIDATE
-    Dim YIndex As Long
-    Dim XIndex As Long
-    Dim XOffset As Long
-    Dim XOffset2 As Long
-    Dim resultArray() As Variant
-    ReDim resultArray(LBound(Arr2D, 1) To UBound(Arr2D, 1) + NbRowsToAdd, LBound(Arr2D, 2) To UBound(Arr2D, 2))
-    
-    ' WARNINGS.
-    If NbRowsToAdd < 1 Then Debug.Print "WARNING ! AddRowTo_2DArray() : NbRowsToAdd < 1 => NbRowsToAdd = 1"
-    If FirstRowPosition < LBound(Arr2D, 1) Then Debug.Print "WARNING ! AddRowTo_2DArray() : FirstRowPosition < LBound(Arr2D, 1) => FirstRowPosition = LBound(Arr2D, 1)"
-    If FirstRowPosition > UBound(Arr2D, 1) + 1 Then Debug.Print "WARNING ! AddRowTo_2DArray() : FirstRowPosition > UBound(Arr2D, 1) + 1 => FirstRowPosition = UBound(Arr2D, 1) + 1"
-    ' BOUNDARY.
-    If NbRowsToAdd < 1 Then NbRowsToAdd = 1
-    If FirstRowPosition < LBound(Arr2D, 1) Then FirstRowPosition = LBound(Arr2D, 1)
-    If FirstRowPosition > UBound(Arr2D, 1) + 1 Then FirstRowPosition = UBound(Arr2D, 1) + 1
-    ' BUILD The 2DArray.
-    XOffset = 0
-    XOffset2 = 0
-    For XIndex = LBound(Arr2D, 1) To UBound(resultArray, 1)
-        If XIndex <> FirstRowPosition + Abs(XOffset2) Then
-            For YIndex = LBound(Arr2D, 2) To UBound(Arr2D, 2)
-                resultArray(XIndex, YIndex) = Arr2D(XIndex + XOffset, YIndex)
-            Next
-        Else
-            XOffset = XOffset - 1
-            If Abs(XOffset2) < NbRowsToAdd - 1 Then XOffset2 = XOffset2 + 1
-        End If
-    Next
-    a2D_Row_Add = resultArray
-    Erase resultArray
-    Exit Function
-End Function
-
-
 Public Function a2D_Insert_Rows(ByVal Arr2D As Variant, ByVal InsertAtRow As Long, Optional ByVal RowCount As Long = 1) As Variant
     ' @brief Inserts one or more empty rows into a 2D array at a specified position.
     ' @param Arr2D The source 2D array.
@@ -1169,33 +1039,6 @@ Public Function a2D_Slice_Rows(ByVal Arr2D As Variant, ByVal StartRow As Long, B
 
     ' 4. Return the result
     a2D_Slice_Rows = resultArray
-End Function
-
-' # TODO: use a2D_Slice_Rows() instead
-Public Function a2D_Row_Cut(Arr2D As Variant, FirstArrayLine As Variant, LastArrayLine As Variant) As Variant
-    Dim XIndex As Long
-    Dim YIndex As Long
-    Dim XOffset As Long
-    Dim PointsNb As Long
-    Dim resultArray() As Variant
-    
-    XOffset = LBound(Arr2D, 1) - FirstArrayLine
-    PointsNb = LastArrayLine - FirstArrayLine
-    ReDim resultArray(LBound(Arr2D, 1) To UBound(Arr2D, 1) + PointsNb, LBound(Arr2D, 2) To UBound(Arr2D, 2))
-    ' ERROR.
-    If FirstArrayLine < LBound(Arr2D, 1) Or FirstArrayLine > UBound(Arr2D, 1) Then Debug.Print "ERROR ! a2D_Row_Cut() : FirstArrayLine = " & FirstArrayLine & " is out of Arr2D row range": GoTo ErrorFunct
-    If LastArrayLine < LBound(Arr2D, 1) Or LastArrayLine > UBound(Arr2D, 1) Then Debug.Print "ERROR ! a2D_Row_Cut() : LastArrayLine = " & LastArrayLine & " is out of Arr2D row range": GoTo ErrorFunct
-    ' 2DArray construction.
-    For XIndex = FirstArrayLine To LastArrayLine
-        For YIndex = LBound(Arr2D, 2) To UBound(Arr2D, 2)
-            resultArray(XIndex + XOffset, YIndex) = Arr2D(XIndex, YIndex)
-        Next
-    Next
-    a2D_Row_Cut = resultArray
-    Erase resultArray
-    Exit Function
-ErrorFunct:
-    a2D_Row_Cut = resultArray
 End Function
 
 Public Function a2D_To_a1D(ByVal Arr2D As Variant, Optional ByVal ByRow As Boolean = True) As Variant
@@ -1430,9 +1273,9 @@ Public Function a1D_To_Linea2D(a1D As Variant) As Variant
     
     ReDim a2D(1 To 1, LBound(a1D) To UBound(a1D))
     For i = LBound(a1D) To UBound(a1D)
-        a2D(1, i) = Src1DArray(i)
+        a2D(1, i) = a1D(i)
     Next
-    a1D_To_Linea2D = a1D_To_Linea2D
+    a1D_To_Linea2D = a2D
 End Function
 
 Public Function a1D_To_Columna2D(a1D As Variant) As Variant
@@ -1446,143 +1289,6 @@ Public Function a1D_To_Columna2D(a1D As Variant) As Variant
     a1D_To_Columna2D = a2D
 End Function
 
-Public Function a2D_Clear_Values(Arr2D As Variant) As Variant
-    ' /!\ to validate
-    ReDim a2D_Clear_Values(LBound(Arr2D, 1) To UBound(Arr2D, 1), LBound(Arr2D, 2) To UBound(Arr2D, 2))
-End Function
-
-Public Function a2D_Clear_RowValues(Arr2D As Variant, RowToClear As Long) As Variant
-    ' /!\ to validate
-    Dim YIndex As Long
-    Dim resultArray() As Variant
-    resultArray = Arr2D
-    
-    ' BOUNDARY.
-    If Not (LBound(resultArray, 1) <= RowToClear <= UBound(resultArray, 1)) Then Debug.Print "ERROR ! a2D_Clear_RowValues() : RowToClear = " & RowToClear & " is out of Arr2D .row range": GoTo ErrorFunct
-    
-    ' ROW CLEAR.
-    For YIndex = LBound(resultArray, 2) To UBound(resultArray, 2)
-        resultArray(RowToClear, YIndex) = Nothing
-    Next YIndex
-    
-    ' RESULT.
-    a2D_Clear_RowValues = resultArray
-    Exit Function
-ErrorFunct:
-    a2D_Clear_RowValues = resultArray
-End Function
-
-Public Function a2D_Clear_ColumnValues(Arr2D As Variant, ColumnToClear As Long) As Variant
-    ' /!\ to validate
-    Dim XIndex As Long
-    Dim resultArray() As Variant
-    resultArray = Arr2D
-    
-    ' BOUNDARY.
-    If Not (LBound(resultArray, 2) <= ColumnToClear <= UBound(resultArray, 2)) Then Debug.Print "ERROR ! a2D_Clear_ColumnValues() : ColumnToClear = " & ColumnToClear & " is out of Arr2D .column range": GoTo ErrorFunct
-    
-    ' ROW CLEAR.
-    For XIndex = LBound(resultArray, 1) To UBound(resultArray, 1)
-        resultArray(XIndex, ColumnToClear) = Nothing
-    Next XIndex
-    
-    ' RESULT.
-    a2D_Clear_ColumnValues = resultArray
-    Exit Function
-ErrorFunct:
-    a2D_Clear_ColumnValues = resultArray
-End Function
-
-Public Function a2D_Clear_Row(Arr2D As Variant, RowToClear As Long) As Variant
-    ' /!\ to validate
-    Dim XIndex As Long
-    Dim YIndex As Long
-    Dim XOffset As Long
-    Dim resultArray() As Variant
-    ReDim resultArray(LBound(Arr2D, 1) To UBound(Arr2D, 1) - 1, LBound(Arr2D, 2) To UBound(Arr2D, 2))
-    
-    ' ERROR.
-    If Not (LBound(resultArray, 1) <= RowToClear <= UBound(resultArray, 1)) Then Debug.Print "ERROR ! ClearRow_2DArray() : RowToClear = " & RowToClear & " is out of Arr2D .row range": GoTo ErrorFunct
-    
-    ' ROW CLEAR.
-    XOffset = 0
-    For XIndex = LBound(resultArray, 1) To UBound(resultArray, 1)
-        If XIndex = RowToClear Then XOffset = XOffset + 1
-        For YIndex = LBound(resultArray, 2) To UBound(resultArray, 2)
-             resultArray(XIndex, YIndex) = Arr2D(XIndex + XOffset, YIndex)
-        Next YIndex
-    Next XIndex
-    
-    ' RESULT.
-    a2D_Clear_Row = resultArray
-    Exit Function
-ErrorFunct:
-    a2D_Clear_Row = resultArray
-End Function
-
-Public Function a2D_Clear_Column(Arr2D As Variant, ColumnToClear As Long) As Variant
-    ' /!\ to validate
-    Dim XIndex As Long
-    Dim YIndex As Long
-    Dim YOffset As Long
-    Dim resultArray() As Variant
-    ReDim resultArray(LBound(Arr2D, 1) To UBound(Arr2D, 1), LBound(Arr2D, 2) To UBound(Arr2D, 2) - 1)
-    
-    ' ERROR.
-    If Not (LBound(resultArray, 1) <= RowToClear <= UBound(resultArray, 1)) Then Debug.Print "ERROR ! ClearRow_2DArray() : ColumnToClear = " & ColumnToClear & " is out of Arr2D .column range": GoTo ErrorFunct
-    
-    ' ROW CLEAR.
-    XOffset = 0
-    For XIndex = LBound(resultArray, 2) To UBound(resultArray, 2)
-        For YIndex = LBound(resultArray, 2) To UBound(resultArray, 2)
-            If YIndex = RowToClear Then YOffset = YOffset + 1
-            resultArray(XIndex, YIndex) = Arr2D(XIndex, YIndex + YOffset)
-        Next YIndex
-    Next XIndex
-    
-    ' RESULT.
-    a2D_Clear_Column = resultArray
-    Exit Function
-ErrorFunct:
-    a2D_Clear_Column = resultArray
-End Function
-
-Public Function a2D_Fill_With_Value(ByVal Arr2D As Variant, Optional ByVal FillValue As Variant = "") As Variant
-    ' @brief Fills every element of a 2D array with a specified value.
-    ' @param Arr2D The source 2D array.
-    ' @param FillValue (Optional) The value to fill every element of the array with. Defaults to an empty string.
-    ' @return A new 2D array of the same dimensions, with every element set to FillValue.
-    '         Returns Empty if the input is not a valid 2D array.
-
-    a2D_Fill_With_Value = Empty ' Default return value
-
-    ' 1. Input Validation
-    If Not IsArray(Arr2D) Then Exit Function
-    On Error Resume Next
-    Dim ub2 As Long: ub2 = UBound(Arr2D, 2)
-    If Err.Number <> 0 Then Exit Function ' Not a 2D array
-    On Error GoTo 0
-
-    ' 2. Create the result array
-    Dim r As Long, c As Long
-    Dim lbRow As Long: lbRow = LBound(Arr2D, 1)
-    Dim ubRow As Long: ubRow = UBound(Arr2D, 1)
-    Dim lbCol As Long: lbCol = LBound(Arr2D, 2)
-    Dim ubCol As Long: ubCol = UBound(Arr2D, 2)
-    Dim resultArray As Variant
-    ReDim resultArray(lbRow To ubRow, lbCol To ubCol)
-
-    ' 3. Fill the array
-    For r = lbRow To ubRow
-        For c = lbCol To ubCol
-            resultArray(r, c) = FillValue
-        Next c
-    Next r
-
-    ' 4. Return the result
-    a2D_Fill_With_Value = resultArray
-End Function
-
 Public Function Csv_To_Range(sCsv As String, rng As Range, Optional Delimiter As String = ",", Optional QuoteChar As String = "'") As Boolean
     '* @brief Converts a CSV string to a range in Excel.
     '* @param sCsv The CSV string to convert.
@@ -1594,7 +1300,7 @@ Public Function Csv_To_Range(sCsv As String, rng As Range, Optional Delimiter As
     Dim Arr2D       As Variant
     
     Arr2D = Csv_To_a2D(sCsv, Delimiter, QuoteChar)
-    If Not IsError(Arr2D) Then Csv_To_Range = ArrayX.a2D_Write(Arr2D, rng)
+    If Not IsError(Arr2D) Then Csv_To_Range = FalArray.a2D_Write(Arr2D, rng)
     Exit Function
 ifError:
     Csv_To_Range = False
@@ -1724,23 +1430,23 @@ Sub Selection_To_CsvFile()
     Delimiter = ","
     QuoteChar = Chr(34)
         
-    ' R�cup�rer la s�lection en tant que tableau 2D
+    ' Get the selection as a 2D array
     Arr2D = a2D_From_Selection()
     If IsError(Arr2D) Then
-        MsgBox "Aucune selection valide trouvee.", vbExclamation
+        MsgBox "No valid selection found.", vbExclamation
         Exit Sub
     End If
     
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
+    filePath = FalFile.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
     If filePath = "" Then Exit Sub
     
-    ' Convertir le tableau 2D en cha�ne CSV
+    ' Convert the 2D array to a CSV string
     sCsv = a2D_ToCsv(Arr2D, Delimiter, QuoteChar)
     
-    ' Enregistrer le fichier CSV
-    FileX.OverwriteTxt filePath, sCsv
+    ' Save the CSV file
+    FalFile.OverwriteTxt filePath, sCsv
     
-    MsgBox "Fichier CSV cree avec succes : " & filePath, vbInformation
+    MsgBox "CSV file created successfully: " & filePath, vbInformation
 End Sub
 
 Sub Sheet_To_CsvFile()
@@ -1756,23 +1462,23 @@ Sub Sheet_To_CsvFile()
     QuoteChar = Chr(34)
     
     
-    ' R�cup�rer la s�lection en tant que tableau 2D
+    ' Get the selection as a 2D array
     Arr2D = Sheet_To_a2D(ActiveSheet)
     If IsError(Arr2D) Then
-        MsgBox "Aucune feuille valide trouvee.", vbExclamation
+        MsgBox "No valid sheet found.", vbExclamation
         Exit Sub
     End If
 
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
+    filePath = FalFile.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
     If filePath = "" Then Exit Sub
     
-    ' Convertir le tableau 2D en cha�ne CSV
-    sCsv = ArrayX.a2D_ToCsv(Arr2D, Delimiter, QuoteChar)
+    ' Convert the 2D array to a CSV string
+    sCsv = FalArray.a2D_ToCsv(Arr2D, Delimiter, QuoteChar)
     
-    ' Enregistrer le fichier CSV
-    FileX.OverwriteTxt filePath, sCsv
+    ' Save the CSV file
+    FalFile.OverwriteTxt filePath, sCsv
     
-    MsgBox "Fichier CSV cree avec succes : " & filePath, vbInformation
+    MsgBox "CSV file created successfully: " & filePath, vbInformation
 End Sub
 
 Public Function a2D_From_Range(ByVal TargetRange As Range, Optional ByVal ReadProperty As String = "Value") As Variant
@@ -1947,8 +1653,8 @@ End Function
 '                       _____ ____       _                                                        '
 '                      |___ /|  _ \     / \   _ __ _ __ __ _ _   _                                '
 '                        |_ \| | | |   / _ \ | '__| '__/ _` | | | |                               '
-'                       ___) | |_| |  / ___ \| |  | | | (_| | |_| |                               '
-'                      |____/|____/  /_/   \_\_|  |_|  \__,_|\__, |                               '
+'                       ___) | |_| |  / ___ \| |  | | | (_| | |_| |                              '
+'                      |____/|____/  /_/   \_\_|  |_|  \__,_|\__, |                              '
 '                                                            |___/                                '
 '/////////////////////////////////////////////////////////////////////////////////////////////////'
 
@@ -2071,7 +1777,7 @@ Public Function a3D_Write(ByVal Arr3D As Variant, ByVal TargetWorkbook As Workbo
         End If
 
         ' Create the worksheet using the function from the WorkX module
-        Set ws = WorkX.Create_Worksheet(sheetName, TargetWorkbook)
+        Set ws = FalWork.Create_Worksheet(sheetName, TargetWorkbook)
 
         If ws Is Nothing Then
             Debug.Print "a3D_Write Error: Failed to create worksheet '" & sheetName & "'."
@@ -2161,10 +1867,6 @@ Public Function a3D_replace_string(Arr3D As Variant, string1 As String, string2 
         Next
     Next
     
-    a3D_replace_string = aXD
-End Function
-
-
     a3D_replace_string = aXD
 End Function
 
@@ -2280,7 +1982,7 @@ Public Function a4D_Write(ByVal Arr4D As Variant, ByVal BasePath As String, Opti
     ' @param WriteAs (Optional) The property to write. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @param AutoClose (Optional) If True, the created workbooks will be closed after saving. Defaults to True.
     ' @return True if all workbooks and slices were written successfully, False otherwise.
-    ' @dependencies WorkX.Create_Workbook, WorkX.Save_Workbook_As, FileX.Combine_Paths, a4D_To_a3D, a3D_Write, a2D_Get_Row
+    ' @dependencies FalWork.Create_Workbook, FalWork.Save_Workbook_As, FalFile.Combine_Paths, a4D_To_a3D, a3D_Write, a2D_Get_Row
     On Error GoTo ifError
     a4D_Write = False ' Default return value
 
@@ -2303,7 +2005,7 @@ Public Function a4D_Write(ByVal Arr4D As Variant, ByVal BasePath As String, Opti
         If useWbkNames And w >= LBound(WorkbookNames) And w <= UBound(WorkbookNames) Then wbkName = CStr(WorkbookNames(w)) Else wbkName = "Workbook " & w
 
         ' Create the new workbook
-        Set wbk = WorkX.Create_Workbook(False) ' Create hidden
+        Set wbk = FalWork.Create_Workbook(False) ' Create hidden
         If wbk Is Nothing Then overallSuccess = False: GoTo NextWorkbook
 
         ' Extract the 3D slice and sheet names for this workbook
@@ -2312,8 +2014,8 @@ Public Function a4D_Write(ByVal Arr4D As Variant, ByVal BasePath As String, Opti
 
         ' Write the 3D data to the new workbook and save it
         If Not a3D_Write(arr3D, wbk, currentSheetNames, TopLeftAddress, WriteAs) Then overallSuccess = False
-        savePath = FileX.Combine_Paths(BasePath, wbkName & ".xlsx")
-        If Not WorkX.Save_Workbook_As(wbk, savePath, xlOpenXMLWorkbook, AutoClose) Then
+        savePath = FalFile.Combine_Paths(BasePath, wbkName & ".xlsx")
+        If Not FalWork.Save_Workbook_As(wbk, savePath, xlOpenXMLWorkbook, AutoClose) Then
             overallSuccess = False
             If Not wbk.Saved Then wbk.Close False
         End If
