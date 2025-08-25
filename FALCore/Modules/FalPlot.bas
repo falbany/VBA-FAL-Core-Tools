@@ -35,7 +35,7 @@ End Sub
 Public Sub Create_SmithChart()
     Dim plot As New FalPlot
     Set plot.Chart = ActiveChart
-    ' Not implemented yet
+    plot.CreateSmithChart
 End Sub
 
 Public Sub Format_Chart()
@@ -47,17 +47,17 @@ End Sub
 Public Sub Create_YLog()
     Dim plot As New FalPlot
     Set plot.Chart = ActiveChart
-    ' Not implemented yet
+    plot.CreateYLog
 End Sub
 
 Public Sub Create_Derivative()
     Dim plot As New FalPlot
     Set plot.Chart = ActiveChart
-    ' Not implemented yet
+    plot.CreateDerivative
 End Sub
 
 Public Sub Export_SelectedChartAsImage()
     Dim plot As New FalPlot
     Set plot.Chart = ActiveChart
-    ' Not implemented yet
+    plot.ExportAsImage
 End Sub
