@@ -760,23 +760,77 @@ ErrHandler:
     Call HandleError("An unexpected error occurred in Create_Derivative.")
 End Sub
 
-Public Sub ExportAsImage()
+Public Function ExportAsImage(Optional ByVal imagePath As String = "", Optional ByVal imageFilterIndex As Long = 1) As Boolean
+    ' @brief Exports the chart object to an image file.
+    ' @param imagePath (Optional) The full path to save the image. If omitted, a "Save As" dialog is shown.
+    ' @param imageFilterIndex (Optional) The default file type for the dialog (1=PNG, 2=JPG, etc.).
+    ' @return True if the export was successful, False otherwise.
     On Error GoTo ErrHandler
 
-    Debug.Print "Calling ExportAsImage."
-
-    If Export_ChartAsImage() Then
-        MsgBox "The chart was successfully exported!", vbInformation, "Export Successful"
-    Else
-        MsgBox "The chart export failed or was canceled.", vbExclamation, "Export Failed"
+    If m_Chart Is Nothing Then
+        Me.HandleError "No chart has been set to export."
+        Exit Function
     End If
 
-    Exit Sub
+    Dim defaultFileName As String
+    Dim fileExtension As String
+    Dim filters As String
+    Dim selectedFile As Variant
+
+    ExportAsImage = False ' Default to failure
+
+    If imagePath = "" Then
+        filters = "PNG File (*.png),*.png," & _
+                  "JPEG File (*.jpg),*.jpg," & _
+                  "GIF File (*.gif),*.gif," & _
+                  "BMP File (*.bmp),*.bmp"
+
+        defaultFileName = Environ("USERPROFILE") & "\Desktop\" & Me.SanitizeFileName(m_Chart.Name) & ".png"
+
+        With Application.FileDialog(msoFileDialogSaveAs)
+            .InitialFileName = defaultFileName
+            .Title = "Save Chart As..."
+            .filters.Clear
+            .filters.Add "Images", filters, 1
+            .FilterIndex = imageFilterIndex
+
+            If .Show = -1 Then
+                selectedFile = .SelectedItems(1)
+            Else
+                Exit Function ' User cancelled
+            End If
+        End With
+        imagePath = selectedFile
+    End If
+
+    If InStr(imagePath, ".") = 0 Then
+        Select Case imageFilterIndex
+            Case 1: fileExtension = ".png"
+            Case 2: fileExtension = ".jpg"
+            Case 3: fileExtension = ".gif"
+            Case 4: fileExtension = ".bmp"
+            Case Else: fileExtension = ".png"
+        End Select
+        imagePath = imagePath & fileExtension
+    End If
+
+    Dim picType As XlChartPictureType
+    Select Case LCase(Right(imagePath, 3))
+        Case "png": picType = xlPNG
+        Case "jpg": picType = xlJPEG
+        Case "gif": picType = xlGIF
+        Case "bmp": picType = xlBitmap
+        Case Else: picType = xlPNG
+    End Select
+
+    m_Chart.Export Filename:=imagePath, FilterName:=picType
+
+    ExportAsImage = True
+    Exit Function
 
 ErrHandler:
-    Call HandleError("An unexpected error occurred in ExportAsImage.")
-    MsgBox "An internal error occurred during export.", vbCritical, "Critical Error"
-End Sub
+    Me.HandleError "Error while exporting chart to image: " & Err.Description
+End Function
 
 Private Function HandleError(ByVal ErrMsg As String)
     MsgBox "An error occurred:" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Operation impossible"
@@ -798,7 +852,7 @@ ErrHandle:
     Set GetSelectedChart = Nothing
 End Function
 
-Private Function Copy_Chart(myChart As Chart, Optional cpyPosition As String = "Right", Optional offsetPosition As Double = 0) As Variant
+Public Function Copy_Chart(myChart As Chart, Optional cpyPosition As String = "Right", Optional offsetPosition As Double = 0) As Variant
     On Error GoTo ifError
     Dim parentType  As String
     Dim newChart    As Chart
@@ -837,7 +891,7 @@ ifError:
     Copy_Chart = CVErr(2001)
 End Function
 
-Private Function delete_UnMatchingSeries(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+Public Function delete_UnMatchingSeries(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
     Dim i       As Integer
 
     With myChart
@@ -856,7 +910,7 @@ Private Function delete_UnMatchingSeries(myChart As Chart, sMatch As String, Opt
 
 End Function
 
-Private Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround As Boolean = True, Optional FormattingOptions As String = "") As Boolean
+Public Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround As Boolean = True, Optional FormattingOptions As String = "") As Boolean
     Dim cSerie1         As Variant
     Dim cSerie2         As Variant
     Dim picturePath     As String
@@ -907,7 +961,7 @@ Private Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround 
     SmithChart_Formatting = True
 End Function
 
-Private Function Delink_ChartData(myChart As Chart) As Boolean
+Public Function Delink_ChartData(myChart As Chart) As Boolean
     On Error GoTo ifError
     Dim cSerie          As Variant
     For Each cSerie In myChart.FullSeriesCollection
@@ -921,13 +975,13 @@ ifError:
     Delink_ChartData = False
 End Function
 
-Private Function Chart_YLog(myChart As Chart) As Boolean
+Public Function Chart_YLog(myChart As Chart) As Boolean
     Chart_YAbsolute myChart
     myChart.Axes(xlValue, xlPrimary).ScaleType = xlLogarithmic
     Chart_YLog = True
 End Function
 
-Private Function Chart_YAbsolute(myChart As Chart) As Boolean
+Public Function Chart_YAbsolute(myChart As Chart) As Boolean
     Dim cSerie          As Variant
     For Each cSerie In myChart.FullSeriesCollection
         cSerie.values = FalArray.a1D_math_Abs(cSerie.values)
@@ -935,7 +989,7 @@ Private Function Chart_YAbsolute(myChart As Chart) As Boolean
     Chart_YAbsolute = True
 End Function
 
-Private Function Chart_Derivate(myChart As Chart, Optional XSample As Long = 3) As Boolean
+Public Function Chart_Derivate(myChart As Chart, Optional XSample As Long = 3) As Boolean
     Dim cSerie          As Variant
     Dim a2D_X           As Variant
     Dim a2D_Y           As Variant
@@ -954,4 +1008,634 @@ Private Function Chart_Derivate(myChart As Chart, Optional XSample As Long = 3) 
         Next
     End With
     Chart_Derivate = True
+End Function
+
+Public Function Selected_Chart() As Variant
+    ' @brief Returns the selected chart object.
+    Select Case TypeName(Selection)
+        Case "ChartArea", "PlotArea", "Chart": Set Selected_Chart = ActiveChart
+        Case "Nothing": Set Selected_Chart = ActiveChart
+        Case Else: Selected_Chart = CVErr(2001)
+    End Select
+End Function
+
+Public Function filter_Series(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+    ' @brief Filters series in a chart based on a match condition.
+    Dim i       As Integer
+
+    With myChart
+        For i = 1 To .FullSeriesCollection.count
+            If compareAbsolute Then
+                .FullSeriesCollection(i).IsFiltered = IIf(.FullSeriesCollection(i).name = sMatch, False, True)
+            Else
+                .FullSeriesCollection(i).IsFiltered = IIf(InStr(.FullSeriesCollection(i).name, sMatch) > 0, False, True)
+            End If
+        Next i
+    End With
+    filter_Series = True
+End Function
+
+Public Function delete_MatchingSeries(myChart As Chart, sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+    ' @brief Deletes series in a chart based on a match condition.
+    Dim i       As Integer
+
+    With myChart
+        For i = 1 To .FullSeriesCollection.count
+            If compareAbsolute Then
+                If .FullSeriesCollection(i).name = sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
+            Else
+                If InStr(.FullSeriesCollection(i).name, sMatch) > 0 Then .FullSeriesCollection(i).Delete: i = i - 1
+            End If
+            If i + 1 > .FullSeriesCollection.count Then Exit For
+        Next i
+    End With
+
+    delete_MatchingSeries = True
+End Function
+
+Public Function Resize_ChartFonts(myChart As Chart, Optional fontSize As Double = 14) As Boolean
+    ' @brief Resizes all fonts in a chart to a specified size.
+    myChart.ChartArea.format.TextFrame2.TextRange.Font.Size = fontSize
+    Resize_ChartFonts = True
+End Function
+
+Public Function ClearSeries() As Boolean
+    ' @brief Removes all series from the chart.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ifError
+    ' Ensure the chart has existing series
+    If m_Chart.SeriesCollection.Count > 0 Then
+        ' Delete existing series
+        Do While m_Chart.SeriesCollection.Count > 0
+            m_Chart.SeriesCollection(1).Delete
+        Loop
+    End If
+    If m_Chart.SeriesCollection.Count = 0 Then ClearSeries = True Else ClearSeries = False
+    Exit Function
+ifError:
+    ClearSeries = False
+End Function
+
+Public Function SetSourceData(ByVal rangeData As Range, Optional ByVal PlotBy As XlRowCol = xlColumns) As Boolean
+    ' @brief Sets the source data for the chart from a range.
+    If m_Chart Is Nothing Then Exit Function
+    If TypeName(rangeData) <> "Range" Then SetSourceData = False: Exit Function
+
+    On Error GoTo ifError
+    m_Chart.SetSourceData Source:=rangeData
+    m_Chart.PlotBy = PlotBy
+    SetSourceData = True
+    Exit Function
+ifError:
+    SetSourceData = False
+End Function
+
+Public Function AddSeriesFromRange(ByVal data_src As Range) As Boolean
+    ' @brief Adds a new series to the chart from a data range.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ifError
+    Dim seriesRange As Range
+    Dim newSeries As series
+    Dim i As Integer
+
+    ' Add a series for each column in the data source
+    For i = 2 To data_src.Columns.Count ' Start from column 2 to skip the first column (XValues)
+        If m_Chart.FullSeriesCollection.Count >= 255 Then GoTo ifError  ' Max Series exceeded
+
+        If data_src.Cells(1, i).value <> data_src.Cells(1, 1).value Then
+            Set newSeries = m_Chart.SeriesCollection.newSeries
+
+            ' Set the series values
+            Set seriesRange = data_src.Columns(i).Offset(1, 0).Resize(data_src.Rows.Count - 1, 1)
+            newSeries.values = seriesRange
+
+            ' Set the X-axis values
+            Set seriesRange = data_src.Columns(1).Offset(1, 0).Resize(data_src.Rows.Count - 1, 1)
+            newSeries.XValues = seriesRange
+
+            ' Set series names
+            newSeries.name = "='" & data_src.Parent.name & "'!" & data_src.Cells(1, i).Address
+        End If
+    Next i
+    AddSeriesFromRange = True
+    Exit Function
+ifError:
+    AddSeriesFromRange = False
+End Function
+
+Public Function AddSeriesFromArray(ByVal Arr2D As Variant) As Boolean
+    ' @brief Adds a new series to the chart from a 2D array.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ifError
+    Dim newSeries As series
+    Dim i As Integer
+
+    ' Add a series for each element in the array
+    For i = LBound(Arr2D, 2) + 1 To UBound(Arr2D, 2)
+        If m_Chart.FullSeriesCollection.Count >= 255 Then Exit Function  ' Max Series exceeded
+
+        Set newSeries = m_Chart.SeriesCollection.newSeries
+
+        ' Set the series values
+        newSeries.values = Application.Index(Arr2D, 0, i)
+
+        ' Set the X-axis values (first column of the array)
+        newSeries.XValues = Application.Index(Arr2D, 0, 1)
+
+        ' Set series names
+        newSeries.name = Arr2D(LBound(Arr2D, 1), i)
+    Next i
+    AddSeriesFromArray = True
+    Exit Function
+ifError:
+    AddSeriesFromArray = False
+End Function
+
+Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal Style As String = "DefaultStyle") As Boolean
+    ' @brief Applies a color palette to the chart's series.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ErrHandler
+
+    Dim currentSeries As series
+    Dim aColor As Variant
+    Dim lbColor As Long
+    Dim ubColor As Long
+    Dim iColor As Long
+    Dim seriesCounterInGroup As Long
+    Dim seriesCounterBeforeChange As Long
+
+    aColor = Me.ColorPalette(Style)
+    If IsEmpty(aColor) Then
+        Me.HandleError "Color style '" & Style & "' not found or palette is empty."
+        ColorSeries = False
+        Exit Function
+    End If
+
+    lbColor = LBound(aColor)
+    ubColor = UBound(aColor)
+    iColor = lbColor
+
+    Dim effectiveNbSeriesByGroup As Long
+    If nbSeriesByGroup = -1 Then
+        effectiveNbSeriesByGroup = m_Chart.FullSeriesCollection.Count
+    ElseIf nbSeriesByGroup <= 0 Then
+        Me.HandleError "The parameter 'nbSeriesByGroup' must be -1 or a positive number."
+        ColorSeries = False
+        Exit Function
+    Else
+        effectiveNbSeriesByGroup = nbSeriesByGroup
+    End If
+
+    seriesCounterInGroup = 0
+    seriesCounterBeforeChange = 0
+
+    For Each currentSeries In m_Chart.FullSeriesCollection
+        currentSeries.Border.ColorIndex = aColor(iColor)
+
+        seriesCounterInGroup = seriesCounterInGroup + 1
+        seriesCounterBeforeChange = seriesCounterBeforeChange + 1
+
+        If seriesCounterBeforeChange >= nbBeforeChange Then
+            iColor = iColor + 1
+            seriesCounterBeforeChange = 0
+        End If
+
+        If seriesCounterInGroup >= effectiveNbSeriesByGroup Then
+            iColor = lbColor
+            seriesCounterInGroup = 0
+        ElseIf iColor > ubColor Then
+            iColor = lbColor
+        End If
+    Next currentSeries
+
+    ColorSeries = True
+    Exit Function
+
+ErrHandler:
+    Me.HandleError "Error while coloring series: " & Err.Description
+    ColorSeries = False
+End Function
+
+Public Function ChartFormatting(Optional FormattingOptions As Variant) As Boolean
+    ' @brief Applies a multitude of formatting options to the chart object.
+    ' @details This is the main formatting engine. It uses the class properties as defaults,
+    '          but allows them to be overridden by a semicolon-delimited string of options.
+    ' @param FormattingOptions (Optional) A string of key-value pairs (e.g., "Title=MyTitle;XTitle=X-Axis").
+    ' @return True if formatting was successful, False otherwise.
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then Exit Function
+
+    Dim sKey As String, sValue As String
+    Dim Options As Variant, index As Long
+    Dim ser As series, axNo As Axis
+
+    ' Use class properties as default values. The FormattingOptions string will override them.
+    ' This section processes the optional FormattingOptions string.
+    If Not IsMissing(FormattingOptions) Then
+        If Len(FormattingOptions & "") > 0 Then
+            Options = Split(FormattingOptions, ";")
+            For index = 0 To UBound(Options)
+                If InStr(Options(index), "=") > 0 Then
+                    sKey = Trim(Split(Options(index), "=")(0))
+                    sValue = Trim(Split(Options(index), "=")(1))
+
+                    Select Case LCase(sKey)
+                        Case "charttype": m_ChartType = CLng(sValue)
+                        Case "charttitle", "title": m_ChartTitle = sValue
+                        Case "plotby": m_PlotBy = CLng(sValue)
+                        Case "fontpolice", "fontname": m_FontName = sValue
+                        Case "titlefontsize": m_TitleFontSize = CInt(sValue)
+                        Case "xaxistitlefontsize": m_XAxisTitleFontSize = CInt(sValue)
+                        Case "yaxistitlefontsize": m_YAxisTitleFontSize = CInt(sValue)
+                        Case "xaxisticksfontsize": m_XAxisTicksFontSize = CInt(sValue)
+                        Case "yaxisticksfontsize": m_YAxisTicksFontSize = CInt(sValue)
+                        Case "hastitle": m_HasTitle = CBool(sValue)
+                        Case "haslegend": m_HasLegend = CBool(sValue)
+                        Case "x1showaxis": m_X1ShowAxis = CBool(sValue)
+                        Case "y1showaxis": m_Y1ShowAxis = CBool(sValue)
+                        Case "x1showgridlines", "xshowgridlines": m_X1ShowGridLines = CBool(sValue)
+                        Case "y1showgridlines", "yshowgridlines": m_Y1ShowGridLines = CBool(sValue)
+                        Case "x1hastitle", "xhastitle": m_X1HasTitle = CBool(sValue)
+                        Case "x1title", "xtitle": m_X1Title = sValue
+                        Case "x2title": m_X2Title = sValue
+                        Case "y1hastitle", "yhastitle": m_Y1HasTitle = CBool(sValue)
+                        Case "y1title", "ytitle": m_Y1Title = sValue
+                        Case "y2hastitle": m_Y2HasTitle = CBool(sValue)
+                        Case "y2title": m_Y2Title = sValue
+                        Case "legendfontsize": m_LegendFontSize = CInt(sValue)
+                        Case "legendposition": m_LegendPosition = CLng(sValue)
+                        Case "legendinlayout": m_LegendInLayout = CBool(sValue)
+                        Case "plotarealineweight": m_PlotAreaLineWeight = CDbl(sValue)
+                        Case "serieslineweight": m_SeriesLineWeight = CDbl(sValue)
+                        Case "serieslinedashstyle": m_SeriesLineDashStyle = CLng(sValue)
+                        Case "seriesmarkerstyle": m_SeriesMarkerStyle = CLng(sValue)
+                        Case "hasdatalabels": m_HasDataLabels = CBool(sValue)
+                        Case "x1labelnumberformat": m_X1LabelNumberFormat = sValue
+                        Case "x2labelnumberformat": m_X2LabelNumberFormat = sValue
+                        Case "y1labelnumberformat": m_Y1LabelNumberFormat = sValue
+                        Case "y2labelnumberformat": m_Y2LabelNumberFormat = sValue
+                        Case "x1scaletype": m_X1ScaleType = CLng(sValue)
+                        Case "y1scaletype": m_Y1ScaleType = CLng(sValue)
+                        Case "x2scaletype": m_X2ScaleType = CLng(sValue)
+                        Case "y2scaletype": m_Y2ScaleType = CLng(sValue)
+                        Case "x1min", "xmin": m_X1Min = CDbl(sValue)
+                        Case "x1max", "xmax": m_X1Max = CDbl(sValue)
+                        Case "y1min", "ymin": m_Y1Min = CDbl(sValue)
+                        Case "y1max", "ymax": m_Y1Max = CDbl(sValue)
+                        Case "x2min": m_X2Min = CDbl(sValue)
+                        Case "x2max": m_X2Max = CDbl(sValue)
+                        Case "y2min": m_Y2Min = CDbl(sValue)
+                        Case "y2max": m_Y2Max = CDbl(sValue)
+                        Case "squareplot": m_SquarePlot = CBool(sValue)
+                        Case "crossesat": m_CrossesAt = CDbl(sValue)
+                    End Select
+                End If
+            Next index
+        End If
+    End If
+
+    With m_Chart
+        .ChartType = m_ChartType
+        .PlotBy = m_PlotBy
+
+        .HasTitle = m_HasTitle
+        If .HasTitle Then
+            .chartTitle.Text = m_ChartTitle
+            .chartTitle.Font.Size = m_TitleFontSize
+        End If
+
+        If m_FontName <> "Auto" Then .ChartArea.Font.name = m_FontName
+
+        With .PlotArea.Format.Line
+            .ForeColor.RGB = RGB(150, 150, 150)
+            .Weight = m_PlotAreaLineWeight
+        End With
+        .PlotArea.Interior.ColorIndex = xlNone
+
+        For Each ser In .SeriesCollection
+            With ser
+                .HasDataLabels = m_HasDataLabels
+                .Format.Line.Visible = msoTrue
+                .Format.Line.Weight = m_SeriesLineWeight
+                .Format.Line.DashStyle = m_SeriesLineDashStyle
+                .MarkerStyle = m_SeriesMarkerStyle
+            End With
+        Next ser
+
+        .HasLegend = m_HasLegend
+        If .HasLegend Then
+            With .Legend
+                .IncludeInLayout = m_LegendInLayout
+                .Position = m_LegendPosition
+                .Font.Size = m_LegendFontSize
+            End With
+        End If
+
+        ' Primary X-Axis (Category)
+        With .Axes(xlCategory, xlPrimary)
+            .HasTitle = m_X1HasTitle
+            If .HasTitle Then .AxisTitle.Text = m_X1Title
+            .ScaleType = m_X1ScaleType
+            If IsNumeric(m_X1Min) Then .MinimumScale = m_X1Min Else .MinimumScaleIsAuto = True
+            If IsNumeric(m_X1Max) Then .MaximumScale = m_X1Max Else .MaximumScaleIsAuto = True
+            .TickLabels.NumberFormat = m_X1LabelNumberFormat
+            .TickLabels.Font.Size = m_XAxisTicksFontSize
+            If .HasTitle Then .AxisTitle.Font.Size = m_XAxisTitleFontSize
+            .HasMajorGridlines = m_X1ShowGridLines
+        End With
+
+        ' Primary Y-Axis (Value)
+        With .Axes(xlValue, xlPrimary)
+            .HasTitle = m_Y1HasTitle
+            If .HasTitle Then .AxisTitle.Text = m_Y1Title
+            .ScaleType = m_Y1ScaleType
+            If IsNumeric(m_Y1Min) Then .MinimumScale = m_Y1Min Else .MinimumScaleIsAuto = True
+            If IsNumeric(m_Y1Max) Then .MaximumScale = m_Y1Max Else .MaximumScaleIsAuto = True
+            .TickLabels.NumberFormat = m_Y1LabelNumberFormat
+            .TickLabels.Font.Size = m_YAxisTicksFontSize
+            If .HasTitle Then .AxisTitle.Font.Size = m_YAxisTitleFontSize
+            .HasMajorGridlines = m_Y1ShowGridLines
+        End With
+
+        ' And so on for secondary axes...
+
+        If m_SquarePlot Then
+            If .HasLegend Then .Legend.Position = xlRight
+            .PlotArea.Position = xlChartElementPositionAutomatic
+            .PlotArea.Width = .PlotArea.Height
+        End If
+
+        Me.ChartText_Format
+
+    End With
+
+    ChartFormatting = True
+    Exit Function
+
+ErrHandler:
+    Me.HandleError "Error while formatting chart: " & Err.Description
+    ChartFormatting = False
+End Function
+
+Public Function ChartText_Format() As Boolean
+    ' @brief Formats subscripts and superscripts in chart titles and axis titles.
+    If m_Chart Is Nothing Then Exit Function
+
+    Dim StrToFormat As String
+    Dim toBaselineOffset As String
+    Dim indiceTerms As Variant
+    Dim index As Long, textLenght As Long, textDebut As Long
+    Dim axNo As Axis
+
+    indiceTerms = Array("DS,sat", "DSS", "D,max", "G,inv", "ON ", "OFF ", "th ", "th,lin", "DS ", "GS ", "m ", "m,max ", "B ", "GS,ref", "DS,ref", "sat", "max", "min", ".abs")
+    With m_Chart
+        For index = 0 To UBound(indiceTerms)
+            textLenght = Len(indiceTerms(index))
+
+            If .HasTitle Then
+                textDebut = InStr(1, .chartTitle.Text, indiceTerms(index), vbTextCompare)
+                If textDebut Then .chartTitle.Format.TextFrame2.TextRange.Characters(textDebut, textLenght).Font.BaselineOffset = -0.25
+            End If
+
+            For Each axNo In .Axes
+                If axNo.HasTitle Then
+                    textDebut = InStr(1, axNo.AxisTitle.Text, indiceTerms(index), vbTextCompare)
+                    If textDebut Then axNo.AxisTitle.Format.TextFrame2.TextRange.Characters(textDebut, textLenght).Font.BaselineOffset = -0.25
+                End If
+            Next
+        Next
+    End With
+    ChartText_Format = True
+End Function
+
+Private Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal rangeData As Range) As Chart
+    On Error GoTo ifError
+
+    Dim cleanName As String
+    cleanName = FalLang.RemoveChars(ChartName, ":\/?*[];")
+    cleanName = FalLang.ResizeString(cleanName, 31)
+
+    On Error Resume Next
+    wbk.Charts(cleanName).Delete
+    On Error GoTo ifError
+
+    Dim newChartSheet As Chart
+    Set newChartSheet = wbk.Charts.Add
+    With newChartSheet
+        .Move After:=wbk.Worksheets(wbk.Worksheets.Count)
+        .name = cleanName
+        .ChartType = xlXYScatterLinesNoMarkers
+    End With
+
+    If Not rangeData Is Nothing Then
+        newChartSheet.SetSourceData Source:=rangeData
+    Else
+        Do While newChartSheet.SeriesCollection.Count > 0
+            newChartSheet.SeriesCollection(1).Delete
+        Loop
+    End If
+
+    Set CreateChart = newChartSheet
+    Exit Function
+ifError:
+    Set CreateChart = Nothing
+End Function
+
+Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal FormattingOptions As String = "") As Boolean
+    On Error GoTo ifError
+
+    Dim tempChartName As String
+    If ChartName = "" Then
+        tempChartName = FalLang.RemoveChars(data_src.Parent.name, "_-. ")
+    Else
+        tempChartName = ChartName
+    End If
+
+    Dim tempFormattingOptions As String
+    tempFormattingOptions = "Title=" & tempChartName & ";XTitle=" & data_src.Cells(1, 1).value & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
+
+    Set m_Chart = Me.CreateChart(tempChartName, data_src.Parent.Parent)
+    If m_Chart Is Nothing Then GoTo ifError
+
+    Me.AddSeriesFromRange data_src
+    Me.delete_MatchingSeries m_Chart, data_src.Cells(1, 1).value, False
+    Me.ColorSeries 1, nbSeriesByGroup, ColorStyle
+    Me.ChartFormatting tempFormattingOptions
+
+    PlotFromRange = True
+    Exit Function
+ifError:
+    PlotFromRange = False
+End Function
+
+Public Function PlotFromRangeWithFormatting(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = 0, Optional ByVal ColorStyle As String = "DefautStyle", Optional ByVal FormattingOptions As String = "") As Boolean
+    On Error GoTo ifError
+
+    If Not Me.PlotFromRange(data_src, ChartName, nbSeriesByGroup, ColorStyle) Then
+        Me.HandleError "Failed to create the initial chart from the data range."
+        PlotFromRangeWithFormatting = False
+        Exit Function
+    End If
+
+    If Not Me.ChartFormatting(FormattingOptions) Then
+        Me.HandleError "Failed to apply formatting to the chart."
+        PlotFromRangeWithFormatting = False
+        Exit Function
+    End If
+
+    PlotFromRangeWithFormatting = True
+    Exit Function
+ifError:
+    Me.HandleError "An unexpected error occurred in PlotFromRangeWithFormatting."
+    PlotFromRangeWithFormatting = False
+End Function
+
+Public Function DataTrace(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
+    ' @brief Automatically detects and plots data from a worksheet.
+    On Error GoTo ifError
+
+    Dim aLabel() As String
+    Dim LastCol_Index As Long
+    Dim LastLineTbl() As Long
+    Dim Chart_Name As String
+    Dim firstLine As Long
+    Dim TopLeftCell As Range
+    Dim chartTitle As String
+    Dim NbLine As Long
+    Dim NbColumn As Long
+    Dim ColIndex As Long
+    Dim tmpName As String
+
+    Set TopLeftCell = wks_src.Range(DataTopLeftCell)
+    chartTitle = FalLang.RemoveSubstrings(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
+    chartTitle = FalLang.ResizeString(chartTitle, 31)
+
+    '--- Data Table Detection ---
+    Dim LastLine As Long
+    LastLine = FalWork.Get_Last_Row(wks_src, TopLeftCell.Column)
+    firstLine = Me.FindFirstRowFromBottom(wks_src, TopLeftCell.Column, LastLine)
+
+    LastCol_Index = FalWork.Get_Last_Column(wks_src, firstLine)
+    Dim LastCol_Name As String, firstcol_name As String
+    LastCol_Name = FalLang.col(LastCol_Index)
+    firstcol_name = FalLang.col(TopLeftCell.Column)
+
+    NbLine = LastLine - firstLine
+    NbColumn = LastCol_Index - (TopLeftCell.Column - 1)
+
+    ReDim LastLineTbl(LastCol_Index)
+    For ColIndex = TopLeftCell.Column To LastCol_Index
+        LastLineTbl(ColIndex) = FalWork.Get_Last_Row(wks_src, ColIndex)
+    Next
+
+    ReDim aLabel(LastCol_Index)
+    For ColIndex = TopLeftCell.Column To LastCol_Index
+        tmpName = wks_src.Cells(firstLine - 1, ColIndex).value
+        If tmpName = "" Or tmpName = False Then
+            wks_src.Cells(firstLine - 1, ColIndex).value = "Col " & ColIndex
+        End If
+        aLabel(ColIndex) = wks_src.Cells(firstLine - 1, ColIndex).value
+    Next
+
+    If nbseries < 1 Then
+        nbseries = FalArray.aXD_count_Occurrence(aLabel, Left(aLabel(2), InStr(aLabel(2), " (") - 1), False, False)
+    End If
+
+    '--- Plot All Series ---
+    Chart_Name = FalLang.ResizeString(FalLang.RemoveChars(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
+    Dim tempFormattingOptions As String
+    tempFormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
+
+    Set m_Chart = Me.CreateChart(Chart_Name, wks_src.Parent)
+    If m_Chart Is Nothing Then GoTo ifError
+
+    Me.AddSeriesFromRange wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
+    Me.delete_MatchingSeries m_Chart, wks_src.Range(firstcol_name & (firstLine - 1)).value, False
+    Me.ColorSeries 1, ((NbColumn / nbseries) - 1), ColorStyle
+    Me.ChartFormatting tempFormattingOptions
+
+    DataTrace = True
+    Exit Function
+ifError:
+    DataTrace = False
+End Function
+
+Public Function PlotFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Boolean
+    On Error GoTo ifError
+
+    Dim tempWb As Workbook
+    Dim tempWs As Worksheet
+    Dim tempRange As Range
+
+    ' Create a temporary workbook and worksheet
+    Set tempWb = Application.Workbooks.Add
+    Set tempWs = tempWb.Worksheets(1)
+
+    ' Write the array to the temporary worksheet
+    Set tempRange = tempWs.Range("A1").Resize(UBound(Arr2D, 1) - LBound(Arr2D, 1) + 1, UBound(Arr2D, 2) - LBound(Arr2D, 2) + 1)
+    tempRange.value = Arr2D
+
+    ' Create the chart from the temporary range
+    If Not Me.PlotFromRange(tempRange, ChartName, , , FormattingOptions) Then
+        GoTo cleanup
+    End If
+
+    PlotFromArray = True
+
+cleanup:
+    ' Clean up the temporary workbook
+    Application.DisplayAlerts = False
+    tempWb.Close SaveChanges:=False
+    Application.DisplayAlerts = True
+
+    If Not PlotFromArray Then PlotFromArray = False ' Ensure it's false on error
+    Exit Function
+ifError:
+    PlotFromArray = False
+    Resume cleanup
+End Function
+
+Private Function SanitizeFileName(ByVal fileName As String) As String
+    ' @brief Replaces characters that are invalid in file names with underscores.
+    Dim invalidChars As Variant
+    Dim i As Long
+    invalidChars = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    SanitizeFileName = fileName
+    For i = LBound(invalidChars) To UBound(invalidChars)
+        SanitizeFileName = Replace(SanitizeFileName, invalidChars(i), "_")
+    Next i
+    SanitizeFileName = Replace(SanitizeFileName, " ", "_")
+End Function
+
+Private Function ColorPalette(Optional ByVal Style As String = "DefaultStyle") As Variant
+    ' @brief Returns a predefined array of color indices for chart series.
+    ' @param Style The name of the color palette to return.
+    Select Case Style
+        Case "DefaultStyle": ColorPalette = Array(3, 5, 4, 7, 46, 45, 44, 43, 41, 11, 49, 1, 56, 48, 23, 22, 21, 18, 17, 40, 39, 38, 37, 36, 35, 34, 33)
+        Case "RainbowStyle": ColorPalette = Array(3, 30, 21, 54, 13, 18, 38, 7, 39, 49, 11, 5, 41, 37, 33, 8, 42, 14, 50, 10, 4, 43, 12, 40, 36, 6, 44, 45, 46, 53)
+        Case Else: ColorPalette = Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56)
+    End Select
+End Function
+
+Private Function FindFirstRowFromBottom(ByVal ws As Worksheet, ByVal col As Long, ByVal startRow As Long) As Long
+    ' @brief Finds the first non-empty row in a column, searching upwards from a starting row.
+    On Error GoTo ifError
+
+    Dim r As Long
+    For r = startRow To 1 Step -1
+        If Not IsEmpty(ws.Cells(r, col).value) Then
+            FindFirstRowFromBottom = r
+            Exit Function
+        End If
+    Next r
+
+    FindFirstRowFromBottom = 1 ' Fallback
+    Exit Function
+ifError:
+    FindFirstRowFromBottom = 1 ' Fallback on error
 End Function
