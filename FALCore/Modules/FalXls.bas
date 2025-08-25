@@ -65,6 +65,170 @@ Public Sub CreateSummarySheet()
     Application.ScreenUpdating = True
 End Sub
 
+Public Sub ExportVBAComponents()
+    ' @brief Exports all standard and class modules from the active VBA project to subfolders.
+    ' @details Creates 'vba/modules' and 'vba/classes' subfolders in the workbook's directory.
+    '          Requires "Trust access to the VBA project object model" to be enabled.
+
+    On Error GoTo ErrHandler
+
+    ' --- Check for programmatic access ---
+    If Application.VBE.ActiveVBProject Is Nothing Then
+        MsgBox "Error: Programmatic access to the VBA project is not enabled." & vbCrLf & vbCrLf & _
+               "Please go to File > Options > Trust Center > Trust Center Settings > Macro Settings, " & _
+               "and check 'Trust access to the VBA project object model'.", vbCritical, "Access Denied"
+        Exit Sub
+    End If
+
+    ' --- Define paths ---
+    Dim wbPath As String
+    wbPath = ThisWorkbook.Path
+    If wbPath = "" Then
+        MsgBox "Please save the workbook before exporting components.", vbExclamation, "Save Workbook"
+        Exit Sub
+    End If
+
+    Dim basePath As String, modulesPath As String, classesPath As String
+    basePath = wbPath & "\vba"
+    modulesPath = basePath & "\modules"
+    classesPath = basePath & "\classes"
+
+    ' --- Create directories ---
+    On Error Resume Next
+    MkDir basePath
+    MkDir modulesPath
+    MkDir classesPath
+    On Error GoTo ErrHandler
+
+    ' --- Export components ---
+    Dim vbComp As Object 'VBComponent
+    Dim exportedCount As Long
+    exportedCount = 0
+
+    For Each vbComp In ThisWorkbook.VBProject.VBComponents
+        Dim exportPath As String
+        Dim fileExt As String
+
+        Select Case vbComp.Type
+            Case 1 ' vbext_ct_StdModule
+                fileExt = ".bas"
+                exportPath = modulesPath & "\" & vbComp.Name & fileExt
+            Case 2 ' vbext_ct_ClassModule
+                fileExt = ".cls"
+                exportPath = classesPath & "\" & vbComp.Name & fileExt
+            Case Else
+                ' Skip other types like UserForms, ThisWorkbook, etc.
+                fileExt = ""
+        End Select
+
+        If fileExt <> "" Then
+            vbComp.Export exportPath
+            exportedCount = exportedCount + 1
+        End If
+    Next vbComp
+
+    MsgBox exportedCount & " component(s) exported successfully to:" & vbCrLf & basePath, vbInformation, "Export Complete"
+
+    Exit Sub
+
+ErrHandler:
+    MsgBox "An unexpected error occurred during export: " & Err.Description, vbCritical, "Error"
+End Sub
+
+Public Sub ImportVBAComponents()
+    ' @brief Imports or updates all modules and classes from the default /vba subfolders.
+    ' @details Scans /vba/modules and /vba/classes, removes existing components with the same name, and then imports the file.
+    '          Requires "Trust access to the VBA project object model" to be enabled.
+
+    On Error GoTo ErrHandler
+
+    ' --- Check for programmatic access ---
+    If Application.VBE.ActiveVBProject Is Nothing Then
+        MsgBox "Error: Programmatic access to the VBA project is not enabled." & vbCrLf & vbCrLf & _
+               "Please go to File > Options > Trust Center > Trust Center Settings > Macro Settings, " & _
+               "and check 'Trust access to the VBA project object model'.", vbCritical, "Access Denied"
+        Exit Sub
+    End If
+
+    ' --- Define paths ---
+    Dim wbPath As String
+    wbPath = ThisWorkbook.Path
+    If wbPath = "" Then
+        MsgBox "Please save the workbook first.", vbExclamation, "Save Workbook"
+        Exit Sub
+    End If
+
+    Dim modulesPath As String, classesPath As String
+    modulesPath = wbPath & "\vba\modules"
+    classesPath = wbPath & "\vba\classes"
+
+    ' --- Import components ---
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    Dim importedCount As Long
+    importedCount = 0
+
+    ' Import modules
+    If fso.FolderExists(modulesPath) Then
+        Dim file As Object
+        For Each file In fso.GetFolder(modulesPath).Files
+            If LCase(fso.GetExtensionName(file.Name)) = "bas" Then
+                RemoveComponent file.Name
+                ThisWorkbook.VBProject.VBComponents.Import file.Path
+                importedCount = importedCount + 1
+            End If
+        Next file
+    End If
+
+    ' Import classes
+    If fso.FolderExists(classesPath) Then
+        For Each file In fso.GetFolder(classesPath).Files
+            If LCase(fso.GetExtensionName(file.Name)) = "cls" Then
+                RemoveComponent file.Name
+                ThisWorkbook.VBProject.VBComponents.Import file.Path
+                importedCount = importedCount + 1
+            End If
+        Next file
+    End If
+
+    MsgBox importedCount & " component(s) imported/updated successfully.", vbInformation, "Import Complete"
+
+    Exit Sub
+
+ErrHandler:
+    MsgBox "An unexpected error occurred during import: " & Err.Description, vbCritical, "Error"
+End Sub
+
+Public Sub UpdateVBAComponents()
+    ' @brief Re-imports all VBA components from the default /vba subfolders, updating the project.
+    ' @details This is an alias for the ImportVBAComponents sub.
+
+    Dim response As VbMsgBoxResult
+    response = MsgBox("This will overwrite any existing modules and classes in your project with the files from the /vba folder. Are you sure you want to continue?", _
+                      vbQuestion + vbYesNo, "Confirm Update")
+
+    If response = vbYes Then
+        ImportVBAComponents
+    End If
+End Sub
+
+Private Sub RemoveComponent(ByVal componentName As String)
+    ' @brief Removes a component from the VBA project if it exists.
+    ' @param componentName The name of the component to remove (including extension).
+
+    Dim vbComp As Object 'VBComponent
+    Dim baseName As String
+    baseName = Left(componentName, InStrRev(componentName, ".") - 1)
+
+    On Error Resume Next
+    Set vbComp = ThisWorkbook.VBProject.VBComponents(baseName)
+    If Not vbComp Is Nothing Then
+        ThisWorkbook.VBProject.VBComponents.Remove vbComp
+    End If
+    On Error GoTo 0
+End Sub
+
 '---
 ' @Procedure: ImportXml
 ' @Description: Imports data from an XML file to a worksheet.

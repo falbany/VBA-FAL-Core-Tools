@@ -12,6 +12,6 @@ This directory contains all the core modules for the FALCore VBA Suite. Each mod
 - **`FalPlot.bas`**: A backward-compatible wrapper module for the `FalPlot` class. It provides a procedural interface for creating and formatting charts.
 - **`FalUtils.bas`**: A collection of utility functions.
 - **`FalWork.bas`**: A comprehensive collection of functions for managing Workbooks and Worksheets.
-- **`FalXls.bas`**: A module for Excel-specific functions.
+- **`FalXls.bas`**: A module for Excel-specific functions, including utilities to export and import all VBA components (`.bas`, `.cls`) for a project.
 
 For more detailed information about each module, please refer to the main `README.md` file in the root directory.

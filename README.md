@@ -38,7 +38,7 @@ FALCore is structured into two main components:
 - **`FalLog.bas`**: A flexible logging utility.
 - **`FalUtils.bas`**: A collection of utility functions.
 - **`FalWork.bas`**: A comprehensive collection of functions for managing Workbooks and Worksheets.
-- **`FalXls.bas`**: A module for Excel-specific functions.
+- **`FalXls.bas`**: A module for Excel-specific functions, including project-level utilities like creating summary sheets and exporting/importing all VBA components.
 
 ## Installation
 
