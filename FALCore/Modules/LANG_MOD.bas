@@ -1,11 +1,11 @@
 Attribute VB_Name = "LANG_MOD"
 Option Explicit
 
-Public Function CStrToCDbl(str_value As String, Optional DecimalSeparator As String = "Auto") As Double
+Public Function Convert_String_To_Double(str_value As String, Optional DecimalSeparator As String = "Auto") As Double
     Dim str_tmp As String
     
     ' Errors
-    If str_value = "" Or str_value = "-" Then CStrToCDbl = 0: Exit Function
+    If str_value = "" Or str_value = "-" Then Convert_String_To_Double = 0: Exit Function
     
     ' Decimal Separator.
     If DecimalSeparator = "Auto" Then DecimalSeparator = IIf(CStr(val(1 / 10)) Like "*.*", ".", ",")
@@ -26,7 +26,7 @@ Public Function CStrToCDbl(str_value As String, Optional DecimalSeparator As Str
     str_tmp = Trim(Replace(str_tmp, "V", ""))
     
     ' Convert
-    If DecimalSeparator = "." Then CStrToCDbl = CDbl(Replace(str_tmp, ",", ".")) Else CStrToCDbl = CDbl(Replace(str_tmp, ".", ","))
+    If DecimalSeparator = "." Then Convert_String_To_Double = CDbl(Replace(str_tmp, ",", ".")) Else Convert_String_To_Double = CDbl(Replace(str_tmp, ".", ","))
 End Function
 
 Public Function CStrToInt(str_value As String, Optional DecimalSeparator As String = "Auto") As Integer
@@ -35,14 +35,14 @@ Public Function CStrToInt(str_value As String, Optional DecimalSeparator As Stri
     If DecimalSeparator = "." Then CStrToInt = CInt(CStr(Replace(str_value, ",", "."))) Else CStrToInt = CInt(CStr(Replace(str_value, ".", ",")))
 End Function
 
-Public Function CStrToLong(str_value As String, Optional DecimalSeparator As String = "Auto") As Long
-    If str_value = "" Or str_value = "-" Then CStrToLong = 0: Exit Function
+Public Function Convert_String_To_Long(str_value As String, Optional DecimalSeparator As String = "Auto") As Long
+    If str_value = "" Or str_value = "-" Then Convert_String_To_Long = 0: Exit Function
     If DecimalSeparator = "Auto" Then DecimalSeparator = IIf(CStr(val(1 / 10)) Like "*.*", ".", ",")    ' Decimal Separator.
-    If DecimalSeparator = "." Then CStrToLong = val(CStr(Replace(str_value, ",", "."))) Else CStrToLong = val(CStr(Replace(str_value, ".", ",")))
+    If DecimalSeparator = "." Then Convert_String_To_Long = val(CStr(Replace(str_value, ",", "."))) Else Convert_String_To_Long = val(CStr(Replace(str_value, ".", ",")))
 End Function
 
-Public Function CCDblToStr(cdbl_value As Double) As String
-    CCDblToStr = Replace(CStr(CDbl(cdbl_value)), ",", ".")
+Public Function CCConvert_Double_To_String(cdbl_value As Double) As String
+    CCConvert_Double_To_String = Replace(CStr(CDbl(cdbl_value)), ",", ".")
 End Function
 
 Public Function CIntToStr(cint_value As Integer) As String
@@ -53,8 +53,8 @@ Public Function CStrToStr(str_value As String) As String
     CStrToStr = Replace(CStr(str_value), ",", ".")
 End Function
 
-Function ConvertSecondsToDate(seconds As Double) As Date
-    ConvertSecondsToDate = CDate(seconds / 86400)
+Function Convert_Seconds_To_Date(seconds As Double) As Date
+    Convert_Seconds_To_Date = CDate(seconds / 86400)
 End Function
 
 Public Function AlphaToNumeric(Alpha As String) As Integer
@@ -93,13 +93,13 @@ Public Function CleanResize_String(str As String, sCharToClear As String, Option
     Dim sOut    As String
     
     sOut = str
-    sOut = Clear_CharInString(str, sCharToClear, caseSensitive)
+    sOut = Clear_SubChar(str, sCharToClear, caseSensitive)
     If xLen > 0 Then sOut = Resize_String(str, xLen)
     
     CleanResize_String = sOut
 End Function
 
-Public Function Clear_CharInString(str As String, sCharToClear As String, Optional caseSensitive As Boolean = True) As String
+Public Function Clear_SubChar(str As String, sCharToClear As String, Optional caseSensitive As Boolean = True) As String
     ' * @brief Removes specified characters from a given string.
     ' * @param Str The input string to be cleaned.
     ' * @param sCharToClean The characters to be removed from the input string.
@@ -113,10 +113,10 @@ Public Function Clear_CharInString(str As String, sCharToClear As String, Option
         sCleaned = Replace(sCleaned, Mid(sCharToClear, i, 1), "", , , IIf(caseSensitive, vbBinaryCompare, vbTextCompare))
     Next
     
-    Clear_CharInString = sCleaned
+    Clear_SubChar = sCleaned
 End Function
 
-Public Function Clear_StringsInString(str As String, sStrToClear As String, Optional caseSensitive As Boolean = True) As String
+Public Function Clear_SubString(str As String, sStrToClear As String, Optional caseSensitive As Boolean = True) As String
     '* @brief Removes occurrences of specified strings in a main string.
     '* @param Str The main string to be cleaned.
     '* @param sStrToClear The strings to be removed from the main string. The strings should be separated by semicolons (;).
@@ -133,7 +133,7 @@ Public Function Clear_StringsInString(str As String, sStrToClear As String, Opti
         sCleaned = Replace(sCleaned, aStrToClean(i), "", , , IIf(caseSensitive, vbBinaryCompare, vbTextCompare))
     Next
     
-    Clear_StringsInString = sCleaned
+    Clear_SubString = sCleaned
 End Function
 
 Public Function Resize_String(str As String, xLen As Long) As String

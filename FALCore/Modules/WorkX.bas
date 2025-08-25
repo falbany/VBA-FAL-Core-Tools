@@ -591,7 +591,7 @@ Public Function Close_Workbook(ByVal wbk As Workbook, Optional ByVal SaveChanges
         Exit Function
     End If
     On Error GoTo ifError ' Restore the main error handler.
-
+    
     wbk.Close SaveChanges:=SaveChanges
     Close_Workbook = True
 
@@ -646,6 +646,98 @@ Public Function Close_Workbooks(ByVal WorkbooksToClose As Variant, Optional ByVa
 ifError:
     Call Handle_Error("An unexpected error occurred in Close_Workbooks function." & vbCrLf & "Error: " & Err.Description)
     Close_Workbooks = False
+End Function
+
+
+Public Function Save_Workbook_As(ByVal TargetWorkbook As Workbook, ByVal FilePath As String, Optional ByVal FileFormat As XlFileFormat = xlWorkbookDefault, Optional ByVal AutoClose As Boolean = False) As Boolean
+    ' @brief Saves a workbook to a specified path with an optional file format.
+    ' @param TargetWorkbook The Workbook object to save.
+    ' @param FilePath The full path (including filename and extension) to save the workbook to.
+    ' @param FileFormat (Optional) The Excel file format to use (e.g., xlOpenXMLWorkbook, xlExcel8). Defaults to xlWorkbookDefault.
+	' @param AutoClose (Optional) If True, the workbook will be closed after saving. Defaults to False.
+    ' @return True if the workbook was saved successfully, False otherwise.
+    ' @details This function provides a way to explicitly save a workbook to a new location.
+    ' @dependencies Handle_Error (Internal)
+    On Error GoTo ifError
+
+    Dim wbName As String
+
+    If TargetWorkbook Is Nothing Then
+        Call Handle_Error("Invalid workbook object provided to Save_Workbook_As.")
+        Exit Function
+    End If
+
+    wbName = TargetWorkbook.Name
+
+    ' Use the SaveAs method to save the workbook with the specified file format.
+    TargetWorkbook.SaveAs Filename:=FilePath, FileFormat:=FileFormat, ConflictResolution:=xlLocalSessionChanges
+
+    ' Check if the save operation was successful.
+    If FileX.FileExist(FilePath) Then
+		If AutoClose Then
+			TargetWorkbook.Close SaveChanges:=False
+		End If
+	
+        Save_Workbook_As = True
+    Else
+        Save_Workbook_As = False
+        Call Handle_Error("Failed to save workbook '" & wbName & "' to '" & FilePath & "'.")
+        Exit Function
+    End If
+
+    Exit Function
+
+ifError:
+    Call Handle_Error("Failed to save workbook '" & wbName & "' to '" & FilePath & "'. " & vbCrLf & "Error: " & Err.Description)
+    Save_Workbook_As = False
+End Function
+
+
+Public Function Save_Workbooks_As(ByVal WorkbooksToSave As Variant, ByVal BasePath As String, Optional ByVal FileFormat As XlFileFormat = xlWorkbookDefault, Optional ByVal AutoClose As Boolean = False) As Boolean
+    ' @brief Saves a collection of workbooks to a specified directory, using the workbook name as the filename.
+    ' @param WorkbooksToSave A Dictionary, Collection, or Array of Workbook objects to save.
+    ' @param BasePath The base directory where the workbooks will be saved.
+    ' @param FileFormat (Optional) The Excel file format to use (e.g., xlOpenXMLWorkbook, xlExcel8). Defaults to xlWorkbookDefault.
+    ' @param AutoClose (Optional) If True, the workbook will be closed after saving. Defaults to False.
+    ' @return True if all workbooks were saved successfully, False otherwise.
+    ' @details This function iterates through the provided workbooks, saves each one to the specified directory
+    '          using the workbook's name, and optionally closes them.
+    ' @dependencies Normalize_Object_Variant_To_Collection, Save_Workbook_As, Handle_Error (Internal)
+    On Error GoTo ifError
+
+    Dim wbksToProcess As Collection
+    Dim wbk As Workbook
+    Dim overallSuccess As Boolean
+    Dim saveFile As String
+    Dim i As Long
+
+    ' 1. Normalize the input into a single collection of workbook objects.
+    Set wbksToProcess = Normalize_Object_Variant_To_Collection(WorkbooksToSave, "Workbook", "Save_Workbooks_As")
+    If wbksToProcess Is Nothing Then
+        Save_Workbooks_As = False
+        Exit Function
+    End If
+
+    overallSuccess = True ' Assume success until a failure occurs
+
+    ' 2. Iterate through the workbooks and save them.
+    For Each wbk In wbksToProcess
+        ' Create the full file path using the provided directory and workbook name.
+        saveFile = FileX.Combine_Paths(BasePath, wbk.Name)
+
+        ' Use the Save_Workbook_As function to handle the actual saving.
+        If Not Save_Workbook_As(wbk, saveFile, FileFormat, AutoClose) Then
+            overallSuccess = False
+        End If
+    Next wbk
+
+    ' 3. Return the result
+    Save_Workbooks_As = overallSuccess
+    Exit Function
+
+ifError:
+    Call Handle_Error("An unexpected error occurred in Save_Workbooks_As. " & vbCrLf & "Error: " & Err.Description)
+    Save_Workbooks_As = False
 End Function
 
 
@@ -739,6 +831,7 @@ Public Function Create_Workbooks(ByVal WorkbooksToCreate As Variant, Optional By
                 ' Set the title property if a name is provided
                 If VarType(item) = vbString And item <> "" Then
                     wbk.Title = CStr(item)
+                    ' wbk.Name = CStr(item)
                 End If
                 tempColl.Add wbk
             End If
@@ -1200,9 +1293,10 @@ ifError:
 End Function
 
 
-Public Function Convert_Worksheet_To_Array(ByVal TargetSheet As Worksheet) As Variant
-    ' @brief Converts the used range of a worksheet into a 2D array.
+Public Function Convert_Worksheet_To_Array(ByVal TargetSheet As Worksheet, Optional ByVal ReadProperty As String = "Value") As Variant
+    ' @brief Converts the used range of a worksheet into a 2D array, reading either values or formulas.
     ' @param TargetSheet The worksheet to convert.
+    ' @param ReadProperty (Optional) The property to read from cells. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @return A 2D Variant array containing the data from the worksheet's used range.
     '         Returns an empty Variant on failure or if the sheet is empty.
     ' @details This is the most efficient method to read a sheet's data into memory.
@@ -1225,12 +1319,23 @@ Public Function Convert_Worksheet_To_Array(ByVal TargetSheet As Worksheet) As Va
         Exit Function
     End If
 
-    arrData = TargetSheet.UsedRange.Value
+    ' Read the specified property from the range
+    Select Case LCase(ReadProperty)
+        Case "value", "values"
+            arrData = TargetSheet.UsedRange.Value
+        Case "formula", "formulas"
+            arrData = TargetSheet.UsedRange.Formula
+        Case "formular1c1"
+            arrData = TargetSheet.UsedRange.FormulaR1C1
+        Case Else
+            Call Handle_Error("Invalid 'ReadProperty' specified: '" & ReadProperty & "'. Defaulting to 'Value'.")
+            arrData = TargetSheet.UsedRange.Value
+    End Select
 
     ' Handle the case where UsedRange is only a single cell, which returns a scalar value.
     If Not IsArray(arrData) Then
-        ReDim arrData(1 To 1, 1 To 1)
-        arrData(1, 1) = TargetSheet.UsedRange.Value
+        Dim tempValue As Variant: tempValue = arrData ' Store the scalar value/formula
+        ReDim arrData(1 To 1, 1 To 1): arrData(1, 1) = tempValue
     End If
 
     Convert_Worksheet_To_Array = arrData
@@ -1242,9 +1347,10 @@ ifError:
 End Function
 
 
-Public Function Convert_Worksheets_To_3DArray(ByVal TargetSheets As Variant) As Variant
-    ' @brief Converts a collection of worksheets into a single 3D array.
+Public Function Convert_Worksheets_To_3DArray(ByVal TargetSheets As Variant, Optional ByVal ReadProperty As String = "Value") As Variant
+    ' @brief Converts a collection of worksheets into a single 3D array, reading either values or formulas.
     ' @param TargetSheets A Dictionary, Collection, or Array of Worksheet objects.
+    ' @param ReadProperty (Optional) The property to read from cells. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @return A 1-based 3D Variant array where the first dimension represents the sheet,
     '         the second represents the row, and the third represents the column.
     '         Returns an empty Variant on failure or if no valid sheets are provided.
@@ -1274,7 +1380,7 @@ Public Function Convert_Worksheets_To_3DArray(ByVal TargetSheets As Variant) As 
     maxRows = 0
     maxCols = 0
     For Each ws In sheetsToProcess
-        arr2D = Convert_Worksheet_To_Array(ws)
+        arr2D = Convert_Worksheet_To_Array(ws, ReadProperty)
         If IsArray(arr2D) Then
             tempSheetArrays.Add arr2D
             If UBound(arr2D, 1) > maxRows Then maxRows = UBound(arr2D, 1)
@@ -1311,9 +1417,10 @@ ifError:
 End Function
 
 
-Public Function Convert_Range_To_Array(ByVal TargetRange As Range) As Variant
-    ' @brief Converts a Range object into a 2D array.
+Public Function Convert_Range_To_Array(ByVal TargetRange As Range, Optional ByVal ReadProperty As String = "Value") As Variant
+    ' @brief Converts a Range object into a 2D array, reading either values or formulas.
     ' @param TargetRange The Range to convert.
+    ' @param ReadProperty (Optional) The property to read from cells. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @return A 2D Variant array containing the data from the range.
     '         Returns an empty Variant on failure or if the range is invalid.
     ' @details This is the most efficient method to read a range's data into memory.
@@ -1330,12 +1437,23 @@ Public Function Convert_Range_To_Array(ByVal TargetRange As Range) As Variant
         Exit Function
     End If
 
-    arrData = TargetRange.Value
+    ' Read the specified property from the range
+    Select Case LCase(ReadProperty)
+        Case "value", "values"
+            arrData = TargetRange.Value
+        Case "formula", "formulas"
+            arrData = TargetRange.Formula
+        Case "formular1c1"
+            arrData = TargetRange.FormulaR1C1
+        Case Else
+            Call Handle_Error("Invalid 'ReadProperty' specified: '" & ReadProperty & "'. Defaulting to 'Value'.")
+            arrData = TargetRange.Value
+    End Select
 
     ' Handle the case where the Range is only a single cell, which returns a scalar value.
     If Not IsArray(arrData) Then
-        ReDim arrData(1 To 1, 1 To 1)
-        arrData(1, 1) = TargetRange.Value
+        Dim tempValue As Variant: tempValue = arrData ' Store the scalar value/formula
+        ReDim arrData(1 To 1, 1 To 1): arrData(1, 1) = tempValue
     End If
 
     Convert_Range_To_Array = arrData
@@ -1347,10 +1465,11 @@ ifError:
 End Function
 
 
-Public Function Get_Worksheets_From_Workbooks_As_3DArray(ByVal TargetWorkbooks As Variant, ByVal SheetIdentifier As Variant) As Variant
-    ' @brief Extracts a specific sheet from a collection of workbooks and combines them into a single 3D array.
+Public Function Convert_Worksheet_In_Workbooks_To_3DArray(ByVal TargetWorkbooks As Variant, ByVal SheetIdentifier As Variant, Optional ByVal ReadProperty As String = "Value") As Variant
+    ' @brief Extracts a specific sheet from a collection of workbooks and combines them into a single 3D array, reading either values or formulas.
     ' @param TargetWorkbooks A Dictionary, Collection, or Array of Workbook objects.
     ' @param SheetIdentifier The name (String) or index (Long) of the worksheet to extract from each workbook.
+    ' @param ReadProperty (Optional) The property to read from cells. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @return A 1-based 3D Variant array where the first dimension represents the workbook/sheet,
     '         the second represents the row, and the third represents the column.
     '         Returns an empty Variant on failure or if no valid sheets are found.
@@ -1366,14 +1485,14 @@ Public Function Get_Worksheets_From_Workbooks_As_3DArray(ByVal TargetWorkbooks A
     Dim ws As Worksheet
 
     ' 1. Normalize the workbook input into a single collection.
-    Set workbooksToProcess = Normalize_Object_Variant_To_Collection(TargetWorkbooks, "Workbook", "Get_Worksheets_From_Workbooks_As_3DArray")
+    Set workbooksToProcess = Normalize_Object_Variant_To_Collection(TargetWorkbooks, "Workbook", "Convert_Worksheet_In_Workbooks_To_3DArray")
     If workbooksToProcess Is Nothing Then
-        Get_Worksheets_From_Workbooks_As_3DArray = Empty
+        Convert_Worksheet_In_Workbooks_To_3DArray = Empty
         Exit Function
     End If
 
     If workbooksToProcess.Count = 0 Then
-        Get_Worksheets_From_Workbooks_As_3DArray = Empty
+        Convert_Worksheet_In_Workbooks_To_3DArray = Empty
         Exit Function
     End If
 
@@ -1390,12 +1509,12 @@ Public Function Get_Worksheets_From_Workbooks_As_3DArray(ByVal TargetWorkbooks A
     Next wbk
 
     ' 3. Pass the collected sheets to the existing function to create the 3D array.
-    Get_Worksheets_From_Workbooks_As_3DArray = Worksheets_To_3DArray(sheetsToProcess)
+    Convert_Worksheet_In_Workbooks_To_3DArray = Convert_Worksheets_To_3DArray(sheetsToProcess, ReadProperty)
     Exit Function
 
 ifError:
     Call Handle_Error("Failed to convert workbook sheets to a 3D array. " & vbCrLf & "Error: " & Err.Description)
-    Get_Worksheets_From_Workbooks_As_3DArray = Empty
+    Convert_Worksheet_In_Workbooks_To_3DArray = Empty
 End Function
 
 
@@ -1541,10 +1660,11 @@ ifError:
 End Function
 
 
-Public Function Write_Array_To_Worksheet(ByVal DataArray As Variant, ByVal TargetCell As Range) As Boolean
-    ' @brief Writes a 2D array to a worksheet starting at a specified cell.
+Public Function Write_Array_To_Worksheet(ByVal DataArray As Variant, ByVal TargetCell As Range, Optional ByVal WriteAs As String = "Value") As Boolean
+    ' @brief Writes a 2D array to a worksheet starting at a specified cell, as values or formulas.
     ' @param DataArray The 2D array containing the data to write.
     ' @param TargetCell The top-left cell of the destination range.
+    ' @param WriteAs (Optional) The property to write. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @return True if the write operation was successful, False otherwise.
     ' @details This is the most efficient method to write an array to a sheet, as it avoids cell-by-cell looping.
     ' @dependencies Handle_Error (Internal)
@@ -1570,8 +1690,18 @@ Public Function Write_Array_To_Worksheet(ByVal DataArray As Variant, ByVal Targe
     ' Define the destination range based on the array size
     Set destRange = TargetCell.Resize(numRows, numCols)
 
-    ' Write the array to the range in one operation
-    destRange.Value = DataArray
+    ' Write the array to the range in one operation using the specified property
+    Select Case LCase(WriteAs)
+        Case "value", "values"
+            destRange.Value = DataArray
+        Case "formula", "formulas"
+            destRange.Formula = DataArray
+        Case "formular1c1"
+            destRange.FormulaR1C1 = DataArray
+        Case Else
+            Call Handle_Error("Invalid 'WriteAs' property '" & WriteAs & "'. Defaulting to 'Value'.")
+            destRange.Value = DataArray
+    End Select
     
     Write_Array_To_Worksheet = True
     Exit Function
@@ -1582,12 +1712,13 @@ ifError:
 End Function
 
 
-Public Function Write_Range_To_Worksheet(ByVal SourceRange As Range, ByVal TargetCell As Range) As Boolean
-    ' @brief Writes the values from a source range to a worksheet starting at a specified cell.
+Public Function Write_Range_To_Worksheet(ByVal SourceRange As Range, ByVal TargetCell As Range, Optional ByVal WriteAs As String = "Value") As Boolean
+    ' @brief Writes data from a source range to a worksheet, as values or formulas.
     ' @param SourceRange The Range object containing the data to write.
     ' @param TargetCell The top-left cell of the destination range.
+    ' @param WriteAs (Optional) The property to write. Valid options: "Value", "Formula", "FormulaR1C1". Defaults to "Value".
     ' @return True if the write operation was successful, False otherwise.
-    ' @details This is an efficient method to copy values from one range to another, as it avoids cell-by-cell looping.
+    ' @details This is an efficient method to copy data from one range to another, as it avoids cell-by-cell looping.
     ' @dependencies Handle_Error (Internal)
     On Error GoTo ifError
 
@@ -1606,8 +1737,18 @@ Public Function Write_Range_To_Worksheet(ByVal SourceRange As Range, ByVal Targe
     ' Define the destination range based on the source range size
     Set destRange = TargetCell.Resize(SourceRange.Rows.Count, SourceRange.Columns.Count)
 
-    ' Write the source range's values to the destination range in one operation
-    destRange.Value = SourceRange.Value
+    ' Write the source range's data to the destination range using the specified property
+    Select Case LCase(WriteAs)
+        Case "value", "values"
+            destRange.Value = SourceRange.Value
+        Case "formula", "formulas"
+            destRange.Formula = SourceRange.Formula
+        Case "formular1c1"
+            destRange.FormulaR1C1 = SourceRange.FormulaR1C1
+        Case Else
+            Call Handle_Error("Invalid 'WriteAs' property '" & WriteAs & "'. Defaulting to 'Value'.")
+            destRange.Value = SourceRange.Value
+    End Select
 
     Write_Range_To_Worksheet = True
     Exit Function

@@ -55,11 +55,11 @@ Public Function Logger(sFile As String, Optional sType As String = "", Optional 
     Dim stext       As String
     Dim sExtension  As String
     
-    sExtension = "." & FileX.Get_FileExtension(sFile)
+    sExtension = "." & Get_FileExtension(sFile)
 
     ' Archive file at certain size
     If maxFileSize <> 0 Then
-        If FileX.FileExist(sFile) Then
+        If FileExist(sFile) Then
             If FileLen(sFile) > maxFileSize Then
                 FileCopy sFile, Replace(sFile, sExtension, format(Now, "_ddmmyyyy-hhmmss") & sExtension)
                 Kill sFile
@@ -74,7 +74,7 @@ Public Function Logger(sFile As String, Optional sType As String = "", Optional 
             "(user: " & Application.UserName & vbTab & _
             "version: " & GLOBAL_VAR_MOD.RELEASE & ")"
 
-    Logger = FileX.AppendTxt(sFile, stext, True)
+    Logger = AppendTxt(sFile, stext, True)
 
 End Function
 
@@ -695,15 +695,15 @@ Function store_data_to_mdm(filePath As String) As Boolean
     For i = 1 To nbInput: nbSync = IIf(VAR_SWEEP_TYPE(VAR_SORT_INDEX_INPUT(i)) = "SYNC", nbSync + 1, nbSync): Next i
     ReDim aInputs(0 To VAR_SIZE_INPUT(VAR_SORT_INDEX_INPUT(1)) - 1, 0 To nbSync)
     For l = 0 To UBound(aInputs, 1)
-        aInputs(l, 0) = (CStrToCDbl(VAR_START(VAR_SORT_INDEX_INPUT(1)))) + l * (CStrToCDbl(VAR_STEP(VAR_SORT_INDEX_INPUT(1))))
+        aInputs(l, 0) = (Convert_String_To_Double(VAR_START(VAR_SORT_INDEX_INPUT(1)))) + l * (Convert_String_To_Double(VAR_STEP(VAR_SORT_INDEX_INPUT(1))))
         aInputs(l, 0) = IIf(Abs(aInputs(l, 0)) < VALMIN, 0, aInputs(l, 0))
         SyncNo = 1
         For i = 1 To nbInput
             idx = VAR_SORT_INDEX_INPUT(i)
             If VAR_SWEEP_TYPE(idx) = "SYNC" Then
-                Ratio = (CStrToCDbl(VAR_STOP(idx)) - CStrToCDbl(VAR_START(idx))) / (CStrToCDbl(VAR_STOP(VAR_SORT_INDEX_INPUT(1))) - CStrToCDbl(VAR_START(VAR_SORT_INDEX_INPUT(1))))
-                Offset = (CStrToCDbl(VAR_START(idx))) - (CStrToCDbl(VAR_START(VAR_SORT_INDEX_INPUT(1)))) * Ratio
-                valcst = (CStrToCDbl(VAR_START(VAR_SORT_INDEX_INPUT(1)))) + l * (CStrToCDbl(VAR_STEP(VAR_SORT_INDEX_INPUT(1)))) * Ratio + Offset
+                Ratio = (Convert_String_To_Double(VAR_STOP(idx)) - Convert_String_To_Double(VAR_START(idx))) / (Convert_String_To_Double(VAR_STOP(VAR_SORT_INDEX_INPUT(1))) - Convert_String_To_Double(VAR_START(VAR_SORT_INDEX_INPUT(1))))
+                Offset = (Convert_String_To_Double(VAR_START(idx))) - (Convert_String_To_Double(VAR_START(VAR_SORT_INDEX_INPUT(1)))) * Ratio
+                valcst = (Convert_String_To_Double(VAR_START(VAR_SORT_INDEX_INPUT(1)))) + l * (Convert_String_To_Double(VAR_STEP(VAR_SORT_INDEX_INPUT(1)))) * Ratio + Offset
                 valcst = IIf(Abs(valcst) < VALMIN, 0, valcst)
                 aInputs(l, SyncNo) = valcst
                 SyncNo = SyncNo + 1
@@ -734,9 +734,9 @@ Function store_data_to_mdm(filePath As String) As Boolean
                 Case "LIN": StrTmp = StrTmp & Space(8) & VAR_SWEEP_ORDER(idx) & Space(4) & CStrToStr(VAR_START(idx)) & Space(6) & CStrToStr(VAR_STOP(idx)) & "       " & VAR_SIZE_INPUT(idx) & "   " & CStrToStr(VAR_STEP(idx)) & vbCrLf
                 Case "CON": StrTmp = StrTmp & Space(8) & CStrToStr(VAR_START(idx)) & vbCrLf
                 Case "SYNC"
-                    Ratio = (CStrToCDbl(VAR_STOP(idx)) - CStrToCDbl(VAR_START(idx))) / (CStrToCDbl(VAR_STOP(VAR_SORT_INDEX_INPUT(1))) - CStrToCDbl(VAR_START(VAR_SORT_INDEX_INPUT(1))))
-                    Offset = CStrToCDbl(VAR_START(idx)) - CStrToCDbl(VAR_START(VAR_SORT_INDEX_INPUT(1))) * Ratio
-                    StrTmp = StrTmp & Space(8) & CCDblToStr(Ratio) & " " & CCDblToStr(Offset) & " " & VAR_INPUT_NAME(VAR_SORT_INDEX_INPUT(1)) & vbCrLf
+                    Ratio = (Convert_String_To_Double(VAR_STOP(idx)) - Convert_String_To_Double(VAR_START(idx))) / (Convert_String_To_Double(VAR_STOP(VAR_SORT_INDEX_INPUT(1))) - Convert_String_To_Double(VAR_START(VAR_SORT_INDEX_INPUT(1))))
+                    Offset = Convert_String_To_Double(VAR_START(idx)) - Convert_String_To_Double(VAR_START(VAR_SORT_INDEX_INPUT(1))) * Ratio
+                    StrTmp = StrTmp & Space(8) & CCConvert_Double_To_String(Ratio) & " " & CCConvert_Double_To_String(Offset) & " " & VAR_INPUT_NAME(VAR_SORT_INDEX_INPUT(1)) & vbCrLf
             End Select
         Next i
         ' Build ICCAP_OUTPUTS.
@@ -764,7 +764,7 @@ Function store_data_to_mdm(filePath As String) As Boolean
                         valcst = valcst * VAR_SIZE_INPUT(VAR_SORT_INDEX_INPUT(l))
                         l = l + 1
                     Loop
-                    valcst = (CStrToCDbl(VAR_START(idx))) + (CStrToCDbl(VAR_STEP(idx))) * k
+                    valcst = (Convert_String_To_Double(VAR_START(idx))) + (Convert_String_To_Double(VAR_STEP(idx))) * k
                     StrTmp = StrTmp & " ICCAP_VAR " & VAR_INPUT_NAME(idx) & Space(8) & CStrToStr(format(valcst, "##0.0##########")) & vbCrLf
                 End If
             Next i
@@ -1411,9 +1411,9 @@ End Function
 Sub ClearTextFile(filePath As String)
     '* @brief ClearTextFile subroutine clears the contents of a text file.
     '* @param filePath The path of the text file to be cleared.
-    '* @details This subroutine checks if the specified text file exists using the FileX.FileExist function.
+    '* @details This subroutine checks if the specified text file exists using the FileExist function.
     '* If the file exists, it opens the file for output and immediately closes it, effectively clearing its contents.
-    If FileX.FileExist(filePath) Then Open filePath For Output As #1: Close #1
+    If FileExist(filePath) Then Open filePath For Output As #1: Close #1
 End Sub
 
 Sub Open_File(filePath As String)
@@ -1422,7 +1422,7 @@ Sub Open_File(filePath As String)
     '* @details This subroutine uses the Shell.Application object to open a file using its default application.
     '* @note The file path must include the full path to the file.
     Dim objShell As Object
-    If FileX.FileExist(filePath) Then
+    If FileExist(filePath) Then
         Set objShell = CreateObject("Shell.Application")
         objShell.Open (filePath)
     End If
@@ -1436,8 +1436,8 @@ Sub Open_Directory(path As String)
 
     Dim objShell As Object
     
-    path = FileX.Clean_FilePath(path)
-    If FileX.DirExist(path) Then
+    path = Clean_FilePath(path)
+    If DirExist(path) Then
         Set objShell = CreateObject("Shell.Application")
         objShell.Open (path)
     Else
@@ -1445,56 +1445,6 @@ Sub Open_Directory(path As String)
     End If
 
 End Sub
-
-Public Function Get_FileDirectory(filePath As String) As String
-    '* @brief Get_FileDirectory function returns the directory of a file.
-    '* @param filePath The full path of the file.
-    '* @return The directory of the file. If no directory is specified in the file path, an empty string is returned.
-    Dim lastBackslashIndex  As Long
-    Dim lastPointIndex      As Long
-    lastBackslashIndex = InStrRev(filePath, "\")
-    lastPointIndex = InStrRev(filePath, ".")
-    If lastBackslashIndex > 0 Then
-        If lastBackslashIndex < lastPointIndex Then Get_FileDirectory = Left(filePath, lastBackslashIndex - 1) Else Get_FileDirectory = filePath
-    Else
-        Get_FileDirectory = ""
-    End If
-        
-End Function
-
-Public Function Get_FileName(filePath As String) As String
-    '* @brief Get_FileName function extracts the name of a file from the given file path.
-    '* @param filePath The full path of the file.
-    '* @return The name of the file. If no directory is specified in the file path, filePath is returned.
-    Dim lastBackslashIndex  As Long
-    Dim lastPointIndex      As Long
-    Dim lenFileName         As Long
-    lastBackslashIndex = InStrRev(filePath, "\")
-    lastPointIndex = InStrRev(filePath, ".")
-    lenFileName = IIf(lastBackslashIndex < lastPointIndex, lastPointIndex - lastBackslashIndex - 1, Len(filePath) - lastBackslashIndex)
-    If lastBackslashIndex > 0 Then Get_FileName = Mid(filePath, lastBackslashIndex + 1, lenFileName) Else Get_FileName = filePath
-End Function
-
-Public Function Get_FileExtension(filePath As String) As String
-    '* @brief   This function retrieves the file extension from a given file path.
-    '* @param   filePath   The full path of the file.
-    '* @return  The extension of the file. If the file path is invalid or doesn't contain a file name, it returns an empty string.
-    '* @details This function extracts the file extension from the file name obtained from the given file path.
-    '*          If the file name is an empty string, it means that the path doesn't contain a valid file name, so the function returns an empty string.
-    '*          If the file name contains a dot, it extracts the extension using the method of finding the last occurrence of the dot.
-    '*          Otherwise, it returns an empty string.
-    Dim lastPointIndex As Long
-    lastPointIndex = InStrRev(filePath, ".")
-    If lastPointIndex > 0 Then Get_FileExtension = Mid(filePath, lastPointIndex + 1) Else Get_FileExtension = ""
-End Function
-
-Public Function Clean_FilePath(filePath As String) As String
-    '* @brief Cleans a file path string by replacing forward slashes with backslashes.
-    '* @param filePath The file path string to be cleaned.
-    '* @return The cleaned file path string.
-    Clean_FilePath = Replace(Replace(filePath, "/", "\"), "\\", "\")
-End Function
-
 
 Public Sub Import_CsvToSelection()
     '* @brief Imports CSV data into a selected range in Excel.
@@ -1512,7 +1462,7 @@ Public Sub Import_CsvToSelection()
     End Select
     
     ' Prompt the user to select a CSV file.
-    filePath = FileX.Select_Files("csv", False)
+    filePath = Select_Files("csv", False)
     
     ' Check if an error occurred during file selection.
     If IsError(filePath) Then MsgBox "Aucun fichier s�lectionn�.", vbExclamation: GoTo ifError
@@ -1521,7 +1471,7 @@ Public Sub Import_CsvToSelection()
     sCsv = ReadFile(filePath(LBound(filePath)))
     
     ' Check if the CSV file is empty.
-    If Trim(sCsv) = "" Then MsgBox FileX.Get_FileName(CStr(filePath(LBound(filePath)))) & "." & FileX.Get_FileExtension(CStr(filePath(LBound(filePath)))) & " file is empty.", vbExclamation: GoTo ifError
+    If Trim(sCsv) = "" Then MsgBox Get_FileName(CStr(filePath(LBound(filePath)))) & "." & Get_FileExtension(CStr(filePath(LBound(filePath)))) & " file is empty.", vbExclamation: GoTo ifError
     
     ' Convert and write the CSV data to the selected range.
     If Not ArrayX.Csv_To_Range(sCsv, rng, ",", Chr(34)) Then MsgBox "Write operation failed.", vbExclamation: GoTo ifError
@@ -1551,7 +1501,7 @@ Public Sub Import_CsvToNewSpreadsheet()
     QuoteChar = ""  ' chr(34)
     
     ' Prompt the user to select a CSV file.
-    filePath = FileX.Select_Files("csv", True)
+    filePath = Select_Files("csv", True)
     
     ' Check if an error occurred during file selection.
     If IsError(filePath) Then MsgBox "Aucun fichier s�lectionn�.", vbExclamation: GoTo ifError
@@ -1559,15 +1509,15 @@ Public Sub Import_CsvToNewSpreadsheet()
     For i = LBound(filePath) To UBound(filePath)
     
         ' Read the selected CSV file.
-        fileName = FileX.Get_FileName(CStr(filePath(i)))
+        fileName = Get_FileName(CStr(filePath(i)))
         sCsv = ReadFile(filePath(i))
         
         ' Check if the CSV file is empty.
-        If Trim(sCsv) = "" Then MsgBox fileName & "." & FileX.Get_FileExtension(CStr(filePath(i))) & " file is empty.", vbExclamation: GoTo ifError
+        If Trim(sCsv) = "" Then MsgBox fileName & "." & Get_FileExtension(CStr(filePath(i))) & " file is empty.", vbExclamation: GoTo ifError
         
         ' Create a new Sheet for the import.
         Set wbk = ActiveWorkbook
-        SheetName = LANG_MOD.Clear_CharInString(fileName, "_-:\/?*[]; ")
+        SheetName = LANG_MOD.Clear_SubChar(fileName, "_-:\/?*[]; ")
         SheetName = Resize_String(SheetName, 31)
         If EXCEL_MOD.wbk_SheetExist(wbk, SheetName) Then
             Set wks = wbk.Sheets(SheetName)
@@ -1607,14 +1557,14 @@ Sub Export_SelectionToCsv()
         Exit Sub
     End If
     
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
+    filePath = Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
     If filePath = "" Then Exit Sub
     
     ' Convertir le tableau 2D en cha�ne CSV
     sCsv = ArrayX.a2D_ToCsv(Arr2D, Delimiter, QuoteChar)
     
     ' Enregistrer le fichier CSV
-    FileX.OverwriteTxt filePath, sCsv
+    OverwriteTxt filePath, sCsv
     
     MsgBox "Fichier CSV cr�� avec succ�s : " & filePath, vbInformation
 End Sub
@@ -1638,14 +1588,14 @@ Sub Export_SheetToCsv()
         Exit Sub
     End If
 
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
+    filePath = Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "csv Files (*.csv),*csv")
     If filePath = "" Then Exit Sub
     
     ' Convertir le tableau 2D en cha�ne CSV
     sCsv = ArrayX.a2D_ToCsv(Arr2D, Delimiter, QuoteChar)
     
     ' Enregistrer le fichier CSV
-    FileX.OverwriteTxt filePath, sCsv
+    OverwriteTxt filePath, sCsv
     
     MsgBox "Fichier CSV cr�� avec succ�s : " & filePath, vbInformation
 End Sub
@@ -2095,7 +2045,7 @@ Public Function Copy_File(ByVal SourcePath As String, ByVal DestinationPath As S
     ' @param DestinationPath The full path for the new file. Can be a folder or a full new file path.
     ' @param Overwrite (Optional) If True, an existing file at the destination will be overwritten. Defaults to True.
     ' @return True if the copy was successful, False otherwise.
-    ' @dependencies Microsoft Scripting Runtime, FileX.create_folder, HandleError
+    ' @dependencies Microsoft Scripting Runtime, create_folder, HandleError
     On Error GoTo ifError
     
     Dim fso As Object 'Scripting.FileSystemObject
@@ -2131,7 +2081,7 @@ Public Function Move_File(ByVal SourcePath As String, ByVal DestinationPath As S
     ' @param SourcePath The full path of the file to move.
     ' @param DestinationPath The full path for the new file location. Can be a folder or a full new file path.
     ' @return True if the move was successful, False otherwise.
-    ' @dependencies Microsoft Scripting Runtime, FileX.create_folder, HandleError
+    ' @dependencies Microsoft Scripting Runtime, create_folder, HandleError
     On Error GoTo ifError
     
     Dim fso As Object 'Scripting.FileSystemObject
@@ -2161,16 +2111,86 @@ ifError:
     Move_File = False
 End Function
 
+Public Function Clean_FilePath(filePath As String) As String
+    '* @brief Cleans a file path string by replacing forward slashes with backslashes.
+    '* @param filePath The file path string to be cleaned.
+    '* @return The cleaned file path string.
+    Clean_FilePath = Replace(Replace(filePath, "/", "\"), "\\", "\")
+End Function
+
+Public Function Get_DirectoryPath(filePath As String) As String
+    ' @brief Extracts the directory path from a full file path, removing the filename and extension.
+    ' @param FilePath The full path of the file.
+    ' @return The directory path without the filename and extension.
+    Dim fileName As String
+    fileName = Get_FileName(filePath)
+    Get_DirectoryPath = Left(filePath, Len(filePath) - Len(fileName))
+End Function
+
+Public Function Get_FileName(filePath As String) As String
+    '* @brief Get_FileName function extracts the name of a file from the given file path.
+    '* @param filePath The full path of the file.
+    '* @return The name of the file. If no directory is specified in the file path, filePath is returned.
+    '* Details:
+    '  Get_FileName("C:\path\to\file.txt") returns "file.txt"
+    '  Get_FileName("file.txt") returns "file.txt"
+    '  Get_FileName("file") returns "file"
+    '  Get_FileName("C:\path\to\file") returns "file"
+    '  Get_FileName("C:\path\to\") returns ""
+    Dim lastBackslashIndex  As Long
+    Dim lastPointIndex      As Long
+    Dim lenFileName         As Long
+    lastBackslashIndex = InStrRev(filePath, "\")
+    lastPointIndex = InStrRev(filePath, ".")
+
+    lenFileName = IIf(lastBackslashIndex < lastPointIndex, lastPointIndex - lastBackslashIndex - 1, Len(filePath) - lastBackslashIndex)
+    If lastBackslashIndex > 0 Then Get_FileName = Mid(filePath, lastBackslashIndex + 1, lenFileName) Else Get_FileName = filePath
+End Function
+
+Public Function Get_BaseFileName(ByVal FilePath As String) As String
+    ' @brief Extracts the base filename (without extension) from a full file path.
+    ' @param FilePath The full path to the file.
+    ' @return The base filename.
+    ' @details:
+    '  Get_BaseFileName("C:\path\to\file.txt") returns "file"
+    '  Get_BaseFileName("file.txt") returns "file"
+    '  Get_BaseFileName("file") returns "file"
+    '  Get_BaseFileName("C:\path\to\file") returns "file"
+    Dim fileName As String
+    Dim dotPosition As Long
+
+    fileName = Get_FileName(FilePath) ' Get filename with extension
+    dotPosition = InStrRev(fileName, ".")
+    If dotPosition > 0 Then
+        Get_BaseFileName = Left(fileName, dotPosition - 1) ' Remove extension
+    Else
+        Get_BaseFileName = fileName ' No extension found
+    End If
+
+End Function
+
+Public Function Get_FileExtension(filePath As String) As String
+    '* @brief   This function retrieves the file extension from a given file path.
+    '* @param   filePath   The full path of the file.
+    '* @return  The extension of the file. If the file path is invalid or doesn't contain a file name, it returns an empty string.
+    '* @details This function extracts the file extension from the file name obtained from the given file path.
+    '*          If the file name is an empty string, it means that the path doesn't contain a valid file name, so the function returns an empty string.
+    '*          If the file name contains a dot, it extracts the extension using the method of finding the last occurrence of the dot.
+    '*          Otherwise, it returns an empty string.
+    Dim lastPointIndex As Long
+    lastPointIndex = InStrRev(filePath, ".")
+    If lastPointIndex > 0 Then Get_FileExtension = Mid(filePath, lastPointIndex + 1) Else Get_FileExtension = ""
+End Function
 
 Public Function Get_FileSize(ByVal FilePath As String) As Double
     ' @brief Gets the size of a file in bytes.
     ' @param FilePath The full path of the file.
     ' @return The size of the file in bytes. Returns -1 if the file does not exist or an error occurs.
-    ' @dependencies FileX.FileExist, HandleError
+    ' @dependencies FileExist, HandleError
     On Error GoTo ifError
     
     ' Use existing robust file check
-    If Not FileX.FileExist(FilePath) Then
+    If Not FileExist(FilePath) Then
         Get_FileSize = -1
         Exit Function
     End If
@@ -2183,21 +2203,25 @@ ifError:
     Get_FileSize = -1
 End Function
 
-
 Public Function Combine_Paths(ByVal BasePath As String, ByVal RelativePath As String) As String
     ' @brief Safely combines two path segments into a single path, ensuring correct separator usage.
     ' @param BasePath The first part of the path (e.g., "C:\Users\Test").
     ' @param RelativePath The second part of the path to append (e.g., "MyFolder\file.txt").
     ' @return A correctly formatted full path string.
-    ' @dependencies FileX.Clean_FilePath
-    
+    ' @dependencies Clean_FilePath
+
     Dim cleanBasePath As String
     Dim cleanRelativePath As String
     
     ' Clean both paths to use a consistent separator
-    cleanBasePath = FileX.Clean_FilePath(BasePath)
-    cleanRelativePath = FileX.Clean_FilePath(RelativePath)
+    cleanBasePath = Clean_FilePath(BasePath)
+    cleanRelativePath = Clean_FilePath(RelativePath)
     
+    ' Extract directory from BasePath if it contains a filename
+    If InStrRev(cleanBasePath, "\") > 0 And InStrRev(cleanBasePath, ".") > InStrRev(cleanBasePath, "\") Then
+        cleanBasePath = Left(cleanBasePath, InStrRev(cleanBasePath, "\") - 1)
+    End If
+
     ' Remove trailing slash from base path if it exists
     If Right(cleanBasePath, 1) = "\" Then
         cleanBasePath = Left(cleanBasePath, Len(cleanBasePath) - 1)
@@ -2212,14 +2236,13 @@ Public Function Combine_Paths(ByVal BasePath As String, ByVal RelativePath As St
     Combine_Paths = cleanBasePath & "\" & cleanRelativePath
 End Function
 
-
 Public Sub Zip_Files(ByVal FilePaths As Variant, ByVal ZipFilePath As String)
     ' @brief Creates a zip archive containing specified files.
     ' @param FilePaths An array of full file paths (or a single path as a string) to include in the zip.
     ' @param ZipFilePath The full path for the new zip file to be created.
     ' @details This procedure will create an empty zip file and then add each specified file to it.
     '          It will overwrite an existing zip file at the destination.
-    ' @dependencies Shell.Application object, FileX.FileExist, HandleError
+    ' @dependencies Shell.Application object, FileExist, HandleError
     
     On Error GoTo ifError
     
@@ -2229,7 +2252,7 @@ Public Sub Zip_Files(ByVal FilePaths As Variant, ByVal ZipFilePath As String)
     
     ' 1. Create an empty zip file
     ' This is a standard trick: create a file with a .zip extension and write the PK header.
-    If FileX.FileExist(ZipFilePath) Then Kill ZipFilePath
+    If FileExist(ZipFilePath) Then Kill ZipFilePath
     Open ZipFilePath For Output As #1
     Print #1, "PK" & Chr(5) & Chr(6) & String(18, 0)
     Close #1
@@ -2240,7 +2263,7 @@ Public Sub Zip_Files(ByVal FilePaths As Variant, ByVal ZipFilePath As String)
     ' 3. Copy files into the zip folder
     If IsArray(FilePaths) Then
         For i = LBound(FilePaths) To UBound(FilePaths)
-            If FileX.FileExist(CStr(FilePaths(i))) Then
+            If FileExist(CStr(FilePaths(i))) Then
                 ' The Namespace method treats a .zip file as a folder
                 shellApp.Namespace(ZipFilePath).CopyHere CStr(FilePaths(i))
                 ' Wait for the shell to finish copying. A loop is more robust than a fixed wait.
@@ -2253,7 +2276,7 @@ Public Sub Zip_Files(ByVal FilePaths As Variant, ByVal ZipFilePath As String)
         Next i
     ElseIf VarType(FilePaths) = vbString Then
         ' Handle a single file path passed as a string
-        If FileX.FileExist(CStr(FilePaths)) Then
+        If FileExist(CStr(FilePaths)) Then
             shellApp.Namespace(ZipFilePath).CopyHere CStr(FilePaths)
             Application.Wait Now + TimeValue("00:00:01")
         End If
