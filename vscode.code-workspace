@@ -1,0 +1,39 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/.git": true,
+			"**/.svn": true,
+			"**/.hg": true,
+			"**/CVS": true,
+			"**/.DS_Store": true,
+			"**/*.bak": true,
+			"**/*.tmp": true,
+			"**/*.log": true,
+			".vscode/": true,
+			".trunk/": true
+		},
+		"search.exclude": {
+			"**/node_modules": true,
+			"**/bower_components": true,
+			"**/*.code-search": true,
+			".vscode/": true,
+			".trunk/": true
+		},
+		"[vba]": {
+			"editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
+			"editor.tabSize": 4,
+			"editor.insertSpaces": false
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"vba",
+			"EditorConfig.EditorConfig"
+		]
+	}
+}
