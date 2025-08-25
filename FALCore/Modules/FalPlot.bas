@@ -1,46 +1,46 @@
 Attribute VB_Name = "FalPlot"
 ' Module: FalPlot
-' Auteur: Florent ALBANY
+' Author: Florent ALBANY
 ' Date: 2025-07-15
 ' Version: 2025.7
 '
 ' Description:
-' Ce module VBA offre un ensemble complet de fonctions pour la cr�ation, la manipulation et le
-' formatage avanc� de graphiques dans Microsoft Excel. Il est con�u pour simplifier le tra�age
-' de donn�es � partir de plages ou de feuilles de calcul, en offrant une grande flexibilit�
-' de personnalisation, notamment pour les titres, les axes, les s�ries et les styles visuels.
+' Ce module VBA offre un ensemble complet de fonctions pour la création, la manipulation et le
+' formatage avancé de graphiques dans Microsoft Excel. Il est conçu pour simplifier le traçage
+' de données à partir de plages ou de feuilles de calcul, en offrant une grande flexibilité
+' de personnalisation, notamment pour les titres, les axes, les séries et les styles visuels.
 '
 ' Fonctions principales:
-' - Plot_Range: Cr�e un graphique � partir d'une plage de donn�es sp�cifi�e.
-' - DataTrace: Trace automatiquement des donn�es depuis une feuille de calcul, g�rant la
-'              d�tection de tableaux et la cr�ation de multiples graphiques par s�rie si n�cessaire.
-' - Trace_Range: Fonction d'enveloppe pour le tra�age de plages, potentiellement � partir d'un tableau 2D.
-' - ChartFormatting: Applique une multitude d'options de formatage � un objet Chart, y compris
-'                    les titres, les �chelles d'axes, les l�gendes, les styles de s�rie et plus encore.
-' - ChartText_Format: Formate sp�cifiquement les indices et exposants dans les titres d'axes pour une meilleure lisibilit�.
+' - Plot_Range: Crée un graphique à partir d'une plage de données spécifiée.
+' - DataTrace: Trace automatiquement des données depuis une feuille de calcul, gérant la
+'              détection de tableaux et la création de multiples graphiques par série si nécessaire.
+' - Trace_Range: Fonction d'enveloppe pour le traçage de plages, potentiellement à partir d'un tableau 2D.
+' - ChartFormatting: Applique une multitude d'options de formatage à un objet Chart, y compris
+'                    les titres, les échelles d'axes, les légendes, les styles de série et plus encore.
+' - ChartText_Format: Formate spécifiquement les indices et exposants dans les titres d'axes pour une meilleure lisibilité.
 '
-' D�pendances:
+' Dépendances:
 ' Ce module s'appuie sur des fonctions auxiliaires et d'autres modules (LANG_MOD, EXCEL_MOD, ArrayX)
-' pour la manipulation de cha�nes, la gestion d'Excel et les op�rations sur les tableaux.
+' pour la manipulation de chaînes, la gestion d'Excel et les opérations sur les tableaux.
 '
 ' Remarques:
-' Le module inclut des options de d�bogage et des gestions d'erreurs pour une robustesse accrue.
-' Il vise � automatiser les t�ches de plotting r�p�titives, permettant une visualisation rapide et personnalis�e des donn�es.
+' Le module inclut des options de débogage et des gestions d'erreurs pour une robustesse accrue.
+' Il vise à automatiser les tâches de plotting répétitives, permettant une visualisation rapide et personnalisée des données.
 '
 '
 '#############################################################################################################################
-' Partie 1 : Proc�dures Publiques (Public Sub)
+' Partie 1 : Procédures Publiques (Public Sub)
 ' ---
-' Ces proc�dures sont les points d'entr�e principaux du module,
-' accessibles depuis l'ext�rieur pour ex�cuter des actions
-' sp�cifiques de tra�age et de gestion des graphiques.
+' Ces procédures sont les points d'entrée principaux du module,
+' accessibles depuis l'extérieur pour exécuter des actions
+' spécifiques de traçage et de gestion des graphiques.
 '#############################################################################################################################
 
 Public Sub Plot_SelectedRangeWithFormatting()
-    '* @brief Cr�e et formate un graphique � partir de la plage de cellules s�lectionn�e.
-    '* @details Cette proc�dure demande � l'utilisateur un nom de graphique et des options de formatage,
-    '           puis utilise la fonction Plot_RangeWithFormatting pour cr�er le graphique.
-    '* @remarks Affiche des messages d'erreur si aucune plage n'est s�lectionn�e ou si le tra�age �choue.
+    '* @brief Crée et formate un graphique à partir de la plage de cellules sélectionnée.
+    '* @details Cette procédure demande à l'utilisateur un nom de graphique et des options de formatage,
+    '           puis utilise la fonction Plot_RangeWithFormatting pour créer le graphique.
+    '* @remarks Affiche des messages d'erreur si aucune plage n'est sélectionnée ou si le traçage échoue.
     On Error GoTo ErrHandler
 
     Dim selectedRange As Range
@@ -48,26 +48,26 @@ Public Sub Plot_SelectedRangeWithFormatting()
     Dim formattingOpts As String
     Dim myChart As Chart
 
-    ' 1. V�rifier si une plage est s�lectionn�e
+    ' 1. Vérifier si une plage est sélectionnée
     If TypeName(Selection) <> "Range" Then
-        Call HandleError("Veuillez s�lectionner une plage de cellules � tracer.")
+        Call HandleError("Veuillez sélectionner une plage de cellules à tracer.")
         Exit Sub
     End If
     Set selectedRange = Selection
 
-    ' 2. Demander le nom du graphique et les options de formatage � l'utilisateur
+    ' 2. Demander le nom du graphique et les options de formatage à l'utilisateur
     chartTitle = InputBox("Entrez le titre du graphique (laissez vide pour automatique) :", "Titre du Graphique")
-    formattingOpts = InputBox("Entrez les options de formatage (ex: Title=MonTitre;XTitle=Abcisse;YTitle=Unit�s;ChartType=75) :", "Options de Formatage", "Title=" & chartTitle & ";YTitle=N/A;XTitle=N/A;ChartType=75;PlotBy=-1;AutoLegend=1")
+    formattingOpts = InputBox("Entrez les options de formatage (ex: Title=MonTitre;XTitle=Abcisse;YTitle=Unités;ChartType=75) :", "Options de Formatage", "Title=" & chartTitle & ";YTitle=N/A;XTitle=N/A;ChartType=75;PlotBy=-1;AutoLegend=1")
 
     ' 3. Appeler la fonction Plot_RangeWithFormatting
     Set myChart = Plot_RangeWithFormatting(selectedRange, chartTitle, , , formattingOpts) ' nbSeriesByGroup et ColorStyle sont optionnels ici
 
-    ' 4. V�rifier le succ�s et informer l'utilisateur
+    ' 4. Vérifier le succès et informer l'utilisateur
     If myChart Is Nothing Then
-        ' Le message d'erreur est d�j� g�r� par Plot_RangeWithFormatting ou HandleError
+        ' Le message d'erreur est déjà géré par Plot_RangeWithFormatting ou HandleError
         Exit Sub
     Else
-        MsgBox "Le graphique '" & myChart.name & "' a �t� cr�� et format� avec succ�s !", vbInformation, "Op�ration R�ussie"
+        MsgBox "Le graphique '" & myChart.name & "' a été créé et formaté avec succès !", vbInformation, "Opération Réussie"
     End If
 
     Exit Sub
@@ -77,28 +77,28 @@ ErrHandler:
 End Sub
 
 Public Sub Create_SmithChart()
-    '* @brief Cr�e un graphique de Smith bas� sur le graphique s�lectionn�.
-    '* @details Cette proc�dure effectue les �tapes suivantes:
-    '   1. V�rifie si un graphique est s�lectionn�.
-    '   2. Copie le graphique s�lectionn�.
-    '   3. Supprime les s�ries non pertinentes (non r�elles/imaginaires).
-    '   4. Applique le formatage sp�cifique au graphique de Smith.
-    '   5. D�lie les donn�es du graphique copi� pour les rendre statiques.
-    '* @remarks Affiche un message d'erreur si une �tape �choue.
+    '* @brief Crée un graphique de Smith basé sur le graphique sélectionné.
+    '* @details Cette procédure effectue les étapes suivantes:
+    '   1. Vérifie si un graphique est sélectionné.
+    '   2. Copie le graphique sélectionné.
+    '   3. Supprime les séries non pertinentes (non réelles/imaginaires).
+    '   4. Applique le formatage spécifique au graphique de Smith.
+    '   5. Délie les données du graphique copié pour les rendre statiques.
+    '* @remarks Affiche un message d'erreur si une étape échoue.
     On Error GoTo ErrHandler
 
     Dim srcChart As Chart
     Dim myChart As Chart
 
     Set srcChart = GetSelectedChart() ' Utilise la fonction d'aide
-    If srcChart Is Nothing Then Exit Sub ' Le message d'erreur est g�r� par GetSelectedChart
+    If srcChart Is Nothing Then Exit Sub ' Le message d'erreur est géré par GetSelectedChart
 
     Set myChart = Copy_Chart(srcChart)
-    If myChart Is Nothing Then Call HandleError("La copie du graphique a �chou�."): Exit Sub
+    If myChart Is Nothing Then Call HandleError("La copie du graphique a échoué."): Exit Sub
 
-    If Not delete_UnMatchingSeries(myChart, ":", False) Then Call HandleError("Le nettoyage des donn�es R�el/Imaginaire a �chou�."): Exit Sub
-    If Not SmithChart_Formatting(myChart, True) Then Call HandleError("Le formatage du graphique de Smith a �chou�."): Exit Sub
-    If Not Delink_ChartData(myChart) Then Call HandleError("La d�connexion des donn�es du graphique a �chou�."): Exit Sub
+    If Not delete_UnMatchingSeries(myChart, ":", False) Then Call HandleError("Le nettoyage des données Réel/Imaginaire a échoué."): Exit Sub
+    If Not SmithChart_Formatting(myChart, True) Then Call HandleError("Le formatage du graphique de Smith a échoué."): Exit Sub
+    If Not Delink_ChartData(myChart) Then Call HandleError("La déconnexion des données du graphique a échoué."): Exit Sub
 
     Exit Sub
 
@@ -108,22 +108,22 @@ End Sub
 
 
 Public Sub Format_Chart()
-    '* @brief Formate un graphique avec les options par d�faut.
-    '* @details Cette proc�dure effectue les �tapes suivantes:
-    '   1. V�rifie si un graphique est s�lectionn�.
-    '   2. Applique le formatage par d�faut via ChartFormatting.
-    '* @remarks Affiche un message d'erreur si une �tape �choue.
+    '* @brief Formate un graphique avec les options par défaut.
+    '* @details Cette procédure effectue les étapes suivantes:
+    '   1. Vérifie si un graphique est sélectionné.
+    '   2. Applique le formatage par défaut via ChartFormatting.
+    '* @remarks Affiche un message d'erreur si une étape échoue.
     On Error GoTo ErrHandler
 
     Dim srcChart As Chart
-    Dim FormattingOptions As Variant ' Laiss�e en Variant pour compatibilit�, mais pourrait �tre String si toujours format�e en texte
+    Dim FormattingOptions As Variant ' Laissée en Variant pour compatibilité, mais pourrait être String si toujours formatée en texte
 
     Set srcChart = GetSelectedChart() ' Utilise la fonction d'aide
     If srcChart Is Nothing Then Exit Sub
 
-    ' Assurez-vous que FormattingOptions est initialis� correctement si ChartFormatting attend une cha�ne vide pour les d�fauts
-    ' Sinon, si vous voulez que les valeurs par d�faut internes � ChartFormatting soient utilis�es, passez Missing ou Empty.
-    ' Pour l'exemple, supposons qu'une cha�ne vide d�clenche les d�fauts dans ChartFormatting
+    ' Assurez-vous que FormattingOptions est initialisé correctement si ChartFormatting attend une chaîne vide pour les défauts
+    ' Sinon, si vous voulez que les valeurs par défaut internes à ChartFormatting soient utilisées, passez Missing ou Empty.
+    ' Pour l'exemple, supposons qu'une chaîne vide déclenche les défauts dans ChartFormatting
     FormattingOptions = ""
 
     If Not ChartFormatting(srcChart, FormattingOptions) Then Call HandleError("Une erreur est survenue lors du formatage du graphique."): Exit Sub
@@ -136,13 +136,13 @@ End Sub
 
 
 Public Sub Create_YLog()
-    '* @brief Cr�e un graphique avec un axe Y logarithmique bas� sur le graphique s�lectionn�.
-    '* @details Cette proc�dure effectue les �tapes suivantes:
-    '   1. V�rifie si un graphique est s�lectionn�.
-    '   2. Copie le graphique s�lectionn�.
-    '   3. Applique une �chelle logarithmique � l'axe Y du graphique copi�.
-    '   4. D�lie les donn�es du graphique copi�.
-    '* @remarks Affiche un message d'erreur si une �tape �choue.
+    '* @brief Crée un graphique avec un axe Y logarithmique basé sur le graphique sélectionné.
+    '* @details Cette procédure effectue les étapes suivantes:
+    '   1. Vérifie si un graphique est sélectionné.
+    '   2. Copie le graphique sélectionné.
+    '   3. Applique une échelle logarithmique à l'axe Y du graphique copié.
+    '   4. Délie les données du graphique copié.
+    '* @remarks Affiche un message d'erreur si une étape échoue.
     On Error GoTo ErrHandler
 
     Dim srcChart As Chart
@@ -152,11 +152,11 @@ Public Sub Create_YLog()
     If srcChart Is Nothing Then Exit Sub
 
     Set myChart = Copy_Chart(srcChart)
-    If myChart Is Nothing Then Call HandleError("La copie du graphique a �chou�."): Exit Sub
+    If myChart Is Nothing Then Call HandleError("La copie du graphique a échoué."): Exit Sub
 
-    ' S'assure que Chart_YLog retourne un Boolean pour le succ�s/�chec
-    If Not Chart_YLog(myChart) Then Call HandleError("La g�n�ration de l'�chelle Y logarithmique a �chou�."): Exit Sub
-    If Not Delink_ChartData(myChart) Then Call HandleError("La d�connexion des donn�es du graphique a �chou�."): Exit Sub
+    ' S'assure que Chart_YLog retourne un Boolean pour le succès/échec
+    If Not Chart_YLog(myChart) Then Call HandleError("La génération de l'échelle Y logarithmique a échoué."): Exit Sub
+    If Not Delink_ChartData(myChart) Then Call HandleError("La déconnexion des données du graphique a échoué."): Exit Sub
 
     Exit Sub
 
@@ -166,13 +166,13 @@ End Sub
 
 
 Public Sub Create_Derivative()
-    '* @brief Cr�e un graphique de d�riv�e bas� sur le graphique s�lectionn�.
-    '* @details Cette proc�dure effectue les �tapes suivantes:
-    '   1. V�rifie si un graphique est s�lectionn�.
-    '   2. Copie le graphique s�lectionn�.
-    '   3. G�n�re une d�riv�e pour le graphique copi�.
-    '   4. D�lie les donn�es du graphique copi�.
-    '* @remarks Affiche un message d'erreur si une �tape �choue.
+    '* @brief Crée un graphique de dérivée basé sur le graphique sélectionné.
+    '* @details Cette procédure effectue les étapes suivantes:
+    '   1. Vérifie si un graphique est sélectionné.
+    '   2. Copie le graphique sélectionné.
+    '   3. Génère une dérivée pour le graphique copié.
+    '   4. Délie les données du graphique copié.
+    '* @remarks Affiche un message d'erreur si une étape échoue.
     On Error GoTo ErrHandler
 
     Dim srcChart As Chart
@@ -182,11 +182,11 @@ Public Sub Create_Derivative()
     If srcChart Is Nothing Then Exit Sub
 
     Set myChart = Copy_Chart(srcChart)
-    If myChart Is Nothing Then Call HandleError("La copie du graphique a �chou�."): Exit Sub
+    If myChart Is Nothing Then Call HandleError("La copie du graphique a échoué."): Exit Sub
 
-    ' S'assure que Chart_Derivate retourne un Boolean pour le succ�s/�chec
-    If Not Chart_Derivate(myChart) Then Call HandleError("La g�n�ration de la d�riv�e a �chou�."): Exit Sub
-    If Not Delink_ChartData(myChart) Then Call HandleError("La d�connexion des donn�es du graphique a �chou�."): Exit Sub
+    ' S'assure que Chart_Derivate retourne un Boolean pour le succès/échec
+    If Not Chart_Derivate(myChart) Then Call HandleError("La génération de la dérivée a échoué."): Exit Sub
+    If Not Delink_ChartData(myChart) Then Call HandleError("La déconnexion des données du graphique a échoué."): Exit Sub
 
     Exit Sub
 
@@ -195,22 +195,22 @@ ErrHandler:
 End Sub
 
 Public Sub Export_SelectedChartAsImage()
-    '* @brief Exporte le graphique Excel actuellement s�lectionn� vers un fichier image.
-    '* @details Cette proc�dure est un point d'entr�e simple pour l'utilisateur.
-    '           Elle appelle la fonction Export_ChartAsImage qui g�re la s�lection du fichier
-    '           via une bo�te de dialogue "Enregistrer sous..." et l'exportation r�elle.
-    '* @remarks G�re les erreurs et informe l'utilisateur du succ�s ou de l'�chec de l'op�ration.
+    '* @brief Exporte le graphique Excel actuellement sélectionné vers un fichier image.
+    '* @details Cette procédure est un point d'entrée simple pour l'utilisateur.
+    '           Elle appelle la fonction Export_ChartAsImage qui gère la sélection du fichier
+    '           via une boîte de dialogue "Enregistrer sous..." et l'exportation réelle.
+    '* @remarks Gère les erreurs et informe l'utilisateur du succès ou de l'échec de l'opération.
     On Error GoTo ErrHandler
 
     Debug.Print "Appel de Export_SelectedChartAsImage."
 
     ' Appelle la fonction d'exportation.
-    ' Si aucun chemin n'est sp�cifi�, une bo�te de dialogue "Enregistrer sous" s'ouvrira.
+    ' Si aucun chemin n'est spécifié, une boîte de dialogue "Enregistrer sous" s'ouvrira.
     If Export_ChartAsImage() Then
-        MsgBox "Le graphique a �t� export� avec succ�s !", vbInformation, "Exportation R�ussie"
+        MsgBox "Le graphique a été exporté avec succès !", vbInformation, "Exportation Réussie"
     Else
-        ' Le message d'erreur est d�j� g�r� par Export_ChartAsImage ou HandleError
-        MsgBox "L'exportation du graphique a �chou� ou a �t� annul�e.", vbExclamation, "�chec de l'Exportation"
+        ' Le message d'erreur est déjà géré par Export_ChartAsImage ou HandleError
+        MsgBox "L'exportation du graphique a échoué ou a été annulée.", vbExclamation, "Échec de l'Exportation"
     End If
 
     Exit Sub
@@ -220,23 +220,23 @@ ErrHandler:
     MsgBox "Une erreur interne est survenue lors de l'exportation.", vbCritical, "Erreur Critique"
 End Sub
 '#############################################################################################################################
-' Partie 2 : Fonctions Publiques et Priv�es (Public & Private Function)
+' Partie 2 : Fonctions Publiques et Privées (Public & Private Function)
 ' ---
-' Cette section contient les fonctions. Les fonctions publiques sont accessibles de l'ext�rieur et retournent une valeur,
-' tandis que les fonctions priv�es sont des outils internes, utilis�es par les autres fonctions et proc�dures du module
-' pour des t�ches sp�cifiques et r�currentes.
+' Cette section contient les fonctions. Les fonctions publiques sont accessibles de l'extérieur et retournent une valeur,
+' tandis que les fonctions privées sont des outils internes, utilisées par les autres fonctions et procédures du module
+' pour des tâches spécifiques et récurrentes.
 '#############################################################################################################################
 
 Private Function HandleError(ByVal ErrMsg As String)
-    ' @brief Affiche un message d'erreur standardis� � l'utilisateur.
-    ' @param ErrMsg Le message d'erreur sp�cifique � afficher.
-    MsgBox "Une erreur est survenue :" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Op�ration impossible"
+    ' @brief Affiche un message d'erreur standardisé à l'utilisateur.
+    ' @param ErrMsg Le message d'erreur spécifique à afficher.
+    MsgBox "Une erreur est survenue :" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Opération impossible"
 End Function
 
  Private Function SanitizeFileName(ByVal fileName As String) As String
      Dim invalidChars As Variant
      Dim i As Long
-     invalidChars = Array("\", "/", ":", "*", "?", Chr(34), "<", ">", "|") ' Caract�res invalides pour les noms de fichiers
+     invalidChars = Array("\", "/", ":", "*", "?", Chr(34), "<", ">", "|") ' Caractères invalides pour les noms de fichiers
      SanitizeFileName = fileName
      For i = LBound(invalidChars) To UBound(invalidChars)
          SanitizeFileName = Replace(SanitizeFileName, invalidChars(i), "_")
@@ -246,10 +246,10 @@ End Function
  End Function
 
 
-' @Description("Exporte le graphique Excel s�lectionn� sous forme de fichier image.")
-' @Param(Optional imagePath As String, "Le chemin complet et le nom du fichier image (ex: 'C:\MonDossier\MonGraphique.png'). Si omis, une bo�te de dialogue 'Enregistrer sous' s'affiche.")
-' @Param(Optional imageFilterIndex As Long, "L'index du filtre de fichier pour la bo�te de dialogue (1: PNG, 2: JPG, 3: GIF, 4: BMP). Par d�faut 1 (PNG).")
-' @Returns(Boolean, "True si l'exportation a r�ussi, False sinon.")
+' @Description("Exporte le graphique Excel sélectionné sous forme de fichier image.")
+' @Param(Optional imagePath As String, "Le chemin complet et le nom du fichier image (ex: 'C:\MonDossier\MonGraphique.png'). Si omis, une boîte de dialogue 'Enregistrer sous' s'affiche.")
+' @Param(Optional imageFilterIndex As Long, "L'index du filtre de fichier pour la boîte de dialogue (1: PNG, 2: JPG, 3: GIF, 4: BMP). Par défaut 1 (PNG).")
+' @Returns(Boolean, "True si l'exportation a réussi, False sinon.")
 Public Function Export_ChartAsImage(Optional ByVal imagePath As String = "", Optional ByVal imageFilterIndex As Long = 1) As Boolean
     On Error GoTo ErrHandler
     
@@ -257,49 +257,49 @@ Public Function Export_ChartAsImage(Optional ByVal imagePath As String = "", Opt
     Dim defaultFileName As String
     Dim fileExtension As String
     Dim filters As String
-    Dim selectedFile As Variant ' Pour la bo�te de dialogue SaveAs
+    Dim selectedFile As Variant ' Pour la boîte de dialogue SaveAs
     
-    Export_ChartAsImage = False ' Initialiser le r�sultat � False
+    Export_ChartAsImage = False ' Initialiser le résultat à False
     
-    ' 1. Obtenir le graphique s�lectionn�
-    Set srcChart = GetSelectedChart() ' Assumes GetSelectedChart() est une fonction existante qui retourne le Chart s�lectionn�
+    ' 1. Obtenir le graphique sélectionné
+    Set srcChart = GetSelectedChart() ' Assumes GetSelectedChart() est une fonction existante qui retourne le Chart sélectionné
     If srcChart Is Nothing Then
-        ' Le message d'erreur est g�r� par GetSelectedChart()
+        ' Le message d'erreur est géré par GetSelectedChart()
         Exit Function
     End If
     
-    Debug.Print "D�but de l'exportation du graphique '" & srcChart.name & "'."
+    Debug.Print "Début de l'exportation du graphique '" & srcChart.name & "'."
     
-    ' 2. D�terminer le chemin et le nom du fichier de sortie
+    ' 2. Déterminer le chemin et le nom du fichier de sortie
     If imagePath = "" Then
-        ' Construire les filtres pour la bo�te de dialogue "Enregistrer sous"
+        ' Construire les filtres pour la boîte de dialogue "Enregistrer sous"
         filters = "Fichier PNG (*.png),*.png," & _
                   "Fichier JPEG (*.jpg),*.jpg," & _
                   "Fichier GIF (*.gif),*.gif," & _
                   "Fichier BMP (*.bmp),*.bmp"
                   
-        ' Nom de fichier par d�faut bas� sur le nom du graphique
+        ' Nom de fichier par défaut basé sur le nom du graphique
         defaultFileName = Environ("USERPROFILE") & "\Desktop\" & SanitizeFileName(srcChart.name) & ".png"
         
-        ' Afficher la bo�te de dialogue "Enregistrer sous"
+        ' Afficher la boîte de dialogue "Enregistrer sous"
         With Application.FileDialog(msoFileDialogSaveAs)
             .InitialFileName = defaultFileName
             .title = "Enregistrer le graphique sous..."
             .filters.Clear
             .filters.Add "Images", filters, 1 ' Ajoute tous les filtres en une fois
-            .FilterIndex = imageFilterIndex ' S�lectionne le filtre par d�faut
+            .FilterIndex = imageFilterIndex ' Sélectionne le filtre par défaut
             
-            If .Show = -1 Then ' L'utilisateur a cliqu� sur "Enregistrer"
+            If .Show = -1 Then ' L'utilisateur a cliqué sur "Enregistrer"
                 selectedFile = .SelectedItems(1)
-            Else ' L'utilisateur a cliqu� sur "Annuler"
-                Debug.Print "Exportation annul�e par l'utilisateur."
+            Else ' L'utilisateur a cliqué sur "Annuler"
+                Debug.Print "Exportation annulée par l'utilisateur."
                 Exit Function
             End If
         End With
         imagePath = selectedFile
     End If
     
-    ' S'assurer que le chemin a une extension correcte (si l'utilisateur a tap� manuellement ou si imagePath est pass� en param�tre)
+    ' S'assurer que le chemin a une extension correcte (si l'utilisateur a tapé manuellement ou si imagePath est passé en paramètre)
     If InStr(imagePath, ".") = 0 Then ' Pas d'extension
         Select Case imageFilterIndex
             Case 1: fileExtension = ".png"
@@ -309,69 +309,69 @@ Public Function Export_ChartAsImage(Optional ByVal imagePath As String = "", Opt
             Case Else: fileExtension = ".png" ' Fallback
         End Select
         imagePath = imagePath & fileExtension
-        Debug.Print "Extension ajout�e: " & imagePath ' Datalogging
+        Debug.Print "Extension ajoutée: " & imagePath ' Datalogging
     End If
     
     ' 3. Exporter le graphique
-    ' Le filtre de fichier est un num�ro d'�num�ration XlChartPictureType
+    ' Le filtre de fichier est un numéro d'énumération XlChartPictureType
     Dim picType As XlChartPictureType
-    Select Case LCase(Right(imagePath, 3)) ' V�rifie les 3 derniers caract�res de l'extension
+    Select Case LCase(Right(imagePath, 3)) ' Vérifie les 3 derniers caractères de l'extension
         Case "png": picType = xlPNG
         Case "jpg": picType = xlJPEG
         Case "gif": picType = xlGIF
         Case "bmp": picType = xlBitmap
-        Case Else: picType = xlPNG ' PNG par d�faut si extension inconnue
+        Case Else: picType = xlPNG ' PNG par défaut si extension inconnue
     End Select
     
     srcChart.Export fileName:=imagePath, FilterName:=picType
     
-    Debug.Print "Graphique export� avec succ�s vers : " & imagePath ' Datalogging
-    Export_ChartAsImage = True ' Succ�s
+    Debug.Print "Graphique exporté avec succès vers : " & imagePath ' Datalogging
+    Export_ChartAsImage = True ' Succès
     Exit Function
 
 ErrHandler:
     Call HandleError("Erreur lors de l'exportation du graphique en image: " & err.Description & " (Code: " & err.Number & ")")
-    Debug.Print "Erreur Export_ChartAsImage: " & err.Description & " (Code: " & err.Number & ")" ' Datalogging d�taill�
+    Debug.Print "Erreur Export_ChartAsImage: " & err.Description & " (Code: " & err.Number & ")" ' Datalogging détaillé
 End Function
 
 Public Function Plot_RangeWithFormatting(data_src As Range, Optional ChartName As String = "", Optional nbSeriesByGroup As Integer = 0, Optional ColorStyle As String = "DefautStyle", Optional FormattingOptions As String = "") As Chart
-    '* @brief Cr�e et formate un graphique � partir d'une plage de donn�es.
+    '* @brief Crée et formate un graphique à partir d'une plage de données.
     '* @details Cette fonction est une combinaison de Plot_Range et ChartFormatting.
-    '           Elle cr�e un nouveau graphique � partir des donn�es sp�cifi�es,
+    '           Elle crée un nouveau graphique à partir des données spécifiées,
     '           puis applique directement les options de formatage fournies.
-    '* @param data_src La plage de donn�es source pour le graphique.
-    '* @param ChartName (Optionnel) Nom du graphique � cr�er. Si vide, un nom est g�n�r� automatiquement.
-    '* @param nbSeriesByGroup (Optionnel) Nombre de s�ries par groupe pour la coloration. Par d�faut � 1.
-    '* @param ColorStyle (Optionnel) Style de couleur � appliquer aux s�ries. Par d�faut � "DefautStyle".
-    '* @param FormattingOptions (Optionnel) Cha�ne de texte contenant les options de formatage (ex: "Title=MonTitre;XTitle=AxeX").
-    '* @return L'objet Chart cr�� et format�, ou Nothing en cas d'�chec.
+    '* @param data_src La plage de données source pour le graphique.
+    '* @param ChartName (Optionnel) Nom du graphique à créer. Si vide, un nom est généré automatiquement.
+    '* @param nbSeriesByGroup (Optionnel) Nombre de séries par groupe pour la coloration. Par défaut à 1.
+    '* @param ColorStyle (Optionnel) Style de couleur à appliquer aux séries. Par défaut à "DefautStyle".
+    '* @param FormattingOptions (Optionnel) Chaîne de texte contenant les options de formatage (ex: "Title=MonTitre;XTitle=AxeX").
+    '* @return L'objet Chart créé et formaté, ou Nothing en cas d'échec.
     On Error GoTo ErrHandler
 
     Dim myChart As Chart
-    Dim defaultFormatting As String ' Pour stocker les options par d�faut g�n�r�es par Plot_Range
+    Dim defaultFormatting As String ' Pour stocker les options par défaut générées par Plot_Range
 
-    ' Appel � Plot_Range pour cr�er le graphique initial
-    ' Plot_Range va d�j� g�n�rer certaines options de formatage basiques.
-    ' Il est crucial que Plot_Range accepte et construise sur les FormattingOptions pass�es
+    ' Appel à Plot_Range pour créer le graphique initial
+    ' Plot_Range va déjà générer certaines options de formatage basiques.
+    ' Il est crucial que Plot_Range accepte et construise sur les FormattingOptions passées
     ' ou que nous fusionnions les options ici.
-    ' Si Plot_Range construit d�j� la cha�ne FormattingOptions avec un titre, etc.,
-    ' il faut s'assurer que notre FormattingOptions ici le compl�te ou le surcharge.
+    ' Si Plot_Range construit déjà la chaîne FormattingOptions avec un titre, etc.,
+    ' il faut s'assurer que notre FormattingOptions ici le complète ou le surcharge.
 
-    ' M�thode 1: Plot_Range s'occupe de la g�n�ration du nom et des options de base,
+    ' Méthode 1: Plot_Range s'occupe de la génération du nom et des options de base,
     ' et nous ajoutons ou surchargeons avec FormattingOptions ensuite.
     Set myChart = Plot_Range(data_src, ChartName, nbSeriesByGroup, ColorStyle)
 
     If myChart Is Nothing Then
-        Call HandleError("�chec de la cr�ation du graphique initial � partir de la plage de donn�es.")
+        Call HandleError("Échec de la création du graphique initial à partir de la plage de données.")
         Set Plot_RangeWithFormatting = Nothing
         Exit Function
     End If
 
-    ' Assurez-vous que ChartFormatting est robuste face � des options vides ou manquantes
+    ' Assurez-vous que ChartFormatting est robuste face à des options vides ou manquantes
     If Not ChartFormatting(myChart, FormattingOptions) Then
-        Call HandleError("�chec de l'application du formatage au graphique.")
-        ' Consid�rer si le graphique doit �tre supprim� ici ou si l'utilisateur g�re l'�chec.
-        ' Pour la robustesse, on le laisse mais on signale l'�chec.
+        Call HandleError("Échec de l'application du formatage au graphique.")
+        ' Considérer si le graphique doit être supprimé ici ou si l'utilisateur gère l'échec.
+        ' Pour la robustesse, on le laisse mais on signale l'échec.
         Set Plot_RangeWithFormatting = Nothing
         Exit Function
     End If
@@ -386,20 +386,20 @@ End Function
 
 
 Private Function GetSelectedChart() As Chart
-    ' @brief Tente de r�cup�rer le graphique actif.
-    ' @return Un objet Chart si un graphique est s�lectionn� et actif, sinon Nothing.
+    ' @brief Tente de récupérer le graphique actif.
+    ' @return Un objet Chart si un graphique est sélectionné et actif, sinon Nothing.
     On Error GoTo ErrHandle
 
     If Not ActiveChart Is Nothing Then
         Set GetSelectedChart = ActiveChart
     Else
-        Call HandleError("Vous devez s�lectionner un graphique pour effectuer cette op�ration.")
-        Set GetSelectedChart = Nothing ' S'assure de retourner Nothing en cas d'absence de s�lection
+        Call HandleError("Vous devez sélectionner un graphique pour effectuer cette opération.")
+        Set GetSelectedChart = Nothing ' S'assure de retourner Nothing en cas d'absence de sélection
     End If
     Exit Function
 
 ErrHandle:
-    Call HandleError("Erreur lors de la r�cup�ration du graphique s�lectionn�.")
+    Call HandleError("Erreur lors de la récupération du graphique sélectionné.")
     Set GetSelectedChart = Nothing
 End Function
 
@@ -407,8 +407,8 @@ End Function
 Public Function Plot_Range(data_src As Range, Optional ChartName As String = "", Optional nbSeriesByGroup As Integer = -1, Optional ColorStyle As String = "DefautStyle", Optional FormattingOptions As String = "") As Chart
     Dim myChart         As Chart
     
-    If ChartName = "" Then ChartName = LANG_MOD.Clear_SubChar(data_src.parent.name, "_-. ")
-    FormattingOptions = "Title=" & ChartName & ";XTitle=" & data_src.Cells(1, 1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0" & FormatingOptions
+    If ChartName = "" Then ChartName = FalLang.Clear_SubChar(data_src.parent.name, "_-. ")
+    FormattingOptions = "Title=" & ChartName & ";XTitle=" & data_src.Cells(1, 1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0" & FormattingOptions
 
     Set myChart = Chart_Create(ChartName, data_src.parent.parent)
     Chart_AddSeries_from_range myChart, data_src
@@ -424,8 +424,8 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
     Dim plot_Src(3)     As String
     Dim plot_Options(3) As String
     Dim aLabel()        As String       ' Noms des colonnes.
-    Dim LastCol_Index   As Long         ' Derni�re Colonne de donn�es.
-    Dim LastLineTbl()   As Long         ' Derni�re Ligne de donn�es.
+    Dim LastCol_Index   As Long         ' Dernière Colonne de données.
+    Dim LastLineTbl()   As Long         ' Dernière Ligne de données.
     Dim Chart_Name      As String       ' Nom de la feuille graphique.
     Dim dummy           As Variant
     Dim firstLine       As Long
@@ -433,24 +433,24 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
     Dim chartTitle      As String
     
     Set TopLeftCell = wks_src.Range(DataTopLeftCell)
-    chartTitle = LANG_MOD.Clear_SubString(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
-    chartTitle = LANG_MOD.Resize_String(chartTitle, 31)
+    chartTitle = FalLang.Clear_SubString(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
+    chartTitle = FalLang.Resize_String(chartTitle, 31)
     plot_aColor = ColorPalette(ColorStyle)
 
-    ' Detection du tableau de Donn�es.
-        ' Premi�re et derni�re ligne.
-        LastLine = EXCEL_MOD.find_LastNonEmptyRowInColumn(wks_src, TopLeftCell.column)
+    ' Detection du tableau de Données.
+        ' Première et dernière ligne.
+        LastLine = FalWork.find_LastNonEmptyRowInColumn(wks_src, TopLeftCell.column)
         firstLine = FLine(wks_src.parent.name, wks_src.name, TopLeftCell.column, LastLine)
-'        firstLine = EXCEL_MOD.find_FirstNonEmptyColumnInRowFromCol(wks_src, TopLeftCell.column, LastLine)
-        LastCol_Index = EXCEL_MOD.find_LastNonEmptyColumnInRow(wks_src, firstLine)
-        LastCol_Name = LANG_MOD.col(1 * LastCol_Index)
-        firstcol_name = LANG_MOD.col(1 * TopLeftCell.column)
+'        firstLine = FalWork.find_FirstNonEmptyColumnInRowFromCol(wks_src, TopLeftCell.column, LastLine)
+        LastCol_Index = FalWork.find_LastNonEmptyColumnInRow(wks_src, firstLine)
+        LastCol_Name = FalLang.col(1 * LastCol_Index)
+        firstcol_name = FalLang.col(1 * TopLeftCell.column)
         NbLine = LastLine - firstLine
         NbColumn = LastCol_Index - (TopLeftCell.Cells.column - 1)
         ' LastLine par Colones.
         ReDim LastLineTbl(LastCol_Index)
         For ColIndex = TopLeftCell.column To LastCol_Index
-            LastLineTbl(ColIndex) = EXCEL_MOD.find_LastNonEmptyRowInColumnFromLine(wks_src, TopLeftCell.Row, ColIndex)
+            LastLineTbl(ColIndex) = FalWork.find_LastNonEmptyRowInColumnFromLine(wks_src, TopLeftCell.Row, ColIndex)
         Next
         ' Nom des Colones.
         ReDim aLabel(LastCol_Index)
@@ -462,7 +462,7 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
             aLabel(ColIndex) = wks_src.Cells(firstLine - 1, ColIndex).value
         Next
     ' Identification Automatique du nombre de series.
-    If nbseries < 1 Then nbseries = ArrayX.aXD_count_Occurrence(aLabel, Left(aLabel(2), InStr(aLabel(2), " (") - 1), False, False)
+    If nbseries < 1 Then nbseries = FalArray.aXD_count_Occurrence(aLabel, Left(aLabel(2), InStr(aLabel(2), " (") - 1), False, False)
     
         
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -471,8 +471,8 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
         
     ' [PLOT ALL SERIES]
     Dim myChart As Chart
-    Chart_Name = LANG_MOD.Resize_String(LANG_MOD.Clear_SubChar(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
-    FormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0" & FormatingOptions
+    Chart_Name = FalLang.Resize_String(FalLang.Clear_SubChar(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
+    FormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0" & FormattingOptions
 
     Set myChart = Chart_Create(Chart_Name, wks_src.parent)
     Chart_AddSeries_from_range myChart, wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
@@ -483,36 +483,36 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
     
     
 
-'    Chart_Name = LANG_MOD.Resize_String(LANG_MOD.Clear_SubChar(wks_src.Name, "_-. "), 10) & " - " & sPlot & "(All)"
+'    Chart_Name = FalLang.Resize_String(FalLang.Clear_SubChar(wks_src.Name, "_-. "), 10) & " - " & sPlot & "(All)"
 '    plot_Options(1) = "Title=" & ChartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0"
 '    If nbseries = 1 Then
 '        plot_Src(1) = firstcol_name & firstLine - 1 & ":" & LastCol_Name & LastLineTbl(TopLeftCell.column)
 '        Set myChart = plot(data_src:=wks_src.Range(plot_Src(1)), series:=(LastCol_Index - 1), nbBySeries:=1, plot_Options:=plot_Options(1), plot_aColor:=plot_aColor, chartName:=Chart_Name)
 '    Else
-'        plot_Src(1) = firstcol_name & firstLine - 1 & ":" & LANG_MOD.col(1 * TopLeftCell.column + 1) & LastLineTbl(TopLeftCell.column)
+'        plot_Src(1) = firstcol_name & firstLine - 1 & ":" & FalLang.col(1 * TopLeftCell.column + 1) & LastLineTbl(TopLeftCell.column)
 '        Set myChart = plot(data_src:=wks_src.Range(plot_Src(1)), series:=1, nbBySeries:=1, plot_Options:=plot_Options(1), plot_aColor:=plot_aColor, chartName:=Chart_Name)
-'        ' //////// Ajout de donn�es � un graphique en fct du nbre de series \\\\\\\\
+'        ' //////// Ajout de données à un graphique en fct du nbre de series \\\\\\\\
 '        With wks_src.Parent.Charts(Chart_Name)
-'            ' Ajout des autres series de donn�s.
+'            ' Ajout des autres series de données.
 '            stepCol = TopLeftCell.column + (LastCol_Index / nbseries) - 1
 '            Clr = 0 ' Boucle de table de couleur.
 '            For XCol = 1 To LastCol_Index Step stepCol
-'                Xletter = LANG_MOD.col(1 * XCol)
+'                Xletter = FalLang.col(1 * XCol)
 '                For YCol = (XCol + 1) To (XCol + stepCol - 1)
 '                    If .FullSeriesCollection.count >= 255 Then
-'                        'MsgBox "Attention ! Le graphique contient plus de 256 s�ries." _
-''        '                            & Chr(10) & "(Les s�ries suivantes ne seront pas trac�es.)"
-'                        EXCEL_MOD.DebugPrint "MeasX", "DataTrace", "INFO, desc = max series exceeded"
-'                        EXCEL_MOD.statusBar_Write "Attention ! Le graphique contient plus de 256 s�ries."
+'                        'MsgBox "Attention ! Le graphique contient plus de 256 séries." _
+''        '                            & Chr(10) & "(Les séries suivantes ne seront pas tracées.)"
+'                        FalWork.DebugPrint "MeasX", "DataTrace", "INFO, desc = max series exceeded"
+'                        FalWork.statusBar_Write "Attention ! Le graphique contient plus de 256 séries."
 '                        GoTo toomuchseries
 '                    End If
-'                    If YCol <> 2 Then   ' Premi�re s�rie d�j� �crite.
-'                        Yletter = LANG_MOD.col(1 * YCol)
-'                        ' S�rie de donn�es titre & X & Y.
+'                    If YCol <> 2 Then   ' Première série déjà écrite.
+'                        Yletter = FalLang.col(1 * YCol)
+'                        ' Série de données titre & X & Y.
 '                        XValues = "=" & wks_src.Name & "!$" & Xletter & "$" & firstLine & ":$" & Xletter & "$" & LastLineTbl(YCol)
 '                        YValues = "=" & wks_src.Name & "!$" & Yletter & "$" & firstLine & ":$" & Yletter & "$" & LastLineTbl(YCol)
 '                        XYTitle = "=" & wks_src.Name & "!$" & Yletter & "$" & firstLine - 1
-'                        ' Cr�ation de la s�rie.
+'                        ' Création de la série.
 '                        .SeriesCollection.newSeries     ' Nouvelle serie.
 '                        .FullSeriesCollection(.SeriesCollection.count).Name = XYTitle
 '                        .FullSeriesCollection(.SeriesCollection.count).XValues = XValues
@@ -543,8 +543,8 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
 '            Set Chart_tmp = ActiveChart
 '            If InStr(aLabel(Ynum + 1), " (") > 0 Then serieName = Left(aLabel(Ynum + 1), InStr(aLabel(Ynum + 1), " (") - 1) Else serieName = aLabel(Ynum + 1)
 '            Chart_Name = Replace(Chart_tmp.Name, "(2)", "")
-'            Chart_Name = LANG_MOD.Clear_SubChar(Replace(Chart_Name, "All", serieName), ":\/?*[];")
-'            Chart_Name = LANG_MOD.Resize_String(Chart_Name, 31)
+'            Chart_Name = FalLang.Clear_SubChar(Replace(Chart_Name, "All", serieName), ":\/?*[];")
+'            Chart_Name = FalLang.Resize_String(Chart_Name, 31)
 '            Chart_tmp.Name = Chart_Name
 '            If Chart_tmp.Axes(xlValue, xlPrimary).HasTitle Then Chart_tmp.Axes(xlValue, xlPrimary).AxisTitle.Characters.text = serieName
 '            FalPlot.delete_UnMatchingSeries Chart_tmp, serieName, False
@@ -552,40 +552,40 @@ Public Function DataTrace(wks_src As Worksheet, Optional DataTopLeftCell As Stri
 '    End If
         
 
-    ' Trac� par s�rie.
+    ' Tracé par série.
         If nbseries > 0 And plotSeries Then
-            ' feuilles de graphique en fonction du nombre de s�ries.
+            ' feuilles de graphique en fonction du nombre de séries.
             stepCol = TopLeftCell.column + (LastCol_Index / nbseries) - 1
             YbyMes = stepCol - 1
             If YbyMes > 1 Then
                 For Ynum = 1 To YbyMes
                     ' wks_src.range().value
                     outputname = wks_src.Cells(firstLine - 1, TopLeftCell.column + Ynum).value
-                    Chart_Name = LANG_MOD.Resize_String(LANG_MOD.Clear_SubChar(wks_src.name, "_-. "), 10) & " - " & serieName & "(" & Trim(Left(outputname, InStr(outputname, " (") - 1)) & ")"
+                    Chart_Name = FalLang.Resize_String(FalLang.Clear_SubChar(wks_src.name, "_-. "), 10) & " - " & serieName & "(" & Trim(Left(outputname, InStr(outputname, " (") - 1)) & ")"
                     plot_Options(1) = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=" & Trim(Left(outputname, InStr(outputname, " (") - 1)) & ";ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0"
-                    plot_Src(1) = firstcol_name & firstLine - 1 & ":" & LANG_MOD.col(1 * TopLeftCell.column + Ynum) & LastLineTbl(TopLeftCell.column)
+                    plot_Src(1) = firstcol_name & firstLine - 1 & ":" & FalLang.col(1 * TopLeftCell.column + Ynum) & LastLineTbl(TopLeftCell.column)
                     Set myChart = plot(data_src:=wks_src.Range(plot_Src(1)), series:=1, nbBySeries:=1, plot_Options:=plot_Options(1), plot_aColor:=plot_aColor, ChartName:=Chart_Name)
                     
                     'IsPloted = plot(wks_src.Parent.Name, 1, 1, wks_src.Name, plot_Src(1), plot_Options(1), plot_aColor, Chart_Name)
-                    ' //////// Ajout de donn�es � un graphique en fct du nbre de series \\\\\\\\
+                    ' //////// Ajout de données à un graphique en fct du nbre de series \\\\\\\\
                     With wks_src.parent.Charts(Chart_Name)
                         Clr = 0 ' Boucle de table de couleur.
                         For XCol = 1 To LastCol_Index Step stepCol
                             If .FullSeriesCollection.count >= 256 Then
-                                'MsgBox "Attention ! Le graphique contient plus de 256 s�ries." _
-'        '                            & Chr(10) & "(Les s�ries suivantes ne seront pas trac�es.)"
-                                EXCEL_MOD.DebugPrint "MeasX", "DataTrace", "INFO, desc = max series exceeded"
-                                EXCEL_MOD.statusBar_Write "Attention ! Le graphique contient plus de 256 s�ries."
+                                'MsgBox "Attention ! Le graphique contient plus de 256 séries." _
+'        '                            & Chr(10) & "(Les séries suivantes ne seront pas tracées.)"
+                                FalWork.DebugPrint "MeasX", "DataTrace", "INFO, desc = max series exceeded"
+                                FalWork.statusBar_Write "Attention ! Le graphique contient plus de 256 séries."
                                 Exit For
                             End If
                             YCol = XCol + Ynum
-                            Xletter = LANG_MOD.col(CInt(XCol))
-                            Yletter = LANG_MOD.col(CInt(YCol))
-                            ' S�rie de donn�es titre & X & Y.
+                            Xletter = FalLang.col(CInt(XCol))
+                            Yletter = FalLang.col(CInt(YCol))
+                            ' Série de données titre & X & Y.
                             XValues = "=" & wks_src.name & "!$" & Xletter & "$" & firstLine & ":$" & Xletter & "$" & LastLineTbl(YCol)
                             YValues = "=" & wks_src.name & "!$" & Yletter & "$" & firstLine & ":$" & Yletter & "$" & LastLineTbl(YCol)
                             XYTitle = "=" & wks_src.name & "!$" & Yletter & "$" & firstLine - 1
-                            ' Cr�ation de la s�rie.
+                            ' Création de la série.
                             .SeriesCollection.newSeries
                             .SeriesCollection(.FullSeriesCollection.count).name = XYTitle
                             .SeriesCollection(.FullSeriesCollection.count).XValues = XValues
@@ -1086,9 +1086,9 @@ End Function
 
 Public Function Chart_Create(ChartName As String, wbk As Workbook, Optional rangeData As Variant) As Chart
     ' Creation du graphique.
-    ChartName = LANG_MOD.Clear_SubChar(ChartName, ":\/?*[];")
-    ChartName = LANG_MOD.Resize_String(ChartName, 31)
-    If EXCEL_MOD.Chart_IsInWorkbook(wbk, ChartName) Then wbk.Charts(ChartName).Delete
+    ChartName = FalLang.Clear_SubChar(ChartName, ":\/?*[];")
+    ChartName = FalLang.Resize_String(ChartName, 31)
+    If FalWork.Chart_IsInWorkbook(wbk, ChartName) Then wbk.Charts(ChartName).Delete
     
     
     Dim newChartSheet As Chart
@@ -1270,8 +1270,8 @@ Public Function plot(data_src As Range, series As Integer, nbBySeries As Integer
     Set wbk = data_src.parent.parent
     Set wks = data_src.parent
 
-    ChartName = LANG_MOD.Clear_SubChar(ChartName, ":\/?*[];")
-    ChartName = LANG_MOD.Resize_String(ChartName, 31)
+    ChartName = FalLang.Clear_SubChar(ChartName, ":\/?*[];")
+    ChartName = FalLang.Resize_String(ChartName, 31)
     ChartType = xlXYScatterLinesNoMarkers
     PlotBy = xlColumns
     YScaleType = xlLinear
@@ -1309,7 +1309,7 @@ Public Function plot(data_src As Range, series As Integer, nbBySeries As Integer
 SkipPlotConfiguration:
 
     ' Creation du graphique.
-    If EXCEL_MOD.Chart_IsInWorkbook(wbk, ChartName) Then wbk.Charts(ChartName).Delete
+    If FalWork.Chart_IsInWorkbook(wbk, ChartName) Then wbk.Charts(ChartName).Delete
     Dim newChartSheet   As Chart
     Set newChartSheet = wbk.Charts.Add
 
@@ -1403,7 +1403,7 @@ Public Function Chart_YAbsolute(myChart As Chart) As Boolean
     '* @return Boolean indicating the success of the function.
     Dim cSerie          As Variant
     For Each cSerie In myChart.FullSeriesCollection
-        cSerie.values = ArrayX.a1D_math_Abs(cSerie.values)
+        cSerie.values = FalArray.a1D_math_Abs(cSerie.values)
     Next
     Chart_YAbsolute = True
 End Function
@@ -1414,7 +1414,7 @@ Public Function Chart_XAbsolute(myChart As Chart) As Boolean
     '* @return Boolean indicating the success of the function.
     Dim cSerie          As Variant
     For Each cSerie In myChart.FullSeriesCollection
-        cSerie.XValues = ArrayX.a1D_math_Abs(cSerie.XValues)
+        cSerie.XValues = FalArray.a1D_math_Abs(cSerie.XValues)
     Next
     Chart_XAbsolute = True
 End Function
@@ -1444,11 +1444,11 @@ Public Function Chart_Derivate(myChart As Chart, Optional XSample As Long = 3) A
     
     With myChart
         For Each cSerie In .FullSeriesCollection
-            a2D_X = ArrayX.a1D_To_Columna2D(cSerie.XValues)
-            a2D_Y = ArrayX.a1D_To_Columna2D(cSerie.values)
-            a2D_XY = ArrayX.a2D_Merge_ByColumn(a2D_X, a2D_Y)
-            a2D_dY = ArrayX.a2D_math_Derivate(a2D_XY, XSample, 2)
-            a1D_dY = ArrayX.a2D_to_a1D_Column(a2D_dY, 2)
+            a2D_X = FalArray.a1D_To_Columna2D(cSerie.XValues)
+            a2D_Y = FalArray.a1D_To_Columna2D(cSerie.values)
+            a2D_XY = FalArray.a2D_Merge_ByColumn(a2D_X, a2D_Y)
+            a2D_dY = FalArray.a2D_math_Derivate(a2D_XY, XSample, 2)
+            a1D_dY = FalArray.a2D_to_a1D_Column(a2D_dY, 2)
             cSerie.values = a1D_dY
             cSerie.name = "d" & cSerie.name
         Next
@@ -1512,7 +1512,7 @@ Public Function SmithChart_Formatting(myChart As Chart, Optional AddBackGround A
         Next
         If AddBackGround Then
             picturePath = spreadsheet_MeasX.parent.path & "\SmithChart_BackGround.png"
-            If FileX.FileExist(picturePath) Then
+            If FalFile.FileExist(picturePath) Then
                 .PlotArea.format.Fill.Visible = msoTrue
                 .PlotArea.format.Fill.UserPicture picturePath
                 .PlotArea.format.Fill.TextureTile = msoFalse
@@ -1662,8 +1662,3 @@ Public Function ColorPalette(Optional Style As String = "DefautStyle") As Varian
         Case Else: ColorPalette = Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56)
     End Select
 End Function
-
-
-
-
-

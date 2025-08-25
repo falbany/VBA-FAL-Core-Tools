@@ -1,0 +1,19 @@
+# VBA/Excel specific
+*.xls
+*.xlsm
+*.xla
+*.xlam
+*.xlt
+*.xltm
+*.frx
+*.log
+
+# Office Temp Files
+~$*.*
+
+# Build artifacts
+/build/
+/dist/
+
+# VSCode
+.vscode/
