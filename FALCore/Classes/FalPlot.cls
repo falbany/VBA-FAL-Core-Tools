@@ -1693,11 +1693,18 @@ ErrHandler:
     AddErrorBars = False
 End Function
 
-Private Function CreateChartFromRange(ByVal data As Range, ByVal chartType As XlChartType, ByVal chartName As String) As Boolean
+Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartType As XlChartType = xlXYScatter, Optional ByVal chartName As String = "") As Boolean
     On Error GoTo ifError
 
+    Dim tempName As String
+    If chartName = "" Then
+        tempName = "Chart_" & data.Parent.Name
+    Else
+        tempName = chartName
+    End If
+
     ' Use the existing CreateChart helper to create the chart sheet
-    Set m_Chart = Me.CreateChart(chartName, data.Parent.Parent)
+    Set m_Chart = Me.CreateChart(tempName, data.Parent.Parent)
     If m_Chart Is Nothing Then GoTo ifError
 
     ' Set the chart type and source data
@@ -1716,6 +1723,9 @@ Public Function CreateBarChart(ByVal data As Range, Optional ByVal chartName As 
     ' @param chartName (Optional) The name for the new chart.
     ' @param style (Optional) The specific type of bar chart to create. Defaults to xlBarClustered.
     ' @return True if the chart was created successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateBarChart ActiveSheet.Range("A1:B5")
     CreateBarChart = Me.CreateChartFromRange(data, style, chartName)
 End Function
 
@@ -1725,6 +1735,9 @@ Public Function CreatePieChart(ByVal data As Range, Optional ByVal chartName As 
     ' @param chartName (Optional) The name for the new chart.
     ' @param style (Optional) The specific type of pie chart to create. Defaults to xlPie.
     ' @return True if the chart was created successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreatePieChart ActiveSheet.Range("A1:B5")
     CreatePieChart = Me.CreateChartFromRange(data, style, chartName)
 End Function
 
@@ -1734,6 +1747,9 @@ Public Function CreateLineChart(ByVal data As Range, Optional ByVal chartName As
     ' @param chartName (Optional) The name for the new chart.
     ' @param style (Optional) The specific type of line chart to create. Defaults to xlLine.
     ' @return True if the chart was created successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateLineChart ActiveSheet.Range("A1:B5")
     CreateLineChart = Me.CreateChartFromRange(data, style, chartName)
 End Function
 
@@ -1743,6 +1759,9 @@ Public Function CreateAreaChart(ByVal data As Range, Optional ByVal chartName As
     ' @param chartName (Optional) The name for the new chart.
     ' @param style (Optional) The specific type of area chart to create. Defaults to xlArea.
     ' @return True if the chart was created successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateAreaChart ActiveSheet.Range("A1:B5")
     CreateAreaChart = Me.CreateChartFromRange(data, style, chartName)
 End Function
 
@@ -1752,6 +1771,9 @@ Public Function CreateSurfaceChart(ByVal data As Range, Optional ByVal chartName
     ' @param chartName (Optional) The name for the new chart.
     ' @param style (Optional) The specific type of surface chart to create. Defaults to xlSurface.
     ' @return True if the chart was created successfully, False otherwise.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateSurfaceChart ActiveSheet.Range("A1:C10")
     CreateSurfaceChart = Me.CreateChartFromRange(data, style, chartName)
 End Function
 
