@@ -1786,21 +1786,29 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
     Dim finalName As String
     Dim counter As Long
     Dim ch As Chart
+    Dim ws As Worksheet
 
     ' Sanitize original name
     tempName = Me.prvRemoveChars(ChartName, ":\/?*[];")
     finalName = Me.prvResizeString(tempName, 31)
     counter = 1
 
-    ' Loop to find a unique name
+    ' Loop to find a unique name across both charts and worksheets
     Do
-        Set ch = Nothing ' Reset chart object
+        ' Check for chart with this name
+        Set ch = Nothing
         On Error Resume Next
         Set ch = wbk.Charts(finalName)
         On Error GoTo 0
 
-        If ch Is Nothing Then
-            ' Name is unique, exit loop
+        ' Check for worksheet with this name
+        Set ws = Nothing
+        On Error Resume Next
+        Set ws = wbk.Worksheets(finalName)
+        On Error GoTo 0
+
+        If ch Is Nothing And ws Is Nothing Then
+            ' Name is unique
             Exit Do
         Else
             ' Name exists, generate a new one
