@@ -1,4 +1,4 @@
-Attribute VB_Name = "FalPlot"
+Attribute VB_Name = "Plot"
 ' Module: FalPlot
 ' Author: Florent ALBANY
 ' Date: 2025-08-25
