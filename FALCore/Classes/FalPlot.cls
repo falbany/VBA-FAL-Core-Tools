@@ -914,7 +914,11 @@ Private Function HandleError(ByVal ErrMsg As String)
     MsgBox "An error occurred:" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Operation impossible"
 End Function
 
-Private Function GetSelectedChart() As Chart
+Public Function GetSelectedChart() As Chart
+    ' @brief Returns the currently selected chart in the application.
+    ' @details This is a helper function to get a reference to the active chart.
+    '          It is not tied to the class instance's m_Chart property.
+    ' @return A Chart object if a chart is selected, otherwise Nothing.
     On Error GoTo ErrHandle
 
     If Not ActiveChart Is Nothing Then
@@ -1088,10 +1092,6 @@ Public Function CalculateDerivative(Optional XSample As Long = 3) As Boolean
     CalculateDerivative = True
 End Function
 
-Public Function GetSelectedChart() As Chart
-    ' @brief Returns the selected chart object.
-    Set GetSelectedChart = Me.GetSelectedChart()
-End Function
 
 Public Function FilterSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
     ' @brief Filters series in a chart based on a match condition.
