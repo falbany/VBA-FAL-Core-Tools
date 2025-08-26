@@ -19,6 +19,10 @@ Attribute VB_Exposed = True
 ' to simplify the process of plotting data from ranges or arrays, offering a high
 ' degree of customization for titles, axes, series, and visual styles.
 '
+' It now includes a powerful theming engine, allowing users to save the style of
+' an existing chart and apply it to others, ensuring a consistent and professional
+' look across a project.
+'
 ' The class encapsulates a Chart object and provides an object-oriented interface
 ' to its functionalities.
 '
@@ -93,6 +97,11 @@ Private m_X2Max As Variant
 Private m_SquarePlot As Boolean
 Private m_CrossesAt As Double
 Private m_PlotBy As XlRowCol
+
+'--- Theme Engine Members
+Private m_ThemeName As String
+Private m_ThemeColors As Variant ' Array for theme colors
+Private m_ThemeFonts As Variant ' Dictionary or custom type for font settings
 
 '--- Public Properties ---
 
@@ -668,6 +677,42 @@ Public Property Let PlotBy(ByVal value As XlRowCol)
 End Property
 
 '--- Private Methods ---
+
+Private Function LoadTheme(ByVal themeName As String) As String
+    ' @brief Loads theme settings from a .theme file.
+    ' @param themeName The name of the theme to load.
+    ' @return A string containing the theme settings, or an empty string on failure.
+    On Error GoTo ErrHandler
+
+    Dim themeFolderPath As String
+    Dim themeFilePath As String
+    Dim themeSettings As String
+
+    ' Define file path
+    If ThisWorkbook.Path <> "" Then
+        themeFolderPath = FalFile.Combine_Paths(ThisWorkbook.Path, "FALCore/Themes")
+    Else
+        Me.HandleError "Please save the workbook before loading a theme."
+        LoadTheme = ""
+        Exit Function
+    End If
+
+    themeFilePath = FalFile.Combine_Paths(themeFolderPath, themeName & ".theme")
+
+    If FalFile.FileExist(themeFilePath) Then
+        themeSettings = FalFile.ReadFile(themeFilePath)
+        LoadTheme = themeSettings
+    Else
+        Me.HandleError "Theme file not found: " & themeFilePath
+        LoadTheme = ""
+    End If
+
+    Exit Function
+
+ErrHandler:
+    Me.HandleError "An unexpected error occurred in LoadTheme: " & Err.Description
+    LoadTheme = ""
+End Function
 
 Private Sub Class_Initialize()
     ' @brief Initializes the class with default property values.
@@ -1247,6 +1292,155 @@ Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional 
 ErrHandler:
     Me.HandleError "Error while coloring series: " & Err.Description
     ColorSeries = False
+End Function
+
+Public Function SaveThemeFromChart(ByVal themeName As String) As Boolean
+    ' @brief Extracts the current chart's formatting and saves it as a theme file.
+    ' @param themeName The name to give the new theme (e.g., "MyCustomTheme").
+    ' @return True if the theme was saved successfully, False otherwise.
+    ' @dependencies FalFile.bas
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then
+        Me.HandleError "No chart is currently set. Cannot save theme."
+        SaveThemeFromChart = False
+        Exit Function
+    End If
+
+    Dim themeSettings As String
+    Dim themeFolderPath As String
+    Dim themeFilePath As String
+
+    ' Build the theme string from the current chart's properties
+    With m_Chart
+        themeSettings = "ChartType=" & .ChartType & ";"
+
+        ' Titles and Fonts
+        If .HasTitle Then
+            themeSettings = themeSettings & "HasTitle=True;"
+            themeSettings = themeSettings & "ChartTitle=" & .chartTitle.Text & ";"
+            themeSettings = themeSettings & "TitleFontSize=" & .chartTitle.Font.Size & ";"
+            themeSettings = themeSettings & "FontName=" & .chartTitle.Font.Name & ";" ' Use title font as main font
+        Else
+            themeSettings = themeSettings & "HasTitle=False;"
+        End If
+
+        ' Axes
+        ' Primary X-Axis
+        With .Axes(xlCategory, xlPrimary)
+            themeSettings = themeSettings & "X1ShowAxis=" & IIf(.Format.Line.Visible = msoTrue, "True", "False") & ";"
+            themeSettings = themeSettings & "X1ShowGridLines=" & .HasMajorGridlines & ";"
+            If .HasTitle Then
+                themeSettings = themeSettings & "X1HasTitle=True;"
+                themeSettings = themeSettings & "X1Title=" & .AxisTitle.Text & ";"
+                themeSettings = themeSettings & "XAxisTitleFontSize=" & .AxisTitle.Font.Size & ";"
+            Else
+                themeSettings = themeSettings & "X1HasTitle=False;"
+            End If
+            themeSettings = themeSettings & "XAxisTicksFontSize=" & .TickLabels.Font.Size & ";"
+            themeSettings = themeSettings & "X1LabelNumberFormat=" & .TickLabels.NumberFormat & ";"
+        End With
+
+        ' Primary Y-Axis
+        With .Axes(xlValue, xlPrimary)
+            themeSettings = themeSettings & "Y1ShowAxis=" & IIf(.Format.Line.Visible = msoTrue, "True", "False") & ";"
+            themeSettings = themeSettings & "Y1ShowGridLines=" & .HasMajorGridlines & ";"
+            If .HasTitle Then
+                themeSettings = themeSettings & "Y1HasTitle=True;"
+                themeSettings = themeSettings & "Y1Title=" & .AxisTitle.Text & ";"
+                themeSettings = themeSettings & "YAxisTitleFontSize=" & .AxisTitle.Font.Size & ";"
+            Else
+                themeSettings = themeSettings & "Y1HasTitle=False;"
+            End If
+            themeSettings = themeSettings & "YAxisTicksFontSize=" & .TickLabels.Font.Size & ";"
+            themeSettings = themeSettings & "Y1LabelNumberFormat=" & .TickLabels.NumberFormat & ";"
+        End With
+
+        ' Legend
+        If .HasLegend Then
+            themeSettings = themeSettings & "HasLegend=True;"
+            themeSettings = themeSettings & "LegendPosition=" & .Legend.Position & ";"
+            themeSettings = themeSettings & "LegendFontSize=" & .Legend.Font.Size & ";"
+            themeSettings = themeSettings & "LegendInLayout=" & .Legend.IncludeInLayout & ";"
+        Else
+            themeSettings = themeSettings & "HasLegend=False;"
+        End If
+
+        ' Plot Area
+        themeSettings = themeSettings & "PlotAreaLineWeight=" & .PlotArea.Format.Line.Weight & ";"
+
+        ' Series formatting (taking the first series as representative)
+        If .SeriesCollection.Count > 0 Then
+            Dim ser As series
+            Set ser = .SeriesCollection(1)
+            themeSettings = themeSettings & "SeriesLineWeight=" & ser.Format.Line.Weight & ";"
+            themeSettings = themeSettings & "SeriesLineDashStyle=" & ser.Format.Line.DashStyle & ";"
+            themeSettings = themeSettings & "SeriesMarkerStyle=" & ser.MarkerStyle & ";"
+        End If
+    End With
+
+    ' Define file path. Themes are stored relative to the workbook.
+    If ThisWorkbook.Path <> "" Then
+        themeFolderPath = FalFile.Combine_Paths(ThisWorkbook.Path, "FALCore/Themes")
+    Else
+        ' Fallback if workbook is not saved (e.g., new file)
+        Me.HandleError "Please save the workbook before saving a theme."
+        SaveThemeFromChart = False
+        Exit Function
+    End If
+
+    themeFilePath = FalFile.Combine_Paths(themeFolderPath, themeName & ".theme")
+
+    ' Save the theme file
+    If FalFile.SaveStringToFile(themeSettings, themeFilePath) Then
+        SaveThemeFromChart = True
+    Else
+        Me.HandleError "Failed to save the theme file to: " & themeFilePath
+        SaveThemeFromChart = False
+    End If
+
+    Exit Function
+
+ErrHandler:
+    Me.HandleError "An unexpected error occurred in SaveThemeFromChart: " & Err.Description
+    SaveThemeFromChart = False
+End Function
+
+Public Function ApplyTheme(ByVal themeName As String) As Boolean
+    ' @brief Loads a theme from a file and applies it to the current chart.
+    ' @param themeName The name of the theme to apply.
+    ' @return True if the theme was applied successfully, False otherwise.
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then
+        Me.HandleError "No chart is currently set. Cannot apply theme."
+        ApplyTheme = False
+        Exit Function
+    End If
+
+    Dim themeSettings As String
+    themeSettings = Me.LoadTheme(themeName)
+
+    If themeSettings <> "" Then
+        ' Apply the theme settings
+        If Me.ApplyFormattingFromString(themeSettings) Then
+            ' Store the theme name
+            m_ThemeName = themeName
+            ApplyTheme = True
+        Else
+            Me.HandleError "Failed to apply the theme '" & themeName & "'."
+            ApplyTheme = False
+        End If
+    Else
+        ' LoadTheme already handled the error message
+        ApplyTheme = False
+    End If
+
+    Exit Function
+
+ErrHandler:
+    Me.HandleError "An unexpected error occurred in ApplyTheme: " & Err.Description
+    ApplyTheme = False
 End Function
 
 Public Function ApplyFormattingFromString(Optional FormattingOptions As Variant) As Boolean
