@@ -1444,10 +1444,11 @@ ErrHandler:
 End Function
 
 Public Function ApplyFormattingFromString(Optional FormattingOptions As Variant) As Boolean
-    ' @brief Applies a multitude of formatting options to the chart object.
-    ' @details This is the main formatting engine. It uses the class properties as defaults,
-    '          but allows them to be overridden by a semicolon-delimited string of options.
-    ' @param FormattingOptions (Optional) A string of key-value pairs (e.g., "Title=MyTitle;XTitle=X-Axis").
+    ' @brief Applies a multitude of formatting options to the chart object from a string.
+    ' @details This is the main formatting engine for the class. It uses the class's internal properties as a baseline for the chart's style.
+    '          These properties can be individually overridden by providing a semicolon-delimited string of key-value pairs in the `FormattingOptions` parameter.
+    '          This method is called by many other chart creation and formatting methods in the class.
+    ' @param FormattingOptions (Optional) A string of key-value pairs (e.g., "Title=MyTitle;XTitle=X-Axis;TitleFontSize=16").
     ' @return True if formatting was successful, False otherwise.
     On Error GoTo ErrHandler
 
@@ -1685,6 +1686,13 @@ ifError:
 End Function
 
 Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal FormattingOptions As String = "") As Boolean
+    ' @brief Creates and formats a chart from a given data range.
+    ' @param data_src The range containing the data. The first column is assumed to be X-values, subsequent columns are Y-values. The first row is assumed to be series names.
+    ' @param ChartName (Optional) The name to be given to the new chart sheet. If omitted, it's derived from the source worksheet's name.
+    ' @param nbSeriesByGroup (Optional) The number of series to group together for coloring purposes.
+    ' @param ColorStyle (Optional) The name of the color palette to use for the series.
+    ' @param FormattingOptions (Optional) A semicolon-delimited string of key-value pairs to override default formatting.
+    ' @return True if the chart was plotted successfully, False otherwise.
     On Error GoTo ifError
 
     Dim tempChartName As String
@@ -1712,6 +1720,14 @@ ifError:
 End Function
 
 Public Function PlotFromRangeWithFormatting(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = 0, Optional ByVal ColorStyle As String = "DefautStyle", Optional ByVal FormattingOptions As String = "") As Boolean
+    ' @brief Creates a chart from a range and applies additional specified formatting.
+    ' @details This is a convenience function that first calls `PlotFromRange` to create a chart with basic formatting, and then applies another layer of formatting from the `FormattingOptions` string.
+    ' @param data_src The source data range.
+    ' @param ChartName (Optional) The name for the new chart.
+    ' @param nbSeriesByGroup (Optional) The number of series to group for coloring.
+    ' @param ColorStyle (Optional) The name of the color palette to use.
+    ' @param FormattingOptions (Optional) A string of key-value pairs for advanced formatting.
+    ' @return True if successful, False otherwise.
     On Error GoTo ifError
 
     If Not Me.PlotFromRange(data_src, ChartName, nbSeriesByGroup, ColorStyle) Then
@@ -1734,7 +1750,16 @@ ifError:
 End Function
 
 Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
-    ' @brief Automatically detects and plots data from a worksheet.
+    ' @brief Automatically detects a data table in a worksheet and creates a chart from it.
+    ' @details This powerful function attempts to find the boundaries of a data table starting from `DataTopLeftCell`, then creates and formats a chart from it.
+    ' @param wks_src The source worksheet containing the data.
+    ' @param DataTopLeftCell (Optional) The top-left cell of the data table (e.g., "A1").
+    ' @param ColorStyle (Optional) The name of the color palette to use.
+    ' @param plotSeries (Optional) This parameter is currently unused.
+    ' @param nbseries (Optional) The number of series to group for coloring. If omitted, it's auto-detected.
+    ' @param sPlot (Optional) A suffix to add to the chart name.
+    ' @param FormattingOptions (Optional) A string for advanced formatting overrides.
+    ' @return True if successful, False otherwise.
     On Error GoTo ifError
 
     Dim aLabel() As String
@@ -1804,6 +1829,12 @@ ifError:
 End Function
 
 Public Function PlotFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Boolean
+    ' @brief Creates and formats a chart from a 2D VBA array.
+    ' @details The function writes the array to a temporary worksheet, creates a chart from that worksheet range, and then deletes the temporary sheet.
+    ' @param Arr2D A 2D array where the first column is X-values and subsequent columns are Y-values. The first row contains series names.
+    ' @param ChartName (Optional) The name for the new chart.
+    ' @param FormattingOptions (Optional) A string for advanced formatting overrides.
+    ' @return True if successful, False otherwise.
     On Error GoTo ifError
 
     Dim tempWb As Workbook
