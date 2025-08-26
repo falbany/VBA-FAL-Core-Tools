@@ -1773,13 +1773,13 @@ Public Function FormatTextSubscripts() As Boolean
     FormatTextSubscripts = True
 End Function
 
-Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal chartType As XlChartType = xlXYScatterLinesNoMarkers, Optional ByVal rangeData As Range) As Boolean
+Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal chartType As XlChartType = xlXYScatterLinesNoMarkers, Optional ByVal rangeData As Range) As Chart
     ' @brief Creates a new chart sheet, assigns it to the class, and formats it using the class's properties.
     ' @param ChartName The name for the new chart sheet.
     ' @param wbk The workbook in which to create the chart.
     ' @param chartType (Optional) The type of chart to create. Defaults to xlXYScatterLinesNoMarkers.
     ' @param rangeData (Optional) The data range to plot.
-    ' @return True if the chart was created and formatted successfully, False otherwise.
+    ' @return The created Chart object, or Nothing on failure.
     On Error GoTo ifError
 
     Dim cleanName As String
@@ -1811,11 +1811,11 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
     ' Apply the class's current formatting properties
     Me.ApplyFormattingFromString
 
-    CreateChart = True
+    Set CreateChart = newChartSheet
     Exit Function
 
 ifError:
-    CreateChart = False
+    Set CreateChart = Nothing
     HandleError "Failed to create chart '" & ChartName & "'. " & Err.Description
 End Function
 
@@ -1840,8 +1840,7 @@ Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName 
     Dim tempFormattingOptions As String
     tempFormattingOptions = "Title=" & tempChartName & ";XTitle=" & data_src.Cells(1, 1).value & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
 
-    Set m_Chart = Me.CreateChart(tempChartName, data_src.Parent.Parent)
-    If m_Chart Is Nothing Then GoTo ifError
+    If Me.CreateChart(tempChartName, data_src.Parent.Parent) Is Nothing Then GoTo ifError
 
     Me.AddSeriesFromRange data_src
     Me.DeleteMatchingSeries data_src.Cells(1, 1).value, False
@@ -1922,8 +1921,7 @@ Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal Dat
     Dim tempFormattingOptions As String
     tempFormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
 
-    Set m_Chart = Me.CreateChart(Chart_Name, wks_src.Parent)
-    If m_Chart Is Nothing Then GoTo ifError
+    If Me.CreateChart(Chart_Name, wks_src.Parent) Is Nothing Then GoTo ifError
 
     Me.AddSeriesFromRange wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
     Me.DeleteMatchingSeries wks_src.Range(firstcol_name & (firstLine - 1)).value, False
@@ -2068,6 +2066,8 @@ Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartT
     On Error GoTo ifError
 
     Dim tempName As String
+    Dim newChart As Chart
+
     If chartName = "" Then
         tempName = "Chart_" & data.Parent.Name
     Else
@@ -2075,7 +2075,8 @@ Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartT
     End If
 
     ' Call the new, powerful CreateChart method, which also handles formatting
-    CreateChartFromRange = Me.CreateChart(tempName, data.Parent.Parent, chartType, data)
+    Set newChart = Me.CreateChart(tempName, data.Parent.Parent, chartType, data)
+    CreateChartFromRange = Not newChart Is Nothing
 
     Exit Function
 ifError:
