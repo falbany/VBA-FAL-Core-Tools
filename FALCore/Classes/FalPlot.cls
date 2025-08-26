@@ -910,9 +910,9 @@ ErrHandler:
     Me.HandleError "Error while exporting chart to image: " & Err.Description
 End Function
 
-Private Function HandleError(ByVal ErrMsg As String)
+Private Sub HandleError(ByVal ErrMsg As String)
     MsgBox "An error occurred:" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Operation impossible"
-End Function
+End Sub
 
 Public Function GetSelectedChart() As Chart
     ' @brief Returns the currently selected chart in the application.
