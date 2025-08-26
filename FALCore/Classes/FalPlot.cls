@@ -1788,8 +1788,8 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
     Dim ch As Chart
 
     ' Sanitize original name
-    tempName = FalLang.RemoveChars(ChartName, ":\/?*[];")
-    finalName = FalLang.ResizeString(tempName, 31)
+    tempName = Me.prvRemoveChars(ChartName, ":\/?*[];")
+    finalName = Me.prvResizeString(tempName, 31)
     counter = 1
 
     ' Loop to find a unique name
@@ -1807,7 +1807,7 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
             counter = counter + 1
             Dim suffix As String
             suffix = " (" & counter & ")"
-            finalName = FalLang.ResizeString(tempName, 31 - Len(suffix)) & suffix
+            finalName = Me.prvResizeString(tempName, 31 - Len(suffix)) & suffix
         End If
     Loop
 
@@ -1853,7 +1853,7 @@ Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName 
 
     Dim tempChartName As String
     If ChartName = "" Then
-        tempChartName = FalLang.RemoveChars(data_src.Parent.name, "_-. ")
+        tempChartName = Me.prvRemoveChars(data_src.Parent.name, "_-. ")
     Else
         tempChartName = ChartName
     End If
@@ -1903,8 +1903,8 @@ Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal Dat
     Dim tmpName As String
 
     Set TopLeftCell = wks_src.Range(DataTopLeftCell)
-    chartTitle = FalLang.RemoveSubstrings(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
-    chartTitle = FalLang.ResizeString(chartTitle, 31)
+    chartTitle = Me.prvRemoveSubstrings(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
+    chartTitle = Me.prvResizeString(chartTitle, 31)
 
     '--- Data Table Detection ---
     Dim LastLine As Long
@@ -1913,8 +1913,8 @@ Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal Dat
 
     LastCol_Index = FalWork.Get_Last_Column(wks_src, firstLine)
     Dim LastCol_Name As String, firstcol_name As String
-    LastCol_Name = FalLang.col(LastCol_Index)
-    firstcol_name = FalLang.col(TopLeftCell.Column)
+    LastCol_Name = Me.prvColumnNumberToLetter(LastCol_Index)
+    firstcol_name = Me.prvColumnNumberToLetter(TopLeftCell.Column)
 
     NbLine = LastLine - firstLine
     NbColumn = LastCol_Index - (TopLeftCell.Column - 1)
@@ -1938,7 +1938,7 @@ Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal Dat
     End If
 
     '--- Plot All Series ---
-    Chart_Name = FalLang.ResizeString(FalLang.RemoveChars(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
+    Chart_Name = Me.prvResizeString(Me.prvRemoveChars(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
     Dim tempFormattingOptions As String
     tempFormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
 
@@ -2173,6 +2173,45 @@ Public Function CreateScatterChart(ByVal data As Range, Optional ByVal chartName
     ' Dim plot As New FalPlot
     ' plot.CreateScatterChart ActiveSheet.Range("A1:B10"), "My Scatter Plot"
     CreateScatterChart = Me.CreateChartFromRange(data, xlXYScatterLinesNoMarkers, chartName)
+End Function
+
+Private Function prvRemoveChars(ByVal text As String, ByVal charsToRemove As String) As String
+    ' @brief Removes specified characters from a string.
+    Dim i As Long
+    prvRemoveChars = text
+    For i = 1 To Len(charsToRemove)
+        prvRemoveChars = Replace(prvRemoveChars, Mid(charsToRemove, i, 1), "")
+    Next i
+End Function
+
+Private Function prvResizeString(ByVal text As String, ByVal maxLength As Long) As String
+    ' @brief Truncates a string to a specified maximum length.
+    If Len(text) > maxLength Then
+        prvResizeString = Left(text, maxLength)
+    Else
+        prvResizeString = text
+    End If
+End Function
+
+Private Function prvRemoveSubstrings(ByVal text As String, ByVal substringsToRemove As String) As String
+    ' @brief Removes specified substrings from a string. Substrings are semicolon-delimited.
+    Dim i As Long
+    Dim subs As Variant
+    prvRemoveSubstrings = text
+    subs = Split(substringsToRemove, ";")
+    For i = LBound(subs) To UBound(subs)
+        prvRemoveSubstrings = Replace(prvRemoveSubstrings, subs(i), "")
+    Next i
+End Function
+
+Private Function prvColumnNumberToLetter(ByVal colIndex As Long) As String
+    ' @brief Converts a column number to its Excel letter representation.
+    Dim s As String
+    Do While colIndex > 0
+        s = Chr$(((colIndex - 1) Mod 26) + 65) & s
+        colIndex = (colIndex - 26) \ 26
+    Loop
+    prvColumnNumberToLetter = s
 End Function
 
 Private Function SanitizeFileName(ByVal fileName As String) As String
