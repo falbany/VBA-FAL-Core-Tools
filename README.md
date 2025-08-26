@@ -1,6 +1,6 @@
 # FALCore VBA Suite
 
-**Version: 1.0.0**  
+**Version: 1.1.0**
 **Author: Florent ALBANY**
 
 ---
@@ -11,27 +11,41 @@ FALCore is a comprehensive library of VBA modules designed to accelerate applica
 
 ## Key Features
 
-- **Modular Design**: The suite is organized into distinct modules, each focusing on a specific area (Files, Worksheets, Arrays, Logging). These modules can be used independently or together.
-- **Robust & Reusable**: Functions are built with error handling and are designed to be easily integrated into any VBA project.
-- **Well-Documented**: All public functions include detailed header comments explaining their purpose, parameters, and usage, making the library easy to learn and use.
-- **Consistent Naming**: The library follows a clear `Fal...` prefix convention for all module names, providing a clean namespace that prevents naming collisions with other libraries or host application functions.
+- **Hybrid Approach**: The library offers both procedural modules and object-oriented classes, providing flexibility for different programming styles.
+- **Modular Design**: The suite is organized into distinct modules and classes, each focusing on a specific area (Files, Worksheets, Arrays, Plotting, etc.).
+- **Robust & Reusable**: Functions and methods are built with error handling and are designed to be easily integrated into any VBA project.
+- **Well-Documented**: All public members include detailed header comments explaining their purpose, parameters, and usage.
+- **Consistent Naming**: The library follows a clear `Fal...` prefix convention, providing a clean namespace.
 
-## Modules Overview
+## Architecture Overview
 
-The FALCore suite is organized into the following modules:
+FALCore is structured into two main components:
 
-- **`FALCore.bas`**: The central "About" module for the suite, containing version information and a general description of the library.
-- **`FalFile.bas`**: A powerful set of utilities for file and folder operations, including reading, writing, copying, moving, sorting, and zipping files.
-- **`FalWork.bas`**: A comprehensive collection of functions for creating, manipulating, and managing Excel Workbooks and Worksheets.
-- **`FalArray.bas`**: An advanced toolkit for creating, manipulating, and querying 1D, 2D, 3D, and 4D arrays. Includes features like JSON conversion, regression analysis, and complex data slicing.
-- **`FalLog.bas`**: A flexible logging utility with configurable debug levels (Error, Warning, Info, Debug) and multiple output destinations (Immediate Window, Text File).
+- **`/FALCore/Classes`**: Contains powerful, object-oriented class modules (`.cls`) for complex tasks.
+- **`/FALCore/Modules`**: Contains a wide range of procedural helper modules (`.bas`).
+
+### Classes Overview
+
+- **`FalPlot.cls`**: A powerful class for creating and manipulating charts. It provides an object-oriented interface for plotting data and customizing every aspect of a chart's appearance.
+
+### Modules Overview
+
+- **`FalPlot.bas`**: A backward-compatible wrapper for the `FalPlot` class. It provides a simple, procedural interface for common plotting tasks.
+- **`FalArray.bas`**: An advanced toolkit for array manipulation.
+- **`FalCSV.bas`**: A module for working with CSV files.
+- **`FalFile.bas`**: A powerful set of utilities for file and folder operations.
+- **`FalLang.bas`**: A module for language-related functions.
+- **`FalLog.bas`**: A flexible logging utility.
+- **`FalUtils.bas`**: A collection of utility functions.
+- **`FalWork.bas`**: A comprehensive collection of functions for managing Workbooks and Worksheets.
+- **`FalXls.bas`**: A module for Excel-specific functions, including project-level utilities like creating summary sheets and exporting/importing all VBA components.
 
 ## Installation
 
 To use the FALCore suite in your project, follow these steps:
 
 1. In the VBA Editor (`Alt+F11`), right-click in the Project Explorer and select **Import File...**.
-2. Navigate to the `Modules` directory and select all the `.bas` files.
+2. Navigate to the `FALCore/Modules` directory and select all the `.bas` files.
 3. Go to **Tools -> References** in the VBA Editor.
 4. Ensure that **"Microsoft Scripting Runtime"** is checked. This is required for `Dictionary` objects and the `FileSystemObject` used in `FalFile` and `FalWork`.
 
@@ -81,6 +95,4 @@ End Sub
 
 ## License
 
-Copyright (c) 2023 Florent ALBANY.
-
-The following may be altered and reused as you wish so long as the copyright notice is left unchanged (including Author, Website and Copyright). It may not be sold/resold or reposted on other sites (links back to this site are allowed).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

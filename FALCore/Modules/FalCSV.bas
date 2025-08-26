@@ -5,428 +5,422 @@ Attribute VB_Name = "FalCSV"
 ' Date: 2025-07-15
 ' Version: 1.0
 ' Description:
-'   Ce module fournit un ensemble de fonctions utilitaires pour la manipulation de fichiers CSV
-'   (importation et exportation) au sein d'applications Excel VBA. Il s'appuie sur la classe
-'   'VBABetterArray' pour une gestion efficace et performante des donn�es en m�moire,
-'   facilitant ainsi les transferts entre les feuilles de calcul Excel et les formats CSV.
+'   This module provides a set of utility functions for handling CSV files
+'   (import and export) within Excel VBA applications. It relies on the
+'   'VBABetterArray' class for efficient and high-performance in-memory data
+'   management, thus facilitating transfers between Excel worksheets and CSV formats.
 '
-'   Les fonctionnalit�s incluent :
-'   - Importation de fichiers CSV uniques ou multiples vers de nouvelles feuilles de calcul.
-'   - Importation d'un fichier CSV vers une plage de cellules s�lectionn�e.
-'   - Exportation d'une plage de cellules s�lectionn�e ou d'une feuille enti�re vers un fichier CSV.
-'   - Options avanc�es pour la personnalisation de l'exportation CSV (d�limiteurs, encodage).
-'   - Capacit� � fusionner plusieurs fichiers CSV en une seule feuille.
-'   - Fonctionnalit� d'aper�u pour valider le formatage avant l'importation compl�te.
+'   Functionalities include:
+'   - Importing single or multiple CSV files to new worksheets.
+'   - Importing a CSV file to a selected cell range.
+'   - Exporting a selected cell range or an entire sheet to a CSV file.
+'   - Advanced options for customizing CSV export (delimiters, encoding).
+'   - Ability to merge multiple CSV files into a single sheet.
+'   - Preview functionality to validate formatting before full import.
 '
-'   Con�u avec une approche robuste de gestion des erreurs et une interface utilisateur intuitive.
+'   Designed with a robust error handling approach and an intuitive user interface.
 '
 ' Dependencies:
-'   - Classe VBABetterArray (https://github.com/Senipah/VBA-Better-Array)
-'   - Module FileX (pour les dialogues de s�lection/sauvegarde de fichiers)
+'   - VBABetterArray Class (https://github.com/Senipah/VBA-Better-Array)
+'   - FalFile Module (for file selection/saving dialogs)
+'   - FalArray Module (for array operations)
 '
 ' License: MIT License
 '
 ' Change Log:
 ' 1.0 (2025-07-15) - Initial release with core CSV import/export functionalities.
 '                   Added merge and custom export features.
+' 2.0 (2025-08-25) - Translated to English and refactored for clarity.
 '
 ' --------------------------------------------------------------------------------------------------
 Option Explicit
-' Option Base 0 ' Ou Option Base 1, selon la pr�f�rence par d�faut de tes tableaux BetterArray
 
-
-Private Sub HandleError(ByVal ErrMsg As String)
-    ' @brief Affiche un message d'erreur standardis� � l'utilisateur.
-    ' @param ErrMsg Le message d'erreur sp�cifique � afficher.
-    MsgBox "Une erreur est survenue :" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Op�ration impossible"
+Private Sub HandleError(ByVal errorMessage As String)
+    ' @brief Displays a standardized error message to the user.
+    ' @param errorMessage The specific error message to display.
+    MsgBox "An error occurred:" & vbCrLf & errorMessage, vbOKOnly + vbCritical, "Operation Failed"
 End Sub
 
 
-' --- Function: CSV_FromFilesToWorksheets ---
+' --- Function: FromCSVFilesToWorksheets ---
 ' Description:
-'   Importe le contenu d'un ou plusieurs fichiers CSV s�lectionn�s par l'utilisateur
-'   dans de nouvelles feuilles de calcul au sein du classeur Excel actif.
-'   Chaque fichier CSV est import� dans sa propre feuille. La fonction g�re
-'   l'importation des donn�es en utilisant la classe BetterArray pour l'efficacit�.
+'   Imports the content of one or more CSV files selected by the user
+'   into new worksheets within the active Excel workbook.
+'   Each CSV file is imported into its own sheet. The function handles
+'   data import using the BetterArray class for efficiency.
 '
 ' Parameters: None
 '
 ' Returns: None
-'   Cette proc�dure ne retourne aucune valeur, mais elle modifie le classeur Excel
-'   en ajoutant de nouvelles feuilles contenant les donn�es CSV.
+'   This procedure does not return any value, but it modifies the Excel workbook
+'   by adding new sheets containing the CSV data.
 '
 ' Usage:
-'   Appelle cette proc�dure depuis n'importe quel autre module VBA ou assigne-la
-'   � un bouton ou une forme dans Excel pour permettre aux utilisateurs de lancer
-'   l'importation de fichiers CSV.
-'   Exemple: Call FalCSV.FromCSVFilesToWorksheets
+'   Call this procedure from any other VBA module or assign it
+'   to a button or shape in Excel to allow users to initiate
+'   the import of CSV files.
+'   Example: Call FalCSV.FromCSVFilesToWorksheets
 '
 ' Error Handling:
-'   - Affiche un message si aucun fichier n'est s�lectionn� ou si l'op�ration est annul�e.
-'   - G�re les erreurs individuelles lors de la lecture de chaque fichier CSV,
-'     permettant de continuer l'importation des autres fichiers m�me en cas de probl�me.
-'   - Fournit des messages d'erreur g�n�riques pour les erreurs inattendues.
+'   - Displays a message if no file is selected or if the operation is canceled.
+'   - Handles individual errors when reading each CSV file,
+'     allowing the import of other files to continue even if there is a problem.
+'   - Provides generic error messages for unexpected errors.
 '
 ' Dependencies:
-'   - BetterArray: Utilis� pour parser et manipuler les donn�es CSV en m�moire.
-'   - FileX.Select_Files: Pour le dialogue de s�lection de fichiers.
+'   - BetterArray: Used to parse and manipulate CSV data in memory.
+'   - FalFile.Select_Files: For the file selection dialog.
 '
 ' Change Log:
-' 1.0 (2025-07-15) - Impl�mentation initiale.
+' 1.0 (2025-07-15) - Initial implementation.
 ' --------------------------------------------------------------------------------------------------
-Public Sub CSV_FromFilesToWorksheets()
-    On Error GoTo ErrHandler ' Meilleure gestion d'erreurs
-    Dim MyArray As BetterArray
-    Dim filePaths As Variant ' Renomm� pour plus de clart�
-    Dim i As Long ' Utiliser Long pour les index, plus robuste
-    Dim outputSheet As Worksheet
-    Dim fileNameOnly As String ' Variable pour stocker le nom du fichier sans l'extension
-    Dim inputDelimiter As String
-    Dim finalDelimiter As String
-    Dim inputQuote As String
-
-    Set MyArray = New BetterArray
-
-    ' 1. Demander � l'utilisateur de s�lectionner des fichiers CSV.
-    filePaths = FileX.Select_Files(FileType:="csv", AllowMultiSelect:=True)
-
-    ' 2. V�rifier si l'utilisateur a annul� ou s'il y a eu une erreur.
-    If IsEmpty(filePaths) Or (IsArray(filePaths) And UBound(filePaths) < LBound(filePaths)) Then
-        MsgBox "Aucun fichier CSV s�lectionn� ou l'op�ration a �t� annul�e.", vbInformation
-        GoTo CleanUp ' Sortie propre
-    End If
-
-    ' 2.1 Demander le d�limiteur initial � l'utilisateur
-    inputDelimiter = InputBox("Veuillez saisir le d�limiteur � utiliserpar ex. , ou ; ou tabulation via 'TAB'):", "D�limiteur d'aper�u CSV", ",")
-    If UCase(inputDelimiter) = "TAB" Then
-        finalDelimiter = vbTab
-    Else
-        finalDelimiter = inputDelimiter
-    End If
-
-    ' 2.2 Demander le Quote initial � l'utilisateur
-    inputQuote = InputBox("Veuillez saisir le caract�re d'ouverture et fermeture de cellule � utiliser (par ex. """"):", "Quote d'aper�u CSV", """")
-    
-    ' 3. Traiter chaque fichier s�lectionn�.
-    For i = LBound(filePaths) To UBound(filePaths)
-        ' G�rer les erreurs sp�cifiques � chaque fichier
-        On Error Resume Next ' G�re les erreurs pour un fichier individuel (ex: fichier corrompu)
-        
-
-        MyArray.FromCSVFile path:=CStr(filePath(LBound(filePath))), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False ' DuckType False pour voir les valeurs brutes
-        If err.Number <> 0 Then
-            Call HandleError("Erreur lors de la lecture du fichier CSV : " & filePaths(i) & ". " & err.Description)
-            err.Clear ' Efface l'erreur pour continuer avec le fichier suivant
-            GoTo NextFile ' Passe au fichier suivant
-        End If
-        On Error GoTo ErrHandler ' R�tablit le gestionnaire global
-
-        Set outputSheet = ActiveWorkbook.Sheets.Add
-        ' Donner un nom � la nouvelle feuille (bas� sur le nom du fichier CSV)
-        On Error Resume Next ' G�rer les erreurs si le nom de la feuille est trop long ou d�j� pris
-        
-        ' Extraire le nom du fichier sans le chemin
-        fileNameOnly = Mid(CStr(filePaths(i)), InStrRev(CStr(filePaths(i)), "\") + 1)
-        ' Extraire le nom de base (sans l'extension)
-        If InStr(fileNameOnly, ".") > 0 Then
-            fileNameOnly = Left(fileNameOnly, InStr(fileNameOnly, ".") - 1)
-        End If
-        
-        ' Appliquer le nom � la feuille, tronqu� � 31 caract�res
-        outputSheet.name = Left(fileNameOnly, 31)
-        
-        If err.Number <> 0 Then
-            ' Si le nom est en conflit ou trop long, Excel ajoutera un num�ro, pas grave
-            err.Clear
-        End If
-        On Error GoTo ErrHandler ' R�tablit le gestionnaire global
-
-        MyArray.ToExcelRange outputSheet.Range("A1")
-        MyArray.Clear ' Lib�re l'array pour le prochain fichier, si la classe a une m�thode Clear
-NextFile:
-    Next i
-
-    MsgBox "Les donn�es des fichiers CSV ont �t� import�es dans de nouvelles feuilles.", vbInformation
-
-CleanUp:
-    Set MyArray = Nothing ' Lib�rer l'objet
-    Exit Sub
-
-ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans FromCSVFilesToWorksheets : " & err.Description)
-    Resume CleanUp ' Va au nettoyage et sort
-End Sub
-
-
-' --- Function: CSV_FromFileToSelection ---
-' Description:
-'   Importe le contenu d'un fichier CSV s�lectionn� par l'utilisateur directement
-'   dans une plage de cellules sp�cifi�e dans la feuille de calcul active.
-'   Cette proc�dure est utile pour ins�rer des donn�es CSV � un emplacement pr�cis
-'   sans cr�er une nouvelle feuille. Elle utilise la classe BetterArray pour une
-'   lecture et une �criture efficaces.
-'
-' Parameters: None
-'
-' Returns: None
-'   Cette proc�dure ne retourne aucune valeur. Elle modifie la feuille Excel active
-'   en y �crivant les donn�es du fichier CSV.
-'
-' Usage:
-'   1. S�lectionnez la cellule de destination (par exemple, "A1") dans votre feuille Excel.
-'   2. Ex�cutez cette proc�dure. Un dialogue de s�lection de fichier s'ouvrira.
-'   3. Choisissez le fichier CSV � importer.
-'   Exemple d'appel depuis un autre module: Call FalCSV.FromCSVFileToSelection
-'
-' Error Handling:
-'   - V�rifie si une plage de cellules est s�lectionn�e avant de proc�der.
-'   - G�re l'annulation de la s�lection de fichier par l'utilisateur.
-'   - Fournit un message d'erreur clair en cas d'erreur inattendue lors de l'importation.
-'
-' Dependencies:
-'   - BetterArray: N�cessaire pour l'analyse du fichier CSV et l'�criture des donn�es dans Excel.
-'   - FileX.Select_Files: Utilis� pour afficher le dialogue de s�lection de fichier CSV.
-'
-' Change Log:
-' 1.0 (2025-07-15) - Impl�mentation initiale.
-' --------------------------------------------------------------------------------------------------
-Public Sub CSV_FromFileToSelection()
-    On Error GoTo ErrHandler
-    Dim MyArray As BetterArray
-    Dim filePath As Variant
-    Dim rng As Range ' Correctement typ�
-    Set MyArray = New BetterArray
-    Dim inputDelimiter As String
-    Dim finalDelimiter As String
-    Dim inputQuote As String
-
-    ' 1. V�rifier la s�lection de la plage de destination.
-    If TypeName(Selection) <> "Range" Then
-        MsgBox "Veuillez s�lectionner la cellule de destination o� les donn�es CSV doivent �tre �crites (par ex. A1).", vbExclamation
-        GoTo CleanUp
-    End If
-    Set rng = Selection.Cells(1, 1) ' Prendre juste la premi�re cellule de la s�lection
-
-    ' 2. Demander � l'utilisateur de s�lectionner un fichier CSV.
-    filePath = FileX.Select_Files(FileType:="csv", AllowMultiSelect:=False)
-
-    ' 3. V�rifier si l'utilisateur a annul� ou s'il y a eu une erreur.
-    If IsEmpty(filePath) Or (IsArray(filePath) And UBound(filePath) < LBound(filePath)) Then
-        MsgBox "Aucun fichier CSV s�lectionn� ou l'op�ration a �t� annul�e.", vbInformation
-        GoTo CleanUp
-    End If
-
-    ' 3.1 Demander le d�limiteur initial � l'utilisateur
-    inputDelimiter = InputBox("Veuillez saisir le d�limiteur � utiliserpar ex. , ou ; ou tabulation via 'TAB'):", "D�limiteur d'aper�u CSV", ",")
-    If UCase(inputDelimiter) = "TAB" Then
-        finalDelimiter = vbTab
-    Else
-        finalDelimiter = inputDelimiter
-    End If
-
-    ' 3.2 Demander le Quote initial � l'utilisateur
-    inputQuote = InputBox("Veuillez saisir le caract�re d'ouverture et fermeture de cellule � utiliser (par ex. """"):", "Quote d'aper�u CSV", """")
-    
-    ' 4. Importer et �crire le fichier CSV.
-    MyArray.FromCSVFile path:=CStr(filePath(LBound(filePath))), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False ' DuckType False pour voir les valeurs brutes
-    MyArray.ToExcelRange rng
-
-    MsgBox "Le fichier CSV a �t� import� dans la feuille � partir de la cellule " & rng.Address(False, False) & ".", vbInformation
-
-CleanUp:
-    Set MyArray = Nothing
-    Exit Sub
-
-ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans FromCSVFileToSelection : " & err.Description)
-    Resume CleanUp
-End Sub
-
-
-' --- Function: CSV_FromSelectionToFile ---
-' Description:
-'   Exporte les donn�es de la plage de cellules Excel actuellement s�lectionn�e
-'   par l'utilisateur vers un nouveau fichier CSV. Cette fonction est id�ale
-'   pour sauvegarder des sous-ensembles sp�cifiques de donn�es d'une feuille Excel
-'   dans un format CSV, facilitant ainsi l'�change ou l'int�gration avec d'autres
-'   applications. Elle utilise la classe BetterArray pour une extraction et une
-'   �criture efficaces des donn�es.
-'
-' Parameters: None
-'
-' Returns: None
-'   Cette proc�dure ne retourne aucune valeur. Elle interagit avec l'utilisateur
-'   pour le chemin de sauvegarde et cr�e un fichier CSV.
-'
-' Usage:
-'   1. S�lectionnez la plage de cellules dans Excel que vous souhaitez exporter.
-'      Si seule une cellule est s�lectionn�e, la fonction exportera automatiquement
-'      toute la r�gion contigu� de donn�es (`CurrentRegion`) autour de cette cellule.
-'   2. Ex�cutez cette proc�dure (par exemple, via un bouton ou une macro).
-'   3. Un dialogue "Enregistrer sous" s'ouvrira, vous permettant de choisir
-'      le nom et l'emplacement du fichier CSV de sortie.
-'   Exemple d'appel depuis un autre module: Call FalCSV.CSV_FromSelectionToFile
-'
-' Error Handling:
-'   - Affiche un message d'erreur si aucune plage de cellules n'est s�lectionn�e.
-'   - G�re l'annulation du dialogue de sauvegarde de fichier par l'utilisateur.
-'   - Fournit un message d'erreur g�n�rique si une erreur inattendue survient
-'     pendant le processus d'exportation.
-'
-' Dependencies:
-'   - BetterArray: Indispensable pour la lecture des donn�es depuis la plage Excel
-'     et leur formatage en sortie CSV.
-'   - FileX.Get_SaveFilePath_WithDialog: Utilis� pour afficher le dialogue de sauvegarde.
-'
-' Change Log:
-' 1.0 (2025-07-15) - Impl�mentation initiale.
-' --------------------------------------------------------------------------------------------------
-Public Sub CSV_FromSelectionToFile()
-    On Error GoTo ErrHandler
-    Dim MyArray As BetterArray
-    Dim filePath As Variant
-    Dim rng As Range ' Correctement typ�
-    Set MyArray = New BetterArray
-
-    ' 1. V�rifier que l'utilisateur a s�lectionn� une plage.
-    If TypeName(Selection) <> "Range" Then
-        MsgBox "Veuillez s�lectionner la plage de cellules � exporter vers le fichier CSV.", vbExclamation
-        GoTo CleanUp
-    End If
-    Set rng = Selection
-
-    ' 2. Demander � l'utilisateur le chemin de sauvegarde.
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "Fichiers CSV (*.csv),*.csv")
-    If CStr(filePath) = "" Then ' L'utilisateur a annul�
-        MsgBox "Op�ration de sauvegarde annul�e.", vbInformation
-        GoTo CleanUp
-    End If
-
-    ' 3. Lire les donn�es de la plage Excel.
-    ' Utilise DetectLastRow/Column=True pour s'assurer que la plage est bien d�tect�e si l'utilisateur ne s�lectionne qu'une cellule.
-    ' Ou mieux, si l'objectif est la r�gion contig�e, utiliser CurrentRegion.
-    MyArray.FromExcelRange FromRange:=rng.CurrentRegion, DetectLastRow:=True, DetectLastColumn:=True
-
-    ' 4. �crire les donn�es dans le fichier CSV.
-    ' Consid�re l'ajout d'options comme Headers, ColumnDelimiter si tu veux plus de contr�le.
-    ' Par d�faut, BetterArray utilise la virgule et les guillemets si besoin.
-    MyArray.ToCSVFile CStr(filePath)
-
-    MsgBox "Le fichier CSV a �t� cr�� avec succ�s : " & CStr(filePath), vbInformation
-
-CleanUp:
-    Set MyArray = Nothing
-    Exit Sub
-
-ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans FromSelectionToCSVFile : " & err.Description)
-    Resume CleanUp
-End Sub
-
-' --- Function: CSV_FromWorksheetToFile ---
-' Description:
-'   Exporte l'int�gralit� des donn�es utilis�es dans la feuille de calcul active
-'   vers un nouveau fichier CSV. Cette fonction permet de sauvegarder rapidement
-'   tout le contenu pertinent d'une feuille Excel dans un format CSV standard,
-'   id�al pour le partage de donn�es ou l'int�gration avec d'autres syst�mes.
-'   Elle utilise la classe BetterArray pour extraire les donn�es d'Excel et les
-'   formater en CSV.
-'
-' Parameters: None
-'
-' Returns: None
-'   Cette proc�dure ne retourne aucune valeur. Elle cr�e un fichier CSV � l'emplacement
-'   sp�cifi� par l'utilisateur.
-'
-' Usage:
-'   1. Assurez-vous que la feuille de calcul active contient les donn�es que vous souhaitez exporter.
-'   2. Ex�cutez cette proc�dure. Un dialogue de sauvegarde de fichier s'ouvrira.
-'   3. Sp�cifiez le nom et l'emplacement du fichier CSV de sortie.
-'   Exemple d'appel depuis un autre module: Call FalCSV.FromWorksheetToCSVFile
-'
-' Error Handling:
-'   - G�re l'annulation de la bo�te de dialogue de sauvegarde par l'utilisateur.
-'   - Fournit un message d'erreur clair en cas d'erreur inattendue lors de l'exportation.
-'
-' Dependencies:
-'   - BetterArray: Indispensable pour la lecture des donn�es depuis Excel et leur �criture en CSV.
-'   - FileX.Get_SaveFilePath_WithDialog: Utilis� pour afficher le dialogue de s�lection du chemin de sauvegarde.
-'
-' Change Log:
-' 1.0 (2025-07-15) - Impl�mentation initiale.
-' --------------------------------------------------------------------------------------------------
-Public Sub CSV_FromWorksheetToFile()
-    On Error GoTo ErrHandler
-    Dim MyArray As BetterArray
-    Dim filePath As Variant
-    Set MyArray = New BetterArray
-
-    ' 1. Demander � l'utilisateur le chemin de sauvegarde.
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "Fichiers CSV (*.csv),*.csv")
-    If CStr(filePath) = "" Then ' L'utilisateur a annul�
-        MsgBox "Op�ration de sauvegarde annul�e.", vbInformation
-        GoTo CleanUp
-    End If
-
-    ' 2. Lire les donn�es de la plage utilis�e de la feuille active.
-    MyArray.FromExcelRange FromRange:=ActiveSheet.UsedRange, DetectLastRow:=True, DetectLastColumn:=True
-
-    ' 3. �crire les donn�es dans le fichier CSV.
-    MyArray.ToCSVFile CStr(filePath)
-
-    MsgBox "Le fichier CSV a �t� cr�� avec succ�s : " & CStr(filePath), vbInformation
-
-CleanUp:
-    Set MyArray = Nothing
-    Exit Sub
-
-ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans FromWorksheetToCSVFile : " & err.Description)
-    Resume CleanUp
-End Sub
-
-
-' --- Function: CSV_DumpFilesToSheets ---
-' Description:
-'   Importe le contenu d'un ou plusieurs fichiers CSV s�lectionn�s par l'utilisateur
-'   dans des feuilles de calcul s�par�es au sein du classeur Excel actif.
-'   Chaque fichier CSV est trait� individuellement et ses donn�es sont �crites
-'   dans une nouvelle feuille de travail d�di�e, nomm�e d'apr�s le fichier CSV.
-'   Cette fonction est une alternative � l'utilisation d'une interface CSV externe,
-'   en centralisant le traitement des donn�es via la classe 'BetterArray'.
-'
-' Parameters: None
-'
-' Returns: None
-'   Cette proc�dure ne retourne aucune valeur. Elle ajoute de nouvelles feuilles
-'   au classeur Excel actif, chacune contenant les donn�es d'un fichier CSV import�.
-'
-' Usage:
-'   Appelle cette proc�dure pour permettre � l'utilisateur de s�lectionner des fichiers CSV.
-'   Pour chaque fichier s�lectionn�, une nouvelle feuille sera cr��e et remplie avec les donn�es.
-'   Exemple d'appel depuis un autre module: Call FalCSV.DumpToSheet_UsingBetterArray
-'
-' Error Handling:
-'   - Affiche un message si l'utilisateur annule la s�lection de fichiers ou si aucun fichier n'est choisi.
-'   - G�re les erreurs individuelles lors de la lecture de chaque fichier CSV,
-'     permettant de passer au fichier suivant en cas de corruption ou d'inaccessibilit�.
-'   - G�re les erreurs potentielles lors du renommage des feuilles de calcul.
-'   - Fournit un message d'erreur g�n�rique pour toute erreur inattendue.
-'
-' Dependencies:
-'   - BetterArray: Essentiel pour la lecture des donn�es CSV et leur �criture dans les plages Excel.
-'   - FileX.Select_Files: Pour l'interface de s�lection de fichiers.
-'
-' Change Log:
-' 1.0 (2025-07-15) - Impl�mentation initiale, bas�e sur l'approche BetterArray.
-' --------------------------------------------------------------------------------------------------
-Public Sub CSV_DumpFilesToNewWorksheets() ' Renomm� pour �viter le conflit
+Public Sub FromCSVFilesToWorksheets()
     On Error GoTo ErrHandler
     Dim MyArray As BetterArray
     Dim filePaths As Variant
     Dim i As Long
     Dim outputSheet As Worksheet
-    Dim fileNameOnly As String ' Variable pour stocker le nom du fichier sans l'extension
+    Dim fileNameOnly As String
+    Dim inputDelimiter As String
+    Dim finalDelimiter As String
+    Dim inputQuote As String
+
+    Set MyArray = New BetterArray
+
+    ' 1. Ask the user to select CSV files.
+    filePaths = FalFile.Select_Files(FileType:="csv", AllowMultiSelect:=True)
+
+    ' 2. Check if the user canceled or if there was an error.
+    If IsEmpty(filePaths) Or (IsArray(filePaths) And UBound(filePaths) < LBound(filePaths)) Then
+        MsgBox "No CSV file selected or the operation was canceled.", vbInformation
+        GoTo CleanUp
+    End If
+
+    ' 2.1 Ask the user for the initial delimiter.
+    inputDelimiter = InputBox("Please enter the delimiter to use (e.g., , or ; or TAB for tab):", "CSV Preview Delimiter", ",")
+    If UCase(inputDelimiter) = "TAB" Then
+        finalDelimiter = vbTab
+    Else
+        finalDelimiter = inputDelimiter
+    End If
+
+    ' 2.2 Ask the user for the initial quote character.
+    inputQuote = InputBox("Please enter the cell opening and closing character to use (e.g., """"):", "CSV Preview Quote", """")
+    
+    ' 3. Process each selected file.
+    For i = LBound(filePaths) To UBound(filePaths)
+        ' Handle errors specific to each file
+        On Error Resume Next
+        
+        MyArray.FromCSVFile path:=CStr(filePaths(i)), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False
+        If Err.Number <> 0 Then
+            Call HandleError("Error reading CSV file: " & filePaths(i) & ". " & Err.Description)
+            Err.Clear
+            GoTo NextFile
+        End If
+        On Error GoTo ErrHandler
+
+        Set outputSheet = ActiveWorkbook.Sheets.Add
+        ' Give a name to the new sheet (based on the CSV file name)
+        On Error Resume Next
+        
+        ' Extract the file name without the path
+        fileNameOnly = Mid(CStr(filePaths(i)), InStrRev(CStr(filePaths(i)), "\") + 1)
+        ' Extract the base name (without the extension)
+        If InStr(fileNameOnly, ".") > 0 Then
+            fileNameOnly = Left(fileNameOnly, InStr(fileNameOnly, ".") - 1)
+        End If
+        
+        ' Apply the name to the sheet, truncated to 31 characters
+        outputSheet.name = Left(fileNameOnly, 31)
+        
+        If Err.Number <> 0 Then
+            Err.Clear
+        End If
+        On Error GoTo ErrHandler
+
+        MyArray.ToExcelRange outputSheet.Range("A1")
+        MyArray.Clear
+NextFile:
+    Next i
+
+    MsgBox "Data from the CSV files has been imported into new sheets.", vbInformation
+
+CleanUp:
+    Set MyArray = Nothing
+    Exit Sub
+
+ErrHandler:
+    Call HandleError("An unexpected error occurred in FromCSVFilesToWorksheets: " & Err.Description)
+    Resume CleanUp
+End Sub
+
+
+' --- Function: FromCSVFileToSelection ---
+' Description:
+'   Imports the content of a user-selected CSV file directly
+'   into a specified cell range in the active worksheet.
+'   This procedure is useful for inserting CSV data at a specific location
+'   without creating a new sheet. It uses the BetterArray class for
+'   efficient reading and writing.
+'
+' Parameters: None
+'
+' Returns: None
+'   This procedure does not return any value. It modifies the active Excel sheet
+'   by writing the data from the CSV file to it.
+'
+' Usage:
+'   1. Select the destination cell (e.g., "A1") in your Excel sheet.
+'   2. Run this procedure. A file selection dialog will open.
+'   3. Choose the CSV file to import.
+'   Example call from another module: Call FalCSV.FromCSVFileToSelection
+'
+' Error Handling:
+'   - Checks if a cell range is selected before proceeding.
+'   - Handles cancellation of the file selection by the user.
+'   - Provides a clear error message in case of an unexpected error during import.
+'
+' Dependencies:
+'   - BetterArray: Necessary for parsing the CSV file and writing the data to Excel.
+'   - FalFile.Select_Files: Used to display the CSV file selection dialog.
+'
+' Change Log:
+' 1.0 (2025-07-15) - Initial implementation.
+' --------------------------------------------------------------------------------------------------
+Public Sub FromCSVFileToSelection()
+    On Error GoTo ErrHandler
+    Dim MyArray As BetterArray
+    Dim filePath As Variant
+    Dim rng As Range
+    Set MyArray = New BetterArray
+    Dim inputDelimiter As String
+    Dim finalDelimiter As String
+    Dim inputQuote As String
+
+    ' 1. Check the destination range selection.
+    If TypeName(Selection) <> "Range" Then
+        MsgBox "Please select the destination cell where the CSV data should be written (e.g., A1).", vbExclamation
+        GoTo CleanUp
+    End If
+    Set rng = Selection.Cells(1, 1)
+
+    ' 2. Ask the user to select a CSV file.
+    filePath = FalFile.Select_Files(FileType:="csv", AllowMultiSelect:=False)
+
+    ' 3. Check if the user canceled or if there was an error.
+    If IsEmpty(filePath) Or (IsArray(filePath) And UBound(filePath) < LBound(filePath)) Then
+        MsgBox "No CSV file selected or the operation was canceled.", vbInformation
+        GoTo CleanUp
+    End If
+
+    ' 3.1 Ask the user for the initial delimiter.
+    inputDelimiter = InputBox("Please enter the delimiter to use (e.g., , or ; or TAB for tab):", "CSV Preview Delimiter", ",")
+    If UCase(inputDelimiter) = "TAB" Then
+        finalDelimiter = vbTab
+    Else
+        finalDelimiter = inputDelimiter
+    End If
+
+    ' 3.2 Ask the user for the initial quote character.
+    inputQuote = InputBox("Please enter the cell opening and closing character to use (e.g., """"):", "CSV Preview Quote", """")
+    
+    ' 4. Import and write the CSV file.
+    MyArray.FromCSVFile path:=CStr(filePath(LBound(filePath))), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False
+    MyArray.ToExcelRange rng
+
+    MsgBox "The CSV file has been imported into the sheet starting from cell " & rng.Address(False, False) & ".", vbInformation
+
+CleanUp:
+    Set MyArray = Nothing
+    Exit Sub
+
+ErrHandler:
+    Call HandleError("An unexpected error occurred in FromCSVFileToSelection: " & Err.Description)
+    Resume CleanUp
+End Sub
+
+
+' --- Function: FromSelectionToCSVFile ---
+' Description:
+'   Exports the data from the currently selected Excel cell range
+'   to a new CSV file. This function is ideal
+'   for saving specific subsets of data from an Excel sheet
+'   in a CSV format, thus facilitating exchange or integration with other
+'   applications. It uses the BetterArray class for efficient data
+'   extraction and writing.
+'
+' Parameters: None
+'
+' Returns: None
+'   This procedure does not return any value. It interacts with the user
+'   for the save path and creates a CSV file.
+'
+' Usage:
+'   1. Select the cell range in Excel that you want to export.
+'      If only one cell is selected, the function will automatically
+'      export the entire contiguous data region (`CurrentRegion`) around that cell.
+'   2. Run this procedure (e.g., via a button or a macro).
+'   3. A "Save As" dialog will open, allowing you to choose
+'      the name and location of the output CSV file.
+'   Example call from another module: Call FalCSV.FromSelectionToCSVFile
+'
+' Error Handling:
+'   - Displays an error message if no cell range is selected.
+'   - Handles cancellation of the file save dialog by the user.
+'   - Provides a generic error message if an unexpected error occurs
+'     during the export process.
+'
+' Dependencies:
+'   - BetterArray: Essential for reading data from the Excel range
+'     and formatting it into CSV output.
+'   - FalFile.Get_SaveFilePath_WithDialog: Used to display the save dialog.
+'
+' Change Log:
+' 1.0 (2025-07-15) - Initial implementation.
+' --------------------------------------------------------------------------------------------------
+Public Sub FromSelectionToCSVFile()
+    On Error GoTo ErrHandler
+    Dim MyArray As BetterArray
+    Dim filePath As Variant
+    Dim rng As Range
+    Set MyArray = New BetterArray
+
+    ' 1. Check that the user has selected a range.
+    If TypeName(Selection) <> "Range" Then
+        MsgBox "Please select the cell range to export to the CSV file.", vbExclamation
+        GoTo CleanUp
+    End If
+    Set rng = Selection
+
+    ' 2. Ask the user for the save path.
+    filePath = FalFile.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "CSV Files (*.csv),*.csv")
+    If CStr(filePath) = "" Then
+        MsgBox "Save operation canceled.", vbInformation
+        GoTo CleanUp
+    End If
+
+    ' 3. Read the data from the Excel range.
+    MyArray.FromExcelRange FromRange:=rng.CurrentRegion, DetectLastRow:=True, DetectLastColumn:=True
+
+    ' 4. Write the data to the CSV file.
+    MyArray.ToCSVFile CStr(filePath)
+
+    MsgBox "The CSV file was created successfully: " & CStr(filePath), vbInformation
+
+CleanUp:
+    Set MyArray = Nothing
+    Exit Sub
+
+ErrHandler:
+    Call HandleError("An unexpected error occurred in FromSelectionToCSVFile: " & Err.Description)
+    Resume CleanUp
+End Sub
+
+' --- Function: FromWorksheetToCSVFile ---
+' Description:
+'   Exports all the used data in the active worksheet
+'   to a new CSV file. This function allows for the quick saving
+'   of all relevant content from an Excel sheet into a standard CSV format,
+'   ideal for data sharing or integration with other systems.
+'   It uses the BetterArray class to extract the data from Excel and
+'   format it as CSV.
+'
+' Parameters: None
+'
+' Returns: None
+'   This procedure does not return any value. It creates a CSV file at the location
+'   specified by the user.
+'
+' Usage:
+'   1. Make sure the active worksheet contains the data you want to export.
+'   2. Run this procedure. A save file dialog will open.
+'   3. Specify the name and location of the output CSV file.
+'   Example call from another module: Call FalCSV.FromWorksheetToCSVFile
+'
+' Error Handling:
+'   - Handles cancellation of the save dialog by the user.
+'   - Provides a clear error message in case of an unexpected error during export.
+'
+' Dependencies:
+'   - BetterArray: Essential for reading data from Excel and writing it as CSV.
+'   - FalFile.Get_SaveFilePath_WithDialog: Used to display the save path selection dialog.
+'
+' Change Log:
+' 1.0 (2025-07-15) - Initial implementation.
+' --------------------------------------------------------------------------------------------------
+Public Sub FromWorksheetToCSVFile()
+    On Error GoTo ErrHandler
+    Dim MyArray As BetterArray
+    Dim filePath As Variant
+    Set MyArray = New BetterArray
+
+    ' 1. Ask the user for the save path.
+    filePath = FalFile.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "CSV Files (*.csv),*.csv")
+    If CStr(filePath) = "" Then
+        MsgBox "Save operation canceled.", vbInformation
+        GoTo CleanUp
+    End If
+
+    ' 2. Read the data from the used range of the active sheet.
+    MyArray.FromExcelRange FromRange:=ActiveSheet.UsedRange, DetectLastRow:=True, DetectLastColumn:=True
+
+    ' 3. Write the data to the CSV file.
+    MyArray.ToCSVFile CStr(filePath)
+
+    MsgBox "The CSV file was created successfully: " & CStr(filePath), vbInformation
+
+CleanUp:
+    Set MyArray = Nothing
+    Exit Sub
+
+ErrHandler:
+    Call HandleError("An unexpected error occurred in FromWorksheetToCSVFile: " & Err.Description)
+    Resume CleanUp
+End Sub
+
+
+' --- Function: DumpFilesToNewWorksheets ---
+' Description:
+'   Imports the content of one or more CSV files selected by the user
+'   into separate worksheets within the active Excel workbook.
+'   Each CSV file is processed individually and its data is written
+'   to a new dedicated worksheet, named after the CSV file.
+'   This function is an alternative to using an external CSV interface,
+'   by centralizing data processing through the 'BetterArray' class.
+'
+' Parameters: None
+'
+' Returns: None
+'   This procedure does not return any value. It adds new sheets
+'   to the active Excel workbook, each containing the data from an imported CSV file.
+'
+' Usage:
+'   Call this procedure to allow the user to select CSV files.
+'   For each selected file, a new sheet will be created and filled with the data.
+'   Example call from another module: Call FalCSV.DumpFilesToNewWorksheets
+'
+' Error Handling:
+'   - Displays a message if the user cancels the file selection or if no file is chosen.
+'   - Handles individual errors when reading each CSV file,
+'     allowing to proceed to the next file in case of corruption or inaccessibility.
+'   - Handles potential errors when renaming worksheets.
+'   - Provides a generic error message for any unexpected error.
+'
+' Dependencies:
+'   - BetterArray: Essential for reading CSV data and writing it to Excel ranges.
+'   - FalFile.Select_Files: For the file selection interface.
+'
+' Change Log:
+' 1.0 (2025-07-15) - Initial implementation, based on the BetterArray approach.
+' --------------------------------------------------------------------------------------------------
+Public Sub DumpFilesToNewWorksheets()
+    On Error GoTo ErrHandler
+    Dim MyArray As BetterArray
+    Dim filePaths As Variant
+    Dim i As Long
+    Dim outputSheet As Worksheet
+    Dim fileNameOnly As String
     Dim inputDelimiter As String
     Dim finalDelimiter As String
     Dim inputQuote As String
@@ -434,33 +428,33 @@ Public Sub CSV_DumpFilesToNewWorksheets() ' Renomm� pour �viter le conflit
 
     Set MyArray = New BetterArray
 
-    ' 1. Demander � l'utilisateur de s�lectionner des fichiers CSV.
-    filePaths = FileX.Select_Files(FileType:="csv", AllowMultiSelect:=True)
+    ' 1. Ask the user to select CSV files.
+    filePaths = FalFile.Select_Files(FileType:="csv", AllowMultiSelect:=True)
 
-    ' 2. V�rifier si l'utilisateur a annul� ou s'il y a eu une erreur.
+    ' 2. Check if the user canceled or if there was an error.
     If IsEmpty(filePaths) Or (IsArray(filePaths) And UBound(filePaths) < LBound(filePaths)) Then
-        MsgBox "Aucun fichier CSV s�lectionn� ou l'op�ration a �t� annul�e.", vbInformation
+        MsgBox "No CSV file selected or the operation was canceled.", vbInformation
         GoTo CleanUp
     End If
 
-    ' 2.1 Demander le d�limiteur initial � l'utilisateur
-    inputDelimiter = InputBox("Veuillez saisir le d�limiteur � utiliserpar ex. , ou ; ou tabulation via 'TAB'):", "D�limiteur d'aper�u CSV", ",")
+    ' 2.1 Ask the user for the initial delimiter.
+    inputDelimiter = InputBox("Please enter the delimiter to use (e.g., , or ; or TAB for tab):", "CSV Preview Delimiter", ",")
     If UCase(inputDelimiter) = "TAB" Then
         finalDelimiter = vbTab
     Else
         finalDelimiter = inputDelimiter
     End If
 
-    ' 2.2 Demander le Quote initial � l'utilisateur
-    inputQuote = InputBox("Veuillez saisir le caract�re d'ouverture et fermeture de cellule � utiliser (par ex. """"):", "Quote d'aper�u CSV", """")
+    ' 2.2 Ask the user for the initial quote character.
+    inputQuote = InputBox("Please enter the cell opening and closing character to use (e.g., """"):", "CSV Preview Quote", """")
     
-    ' 3. Traiter chaque fichier s�lectionn�.
+    ' 3. Process each selected file.
     For i = LBound(filePaths) To UBound(filePaths)
         On Error Resume Next
-        MyArray.FromCSVFile path:=CStr(filePaths(i)), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False ' DuckType False pour voir les valeurs brutes
-        If err.Number <> 0 Then
-            Call HandleError("Erreur lors de la lecture du fichier CSV : " & filePaths(i) & ". " & err.Description)
-            err.Clear
+        MyArray.FromCSVFile path:=CStr(filePaths(i)), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False
+        If Err.Number <> 0 Then
+            Call HandleError("Error reading CSV file: " & filePaths(i) & ". " & Err.Description)
+            Err.Clear
             GoTo NextFile_BA
         End If
         On Error GoTo ErrHandler
@@ -468,37 +462,37 @@ Public Sub CSV_DumpFilesToNewWorksheets() ' Renomm� pour �viter le conflit
         Set outputSheet = ActiveWorkbook.Sheets.Add
         On Error Resume Next
         
-        ' Extraire le nom du fichier sans le chemin
+        ' Extract the file name without the path
         fileNameOnly = Mid(CStr(filePaths(i)), InStrRev(CStr(filePaths(i)), "\") + 1)
-        ' Extraire le nom de base (sans l'extension)
+        ' Extract the base name (without the extension)
         If InStr(fileNameOnly, ".") > 0 Then
             fileNameOnly = Left(fileNameOnly, InStr(fileNameOnly, ".") - 1)
         End If
         
-        ' Appliquer le nom � la feuille, tronqu� � 31 caract�res
+        ' Apply the name to the sheet, truncated to 31 characters
         outputSheet.name = Left(fileNameOnly, 31)
         
-        If err.Number <> 0 Then err.Clear
+        If Err.Number <> 0 Then Err.Clear
         On Error GoTo ErrHandler
 
         MyArray.ToExcelRange outputSheet.Range("A1")
-        MyArray.Clear ' Si BetterArray a une m�thode Clear pour vider son contenu interne
+        MyArray.Clear
 NextFile_BA:
     Next i
 
-    MsgBox "Les donn�es des fichiers CSV ont �t� import�es dans de nouvelles feuilles (via BetterArray).", vbInformation
+    MsgBox "Data from the CSV files has been imported into new sheets (via BetterArray).", vbInformation
 
 CleanUp:
     Set MyArray = Nothing
     Exit Sub
 
 ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans DumpToSheet_UsingBetterArray : " & err.Description)
+    Call HandleError("An unexpected error occurred in DumpFilesToNewWorksheets: " & Err.Description)
     Resume CleanUp
 End Sub
 
 
-Public Sub CSV_MergeFilesToNewWorksheet()
+Public Sub MergeFilesToNewWorksheet()
     On Error GoTo ErrHandler
     Dim MyArray As BetterArray
     Dim filePaths As Variant
@@ -507,53 +501,53 @@ Public Sub CSV_MergeFilesToNewWorksheet()
     Dim firstFileProcessed As Boolean
     Set MyArray = New BetterArray
 
-    ' 1. Demander � l'utilisateur de s�lectionner les fichiers CSV � fusionner.
-    filePaths = FileX.Select_Files(FileType:="csv", AllowMultiSelect:=True)
+    ' 1. Ask the user to select the CSV files to merge.
+    filePaths = FalFile.Select_Files(FileType:="csv", AllowMultiSelect:=True)
 
-    ' 2. V�rifier si des fichiers ont �t� s�lectionn�s.
+    ' 2. Check if files were selected.
     If IsEmpty(filePaths) Or (IsArray(filePaths) And UBound(filePaths) < LBound(filePaths)) Then
-        MsgBox "Aucun fichier CSV s�lectionn� ou l'op�ration a �t� annul�e.", vbInformation
+        MsgBox "No CSV file selected or the operation was canceled.", vbInformation
         GoTo CleanUp
     End If
 
-    ' 3. Cr�er une nouvelle feuille pour la fusion.
+    ' 3. Create a new sheet for the merge.
     Set outputSheet = ActiveWorkbook.Sheets.Add
-    On Error Resume Next ' G�rer les erreurs si le nom est trop long
+    On Error Resume Next
     outputSheet.name = "Merged_CSV_Data"
-    If err.Number <> 0 Then err.Clear
+    If Err.Number <> 0 Then Err.Clear
     On Error GoTo ErrHandler
 
     firstFileProcessed = False
 
-    ' 4. Traiter chaque fichier.
+    ' 4. Process each file.
     For i = LBound(filePaths) To UBound(filePaths)
         On Error Resume Next
         If Not firstFileProcessed Then
-            ' Premier fichier : Importer normalement (inclut les en-t�tes)
+            ' First file: Import normally (includes headers)
             MyArray.FromCSVFile (CStr(filePaths(i)))
             MyArray.ToExcelRange outputSheet.Range("A1")
             firstFileProcessed = True
         Else
-            ' Fichiers suivants : Ignorer la premi�re ligne (en-t�tes) et ajouter � la suite
+            ' Subsequent files: Skip the first row (headers) and append
             Dim tempArray As BetterArray
             Set tempArray = New BetterArray
             tempArray.FromCSVFile path:=CStr(filePaths(i)), IgnoreFirstRow:=True
-            ' Trouver la prochaine ligne vide dans la feuille de sortie
+            ' Find the next empty row in the output sheet
             Dim nextRow As Long
             nextRow = outputSheet.Cells(outputSheet.Rows.count, 1).End(xlUp).Row + 1
             tempArray.ToExcelRange outputSheet.Cells(nextRow, 1)
-            Set tempArray = Nothing ' Lib�rer l'objet temporaire
+            Set tempArray = Nothing
         End If
 
-        If err.Number <> 0 Then
-            Call HandleError("Erreur lors de la lecture ou de l'�criture du fichier : " & filePaths(i) & ". " & err.Description)
-            err.Clear
+        If Err.Number <> 0 Then
+            Call HandleError("Error reading or writing file: " & filePaths(i) & ". " & Err.Description)
+            Err.Clear
         End If
         On Error GoTo ErrHandler
-        MyArray.Clear ' Lib�rer MyArray pour ne pas accumuler les donn�es en m�moire inutilement
+        MyArray.Clear
     Next i
 
-    MsgBox "Les donn�es des fichiers CSV s�lectionn�s ont �t� fusionn�es dans la feuille : " & outputSheet.name, vbInformation
+    MsgBox "Data from the selected CSV files has been merged into the sheet: " & outputSheet.name, vbInformation
 
 CleanUp:
     Set MyArray = Nothing
@@ -561,72 +555,72 @@ CleanUp:
     Exit Sub
 
 ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans MergeCSVFilesToNewWorksheet : " & err.Description)
+    Call HandleError("An unexpected error occurred in MergeFilesToNewWorksheet: " & Err.Description)
     Resume CleanUp
 End Sub
 
 
-Public Sub CSV_ExportSelectedRangeAsCustom()
+Public Sub ExportSelectedRangeAsCustomCSV()
     On Error GoTo ErrHandler
     Dim MyArray As BetterArray
     Dim filePath As Variant
     Dim rng As Range
     Dim columnDelimiter As String
-    Dim encloseAll As VbMsgBoxResult ' Pour la bo�te de dialogue Yes/No
+    Dim encloseAll As VbMsgBoxResult
     Set MyArray = New BetterArray
 
-    ' 1. V�rifier la s�lection.
+    ' 1. Check the selection.
     If TypeName(Selection) <> "Range" Then
-        MsgBox "Veuillez s�lectionner la plage de cellules � exporter.", vbExclamation
+        MsgBox "Please select the cell range to export.", vbExclamation
         GoTo CleanUp
     End If
-    Set rng = Selection.CurrentRegion ' Exporte la r�gion contigu� de la s�lection
+    Set rng = Selection.CurrentRegion
 
-    ' 2. Demander le chemin de sauvegarde.
-    filePath = FileX.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "Fichiers CSV (*.csv),*.csv")
+    ' 2. Ask for the save path.
+    filePath = FalFile.Get_SaveFilePath_WithDialog(ActiveSheet.name, ".csv", "CSV Files (*.csv),*.csv")
     If CStr(filePath) = "" Then
-        MsgBox "Op�ration de sauvegarde annul�e.", vbInformation
+        MsgBox "Save operation canceled.", vbInformation
         GoTo CleanUp
     End If
 
-    ' 3. Demander le d�limiteur de colonne.
-    columnDelimiter = InputBox("Veuillez saisir le d�limiteur de colonne (par ex. , ou ; ou tabulation via 'TAB'):", "D�limiteur CSV", ";")
+    ' 3. Ask for the column delimiter.
+    columnDelimiter = InputBox("Please enter the column delimiter (e.g., , or ; or TAB for tab):", "CSV Delimiter", ";")
     If columnDelimiter = "" Then
-        MsgBox "D�limiteur non valide. Op�ration annul�e.", vbExclamation
+        MsgBox "Invalid delimiter. Operation canceled.", vbExclamation
         GoTo CleanUp
     ElseIf UCase(columnDelimiter) = "TAB" Then
         columnDelimiter = vbTab
     End If
 
-    ' 4. Demander si tous les champs doivent �tre entre guillemets.
-    encloseAll = MsgBox("Voulez-vous que tous les champs soient entour�s de guillemets ?", vbYesNo + vbQuestion, "Envelopper les champs")
+    ' 4. Ask if all fields should be enclosed in quotes.
+    encloseAll = MsgBox("Do you want all fields to be enclosed in quotes?", vbYesNo + vbQuestion, "Enclose Fields")
 
-    ' 5. Lire les donn�es.
+    ' 5. Read the data.
     MyArray.FromExcelRange FromRange:=rng, DetectLastRow:=True, DetectLastColumn:=True
 
-    ' 6. �crire les donn�es dans le fichier CSV avec les options personnalis�es.
+    ' 6. Write the data to the CSV file with custom options.
     MyArray.ToCSVFile path:=CStr(filePath), _
                       columnDelimiter:=columnDelimiter, _
                       EncloseAllInQuotes:=(encloseAll = vbYes)
 
-    MsgBox "Fichier CSV personnalis� cr�� avec succ�s : " & CStr(filePath), vbInformation
+    MsgBox "Custom CSV file created successfully: " & CStr(filePath), vbInformation
 
 CleanUp:
     Set MyArray = Nothing
     Exit Sub
 
 ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans ExportSelectedRangeAsCustomCSV : " & err.Description)
+    Call HandleError("An unexpected error occurred in ExportSelectedRangeAsCustomCSV: " & Err.Description)
     Resume CleanUp
 End Sub
 
 
-Public Sub CSV_PreviewFile()
+Public Sub PreviewCSVFile()
     On Error GoTo ErrHandler
     Dim MyArray As BetterArray
     Dim filePath As Variant
     Dim previewSheet As Worksheet
-    Dim numLinesToPreview As Long ' Nombre de lignes � afficher en aper�u
+    Dim numLinesToPreview As Long
     Dim confirmed As VbMsgBoxResult
     Dim inputDelimiter As String
     Dim inputQuote As String
@@ -634,69 +628,59 @@ Public Sub CSV_PreviewFile()
     Dim CSVString As String
     Set MyArray = New BetterArray
 
-    numLinesToPreview = 20 ' Nombre de lignes pour l'aper�u
+    numLinesToPreview = 20
 
-    ' 1. Demander � l'utilisateur de s�lectionner un fichier CSV.
-    filePath = FileX.Select_Files(FileType:="csv", AllowMultiSelect:=False)
+    ' 1. Ask the user to select a CSV file.
+    filePath = FalFile.Select_Files(FileType:="csv", AllowMultiSelect:=False)
     If IsEmpty(filePath) Or (IsArray(filePath) And UBound(filePath) < LBound(filePath)) Then
-        MsgBox "Aucun fichier CSV s�lectionn� ou l'op�ration a �t� annul�e.", vbInformation
+        MsgBox "No CSV file selected or the operation was canceled.", vbInformation
         GoTo CleanUp
     End If
 
-    ' 2. Cr�er une feuille temporaire pour l'aper�u.
+    ' 2. Create a temporary sheet for the preview.
     Set previewSheet = ActiveWorkbook.Sheets.Add
     On Error Resume Next
-    previewSheet.name = "CSV_Preview_" & format(Now, "HHmmss")
-    If err.Number <> 0 Then err.Clear
+    previewSheet.name = "CSV_Preview_" & Format(Now, "HHmmss")
+    If Err.Number <> 0 Then Err.Clear
     On Error GoTo ErrHandler
 
-    ' 3. Demander le d�limiteur initial � l'utilisateur
-    inputDelimiter = InputBox("Veuillez saisir le d�limiteur � utiliser pour l'aper�u (par ex. , ou ; ou tabulation via 'TAB'):", "D�limiteur d'aper�u CSV", ",")
+    ' 3. Ask the user for the initial delimiter.
+    inputDelimiter = InputBox("Please enter the delimiter to use for the preview (e.g., , or ; or TAB for tab):", "CSV Preview Delimiter", ",")
     If UCase(inputDelimiter) = "TAB" Then
         finalDelimiter = vbTab
     Else
         finalDelimiter = inputDelimiter
     End If
 
-    ' 3.5 Demander le Quote initial � l'utilisateur
-    inputQuote = InputBox("Veuillez saisir le caract�re d'ouverture et fermeture de cellule � utiliser pour l'aper�u (par ex. """"):", "Quote d'aper�u CSV", """")
+    ' 3.5 Ask the user for the initial quote character.
+    inputQuote = InputBox("Please enter the cell opening and closing character to use for the preview (e.g., """"):", "CSV Preview Quote", """")
     
-    ' 4. Importer les premi�res lignes du CSV avec le d�limiteur sugg�r�.
-    ' On pourrait lire le fichier ligne par ligne pour ne prendre que les X premi�res lignes,
-    ' mais pour l'exemple, BetterArray.FromCSVFile importe tout et on tronque.
-    ' Id�alement, BetterArray.FromCSVFile devrait avoir une option pour limiter les lignes lues
-    CSVString = FileX.ReadFile_WithADO(CStr(filePath(LBound(filePath))))
-    MyArray.FromCSVString CSVString:=CSVString, columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False ' DuckType False pour voir les valeurs brutes
-    'MyArray.FromCSVFile path:=CStr(filePath(LBound(filePath))), columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False ' DuckType False pour voir les valeurs brutes
+    ' 4. Import the first lines of the CSV with the suggested delimiter.
+    CSVString = FalFile.ReadFile_WithADO(CStr(filePath(LBound(filePath))))
+    MyArray.FromCSVString CSVString:=CSVString, columnDelimiter:=finalDelimiter, Quote:=inputQuote, DuckType:=False
 
-    ' Tronquer l'array si elle est trop grande pour l'aper�u (si BetterArray ne le fait pas nativement)
+    ' Truncate the array if it's too large for the preview
     If MyArray.UpperBound > numLinesToPreview Then
-        ' Assumons une m�thode TrimRows ou une manipulation manuelle de l'array interne si n�cessaire
-        ' Pour l'exemple, nous allons juste afficher les X premi�res lignes dans Excel
-        Dim trimmedArray As BetterArray
-        Set trimmedArray = New BetterArray
-        ' Si BetterArray avait un constructeur avec un array, ce serait parfait.
-        ' Puisque ce n'est pas le cas, on se basera sur ToExcelRange et on copiera-collera.
-        ' C'est une limite actuelle qui pourrait �tre une suggestion d'am�lioration pour BetterArray
+        ' This part assumes BetterArray might need manual trimming.
+        ' For this example, we'll just display the first X lines.
     End If
 
-    ' 5. Afficher l'aper�u.
+    ' 5. Display the preview.
     MyArray.ToExcelRange previewSheet.Range("A1")
-    previewSheet.Columns.AutoFit ' Ajuster les colonnes pour une meilleure lisibilit�
+    previewSheet.Columns.AutoFit
 
-    ' 6. Demander confirmation � l'utilisateur.
-    confirmed = MsgBox("L'aper�u du fichier CSV a �t� affich� dans la feuille '" & previewSheet.name & "'." & vbNewLine & _
-                       "Est-ce que le formatage est correct ? Cliquer sur Non pour ajuster le d�limiteur.", _
-                       vbYesNo + vbQuestion, "Confirmer le format CSV")
+    ' 6. Ask the user for confirmation.
+    confirmed = MsgBox("The preview of the CSV file is displayed in the sheet '" & previewSheet.name & "'." & vbNewLine & _
+                       "Is the formatting correct? Click No to adjust the delimiter.", _
+                       vbYesNo + vbQuestion, "Confirm CSV Format")
 
     If confirmed = vbNo Then
-        ' L'utilisateur veut ajuster, on pourrait boucler ici ou appeler une autre fonction
-        MsgBox "Veuillez relancer la fonction et essayer un autre d�limiteur.", vbInformation
-        Application.DisplayAlerts = False ' Supprime la feuille sans alerte
+        MsgBox "Please run the function again and try a different delimiter.", vbInformation
+        Application.DisplayAlerts = False
         previewSheet.Delete
         Application.DisplayAlerts = True
     Else
-        MsgBox "Aper�u valid�. Vous pouvez maintenant importer le fichier avec les param�tres choisis.", vbInformation
+        MsgBox "Preview validated. You can now import the file with the chosen settings.", vbInformation
     End If
 
 CleanUp:
@@ -704,7 +688,7 @@ CleanUp:
     Exit Sub
 
 ErrHandler:
-    Call HandleError("Une erreur inattendue est survenue dans CSV_PreviewFile : " & err.Description)
+    Call HandleError("An unexpected error occurred in PreviewCSVFile: " & Err.Description)
     If Not previewSheet Is Nothing Then
         Application.DisplayAlerts = False
         previewSheet.Delete
@@ -712,4 +696,3 @@ ErrHandler:
     End If
     Resume CleanUp
 End Sub
-

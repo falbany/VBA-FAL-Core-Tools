@@ -1,4 +1,4 @@
-Attribute VB_Name = "LANG_MOD"
+Attribute VB_Name = "FalLang"
 Option Explicit
 
 Public Function Convert_String_To_Double(str_value As String, Optional DecimalSeparator As String = "Auto") As Double
@@ -67,39 +67,34 @@ Public Function NumericToAlpha(index As Integer) As String
     If index >= 1 And index <= Len(alphabet) Then NumericToAlpha = Mid(alphabet, index, 1) Else NumericToAlpha = ""
 End Function
 
-Public Function wks_AddressToColumn(CellAddress As String) As Long
-    wks_AddressToColumn = ThisWorkbook.Sheets(1).Range(CellAddress & 1).column
+Public Function AddressToColumn(CellAddress As String) As Long
+    AddressToColumn = ThisWorkbook.Sheets(1).Range(CellAddress & 1).column
 End Function
 
-Public Function wks_AddressToRow(CellAddress As String) As Long
-    wks_AddressToRow = ThisWorkbook.Sheets(1).Range(CellAddress).Row
+Public Function AddressToRow(CellAddress As String) As Long
+    AddressToRow = ThisWorkbook.Sheets(1).Range(CellAddress).Row
 End Function
 
-Public Function wks_ColumnToAddress(ColumnNb As Long) As String
-    wks_ColumnToAddress = Split(ThisWorkbook.Sheets(1).Cells(1, ColumnNb).Address, "$")(1)
+Public Function ColumnToAddress(ColumnNb As Long) As String
+    ColumnToAddress = Split(ThisWorkbook.Sheets(1).Cells(1, ColumnNb).Address, "$")(1)
 End Function
 
 Public Function col(x As Long) As String
-' FALBANY Function : ' Conversion : Numero -> Lettre de colone.
+' Conversion: Number -> Column Letter.
     col = Split(ThisWorkbook.Sheets(1).Cells(1, x).Address, "$")(1)
-    'col = Chr(64 + x)
 End Function
 
-Public Function CleanStr(str As String, sCharToClear As String, Optional xLen As Long = -1) As String   ' To deprecate : use CleanResize_String() instead
-    CleanStr = CleanResize_String(str, sCharToClear, xLen)
-End Function
-
-Public Function CleanResize_String(str As String, sCharToClear As String, Optional xLen As Long = -1, Optional caseSensitive As Boolean = True)
+Public Function CleanAndResizeString(str As String, sCharToClear As String, Optional xLen As Long = -1, Optional caseSensitive As Boolean = True)
     Dim sOut    As String
     
     sOut = str
-    sOut = Clear_SubChar(str, sCharToClear, caseSensitive)
-    If xLen > 0 Then sOut = Resize_String(str, xLen)
+    sOut = RemoveChars(str, sCharToClear, caseSensitive)
+    If xLen > 0 Then sOut = ResizeString(str, xLen)
     
-    CleanResize_String = sOut
+    CleanAndResizeString = sOut
 End Function
 
-Public Function Clear_SubChar(str As String, sCharToClear As String, Optional caseSensitive As Boolean = True) As String
+Public Function RemoveChars(str As String, sCharToClear As String, Optional caseSensitive As Boolean = True) As String
     ' * @brief Removes specified characters from a given string.
     ' * @param Str The input string to be cleaned.
     ' * @param sCharToClean The characters to be removed from the input string.
@@ -113,10 +108,10 @@ Public Function Clear_SubChar(str As String, sCharToClear As String, Optional ca
         sCleaned = Replace(sCleaned, Mid(sCharToClear, i, 1), "", , , IIf(caseSensitive, vbBinaryCompare, vbTextCompare))
     Next
     
-    Clear_SubChar = sCleaned
+    RemoveChars = sCleaned
 End Function
 
-Public Function Clear_SubString(str As String, sStrToClear As String, Optional caseSensitive As Boolean = True) As String
+Public Function RemoveSubstrings(str As String, sStrToClear As String, Optional caseSensitive As Boolean = True) As String
     '* @brief Removes occurrences of specified strings in a main string.
     '* @param Str The main string to be cleaned.
     '* @param sStrToClear The strings to be removed from the main string. The strings should be separated by semicolons (;).
@@ -133,18 +128,18 @@ Public Function Clear_SubString(str As String, sStrToClear As String, Optional c
         sCleaned = Replace(sCleaned, aStrToClean(i), "", , , IIf(caseSensitive, vbBinaryCompare, vbTextCompare))
     Next
     
-    Clear_SubString = sCleaned
+    RemoveSubstrings = sCleaned
 End Function
 
-Public Function Resize_String(str As String, xLen As Long) As String
+Public Function ResizeString(str As String, xLen As Long) As String
     '* @brief Reduces the length of a string if it exceeds a specified value.
     '* @param Str The string to be resized.
     '* @param xLen The desired maximum length for the string.
     '* @return The resized string.
-    If Len(str) > xLen Then Resize_String = Left(str, xLen) Else Resize_String = str
+    If Len(str) > xLen Then ResizeString = Left(str, xLen) Else ResizeString = str
 End Function
 
-Function Count_sOccurrences(string1 As String, string2 As String, Optional caseSensitive As Boolean = False) As Integer
+Function CountOccurrences(string1 As String, string2 As String, Optional caseSensitive As Boolean = False) As Integer
     ' @summary   Counts the occurrences of a substring within a string.
     ' @param     string1         The main string.
     ' @param     string2         The substring to count.
@@ -165,6 +160,5 @@ Function Count_sOccurrences(string1 As String, string2 As String, Optional caseS
         End If
     Loop
     
-    Count_sOccurrences = count
+    CountOccurrences = count
 End Function
-
