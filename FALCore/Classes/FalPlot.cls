@@ -1782,19 +1782,40 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
     ' @return The created Chart object, or Nothing on failure.
     On Error GoTo ifError
 
-    Dim cleanName As String
-    cleanName = FalLang.RemoveChars(ChartName, ":\/?*[];")
-    cleanName = FalLang.ResizeString(cleanName, 31)
+    Dim tempName As String
+    Dim finalName As String
+    Dim counter As Long
+    Dim ch As Chart
 
-    On Error Resume Next
-    wbk.Charts(cleanName).Delete
-    On Error GoTo ifError
+    ' Sanitize original name
+    tempName = FalLang.RemoveChars(ChartName, ":\/?*[];")
+    finalName = FalLang.ResizeString(tempName, 31)
+    counter = 1
+
+    ' Loop to find a unique name
+    Do
+        Set ch = Nothing ' Reset chart object
+        On Error Resume Next
+        Set ch = wbk.Charts(finalName)
+        On Error GoTo 0
+
+        If ch Is Nothing Then
+            ' Name is unique, exit loop
+            Exit Do
+        Else
+            ' Name exists, generate a new one
+            counter = counter + 1
+            Dim suffix As String
+            suffix = " (" & counter & ")"
+            finalName = FalLang.ResizeString(tempName, 31 - Len(suffix)) & suffix
+        End If
+    Loop
 
     Dim newChartSheet As Chart
     Set newChartSheet = wbk.Charts.Add
     With newChartSheet
         .Move After:=wbk.Worksheets(wbk.Worksheets.Count)
-        .name = cleanName
+        .name = finalName
         .chartType = chartType
     End With
 
