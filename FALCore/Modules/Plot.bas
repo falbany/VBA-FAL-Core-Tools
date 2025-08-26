@@ -53,7 +53,6 @@ Public Sub Create_SmithChart()
     End If
 
     Dim plot As New FalPlot
-    Set plot.Chart = ActiveChart
     plot.CreateSmithChart
 
     Exit Sub
