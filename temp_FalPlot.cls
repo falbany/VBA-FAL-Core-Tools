@@ -1606,9 +1606,7 @@ ErrHandler:
 End Function
 
 Public Function FormatTextSubscripts() As Boolean
-    ' @brief Formats predefined terms in chart titles as subscripts.
-    ' @details Searches for specific strings (e.g., "DS,sat", "max") in the main title and axis titles and applies subscript formatting. This is useful for scientific and engineering charts.
-    ' @return True if the operation was successful.
+    ' @brief Formats subscripts and superscripts in chart titles and axis titles.
     If m_Chart Is Nothing Then Exit Function
 
     Dim StrToFormat As String
@@ -1638,13 +1636,7 @@ Public Function FormatTextSubscripts() As Boolean
     FormatTextSubscripts = True
 End Function
 
-Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal chartType As XlChartType = xlXYScatterLinesNoMarkers, Optional ByVal rangeData As Range) As Boolean
-    ' @brief Creates a new chart sheet, assigns it to the class, and formats it using the class's properties.
-    ' @param ChartName The name for the new chart sheet.
-    ' @param wbk The workbook in which to create the chart.
-    ' @param chartType (Optional) The type of chart to create. Defaults to xlXYScatterLinesNoMarkers.
-    ' @param rangeData (Optional) The data range to plot.
-    ' @return True if the chart was created and formatted successfully, False otherwise.
+Private Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal rangeData As Range) As Chart
     On Error GoTo ifError
 
     Dim cleanName As String
@@ -1660,28 +1652,21 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
     With newChartSheet
         .Move After:=wbk.Worksheets(wbk.Worksheets.Count)
         .name = cleanName
-        .chartType = chartType
+        .ChartType = xlXYScatterLinesNoMarkers
     End With
 
-    ' Assign the new chart to the class instance
-    Set Me.Chart = newChartSheet
-
     If Not rangeData Is Nothing Then
-        Me.SetSourceData rangeData
+        newChartSheet.SetSourceData Source:=rangeData
     Else
-        ' If no data, clear any default series Excel might have added
-        Me.ClearSeries
+        Do While newChartSheet.SeriesCollection.Count > 0
+            newChartSheet.SeriesCollection(1).Delete
+        Loop
     End If
 
-    ' Apply the class's current formatting properties
-    Me.ApplyFormattingFromString
-
-    CreateChart = True
+    Set CreateChart = newChartSheet
     Exit Function
-
 ifError:
-    CreateChart = False
-    HandleError "Failed to create chart '" & ChartName & "'. " & Err.Description
+    Set CreateChart = Nothing
 End Function
 
 Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal FormattingOptions As String = "") As Boolean
@@ -1893,37 +1878,16 @@ Public Function AddErrorBars(ByVal seriesIndex As Integer, Optional ByVal direct
     If m_Chart Is Nothing Then GoTo ErrHandler
     If seriesIndex < 1 Or seriesIndex > m_Chart.SeriesCollection.Count Then GoTo ErrHandler
 
-    Dim ser As series
-    Set ser = m_Chart.SeriesCollection(seriesIndex)
-
-    '--- This is the fix: Check if the series chart type supports error bars ---
-    Select Case ser.ChartType
-        Case xlArea, xlAreaStacked, xlAreaStacked100, _
-             xlBarClustered, xlBarOfPie, xlBarStacked, xlBarStacked100, _
-             xlColumnClustered, xlColumnStacked, xlColumnStacked100, _
-             xlLine, xlLineMarkers, xlLineMarkersStacked, xlLineMarkersStacked100, xlLineStacked, xlLineStacked100, _
-             xlXYScatter, xlXYScatterLines, xlXYScatterLinesNoMarkers, xlXYScatterSmooth, xlXYScatterSmoothNoMarkers
-            ' This chart type supports error bars, proceed.
-        Case Else
-            ' This chart type does not support error bars.
-            HandleError "The chart type for the selected series does not support error bars."
-            AddErrorBars = False
-            Exit Function
-    End Select
-
-    ser.ErrorBar Direction:=direction, Include:=include, Type:=type, Amount:=amount
+    m_Chart.SeriesCollection(seriesIndex).ErrorBar Direction:=direction, Include:=include, Type:=type, Amount:=amount
 
     AddErrorBars = True
     Exit Function
 
 ErrHandler:
     AddErrorBars = False
-    HandleError "Failed to add error bars. " & Err.Description
 End Function
 
 Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartType As XlChartType = xlXYScatter, Optional ByVal chartName As String = "") As Boolean
-    ' @brief Helper to create and format a chart from a range.
-    ' @details This now acts as a wrapper for the public CreateChart method.
     On Error GoTo ifError
 
     Dim tempName As String
@@ -1933,9 +1897,15 @@ Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartT
         tempName = chartName
     End If
 
-    ' Call the new, powerful CreateChart method, which also handles formatting
-    CreateChartFromRange = Me.CreateChart(tempName, data.Parent.Parent, chartType, data)
+    ' Use the existing CreateChart helper to create the chart sheet
+    Set m_Chart = Me.CreateChart(tempName, data.Parent.Parent)
+    If m_Chart Is Nothing Then GoTo ifError
 
+    ' Set the chart type and source data
+    m_Chart.chartType = chartType
+    m_Chart.SetSourceData Source:=data
+
+    CreateChartFromRange = True
     Exit Function
 ifError:
     CreateChartFromRange = False
@@ -1999,17 +1969,6 @@ Public Function CreateSurfaceChart(ByVal data As Range, Optional ByVal chartName
     ' Dim plot As New FalPlot
     ' plot.CreateSurfaceChart ActiveSheet.Range("A1:C10")
     CreateSurfaceChart = Me.CreateChartFromRange(data, style, chartName)
-End Function
-
-Public Function CreateScatterChart(ByVal data As Range, Optional ByVal chartName As String = "Scatter Chart") As Boolean
-    ' @brief Creates a new, formatted scatter chart from a data range using the default class scatter type.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreateScatterChart ActiveSheet.Range("A1:B10"), "My Scatter Plot"
-    CreateScatterChart = Me.CreateChartFromRange(data, xlXYScatterLinesNoMarkers, chartName)
 End Function
 
 Private Function SanitizeFileName(ByVal fileName As String) As String
