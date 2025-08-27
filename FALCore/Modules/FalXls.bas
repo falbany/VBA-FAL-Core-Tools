@@ -64,6 +64,27 @@ Public Sub CreateSummarySheet()
         .Name = "RefreshButton"
     End With
 
+    '--- Apply modern styling ---
+    ' Hide gridlines for a cleaner look
+    summarySheet.Activate
+    ActiveWindow.DisplayGridlines = False
+
+    ' Define the data range
+    Dim dataRange As Range
+    Set dataRange = summarySheet.Range("B1:D" & i - 1)
+
+    ' Add borders to the table
+    With dataRange.Borders
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = 0
+    End With
+
+    ' Bold the header
+    With summarySheet.Range("B1:D1").Font
+        .Bold = True
+    End With
+
     ' Turn screen updating back on
     Application.ScreenUpdating = True
 End Sub
