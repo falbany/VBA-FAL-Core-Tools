@@ -1,9 +1,18 @@
 Attribute VB_Name = "FalXls"
 Option Explicit
 
-'---
-' @ModuleDescription: A module for Excel-specific functions, such as creating a summary worksheet.
-'---
+'**************************************************************************************************
+' Module: FalXls
+' Author: Florent ALBANY
+' Date: 2025-08-27
+' Version: 1.0
+'
+' Description:
+' This module provides a collection of utility functions for automating common tasks in Microsoft Excel.
+' It includes procedures for creating summary sheets, managing VBA components (import/export),
+' handling data (XML, PDF), and working with Excel objects like PivotTables and Named Ranges.
+' Its purpose is to centralize reusable code for general Excel operations.
+'**************************************************************************************************
 
 '---
 ' @Procedure: CreateSummarySheet
