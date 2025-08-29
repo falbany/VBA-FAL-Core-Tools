@@ -1901,14 +1901,14 @@ ifError:
     HandleError "Failed to create chart '" & ChartName & "'. " & Err.Description
 End Function
 
-Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal FormattingOptions As String = "") As Boolean
+Public Function CreateChartFromRange(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal FormattingOptions As String = "") As Boolean
     ' @brief Creates and formats a chart from a given data range.
     ' @param data_src The range containing the data. The first column is assumed to be X-values, subsequent columns are Y-values. The first row is assumed to be series names.
     ' @param ChartName (Optional) The name to be given to the new chart sheet. If omitted, it's derived from the source worksheet's name.
     ' @param nbSeriesByGroup (Optional) The number of series to group together for coloring purposes.
     ' @param ColorStyle (Optional) The name of the color palette to use for the series.
     ' @param FormattingOptions (Optional) A semicolon-delimited string of key-value pairs to override default formatting.
-    ' @return True if the chart was plotted successfully, False otherwise.
+    ' @return True if the chart was created successfully, False otherwise.
     On Error GoTo ifError
     Application.ScreenUpdating = False
 
@@ -1930,14 +1930,14 @@ Public Function PlotFromRange(ByVal data_src As Range, Optional ByVal ChartName 
     Me.ApplyFormattingFromString tempFormattingOptions
 
     Application.ScreenUpdating = True
-    PlotFromRange = True
+    CreateChartFromRange = True
     Exit Function
 ifError:
     Application.ScreenUpdating = True
-    PlotFromRange = False
+    CreateChartFromRange = False
 End Function
 
-Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
+Public Function CreateChartFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
     ' @brief Automatically detects a data table in a worksheet and creates a chart from it.
     ' @details This powerful function attempts to find the boundaries of a data table starting from `DataTopLeftCell`, then creates and formats a chart from it.
     ' @param wks_src The source worksheet containing the data.
@@ -2011,14 +2011,14 @@ Public Function PlotFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal Dat
     Me.ApplyFormattingFromString tempFormattingOptions
 
     Application.ScreenUpdating = True
-    PlotFromWorksheet = True
+    CreateChartFromWorksheet = True
     Exit Function
 ifError:
     Application.ScreenUpdating = True
-    PlotFromWorksheet = False
+    CreateChartFromWorksheet = False
 End Function
 
-Public Function PlotFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Boolean
+Public Function CreateChartFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Boolean
     ' @brief Creates and formats a chart from a 2D VBA array.
     ' @details The function writes the array to a temporary worksheet, creates a chart from that worksheet range, and then deletes the temporary sheet.
     ' @param Arr2D A 2D array where the first column is X-values and subsequent columns are Y-values. The first row contains series names.
@@ -2040,11 +2040,11 @@ Public Function PlotFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName A
     tempRange.value = Arr2D
 
     ' Create the chart from the temporary range
-    If Not Me.PlotFromRange(tempRange, ChartName, , , FormattingOptions) Then
+    If Not Me.CreateChartFromRange(tempRange, ChartName, , , FormattingOptions) Then
         GoTo cleanup
     End If
 
-    PlotFromArray = True
+    CreateChartFromArray = True
 
 cleanup:
     ' Clean up the temporary workbook
@@ -2052,10 +2052,10 @@ cleanup:
     tempWb.Close SaveChanges:=False
     Application.DisplayAlerts = True
 
-    If Not PlotFromArray Then PlotFromArray = False ' Ensure it's false on error
+    If Not CreateChartFromArray Then CreateChartFromArray = False ' Ensure it's false on error
     Exit Function
 ifError:
-    PlotFromArray = False
+    CreateChartFromArray = False
     Resume cleanup
 End Function
 
