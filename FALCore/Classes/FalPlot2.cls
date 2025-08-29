@@ -1460,19 +1460,19 @@ ErrHandler:
 End Function
 
 Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal Style As String = "DefaultStyle") As Boolean
-    ' @brief Applies a color palette to the chart's series.
+    ' @brief Applies a color palette to the chart's series using RGB colors and intelligent application based on chart type.
+    ' @param nbBeforeChange The number of series to color with the same color before moving to the next color in the palette.
+    ' @param nbSeriesByGroup The number of series in a "group". The color palette will reset for each new group. -1 to treat all series as one group.
+    ' @param Style The name of the color palette to use (defined in the `ColorPalette` helper function).
     If m_Chart Is Nothing Then Exit Function
 
     On Error GoTo ErrHandler
     Application.ScreenUpdating = False
 
-    Dim currentSeries As series
+    Dim ser As series
     Dim aColor As Variant
-    Dim lbColor As Long
-    Dim ubColor As Long
-    Dim iColor As Long
-    Dim seriesCounterInGroup As Long
-    Dim seriesCounterBeforeChange As Long
+    Dim lbColor As Long, ubColor As Long, iColor As Long
+    Dim seriesCounterInGroup As Long, seriesCounterBeforeChange As Long
 
     aColor = Me.ColorPalette(Style)
     If IsEmpty(aColor) Then
@@ -1499,9 +1499,35 @@ Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional 
     seriesCounterInGroup = 0
     seriesCounterBeforeChange = 0
 
-    For Each currentSeries In m_Chart.FullSeriesCollection
-        currentSeries.Border.ColorIndex = aColor(iColor)
+    For Each ser In m_Chart.FullSeriesCollection
 
+        ' Apply color intelligently based on the type of chart series.
+        ' This ensures that the most prominent visual element (line, fill, marker) is colored.
+        Select Case ser.ChartType
+            Case xlLine, xlLineMarkers, xlLineMarkersStacked, xlLineMarkersStacked100, xlLineStacked, xlLineStacked100
+                ser.Format.Line.ForeColor.RGB = aColor(iColor)
+
+            Case xlXYScatter, xlXYScatterLines, xlXYScatterLinesNoMarkers, xlXYScatterSmooth, xlXYScatterSmoothNoMarkers
+                ser.Format.Line.ForeColor.RGB = aColor(iColor)
+                ser.MarkerForegroundColor = aColor(iColor)
+                ser.MarkerBackgroundColor = aColor(iColor)
+
+            Case xlArea, xlAreaStacked, xlAreaStacked100, _
+                 xlBarClustered, xlBarOfPie, xlBarStacked, xlBarStacked100, _
+                 xlColumnClustered, xlColumnStacked, xlColumnStacked100
+                ser.Format.Fill.ForeColor.RGB = aColor(iColor)
+
+            Case xlPie, xlPieOfPie
+                ' Note: For Pie charts, this colors the entire series.
+                ' For individual slice colors, a different approach is needed.
+                ser.Format.Fill.ForeColor.RGB = aColor(iColor)
+
+            Case Else
+                ' Default to border color for unknown types
+                ser.Border.Color = aColor(iColor)
+        End Select
+
+        ' Increment color index based on grouping logic
         seriesCounterInGroup = seriesCounterInGroup + 1
         seriesCounterBeforeChange = seriesCounterBeforeChange + 1
 
@@ -1516,7 +1542,7 @@ Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional 
         ElseIf iColor > ubColor Then
             iColor = lbColor
         End If
-    Next currentSeries
+    Next ser
 
     Application.ScreenUpdating = True
     ColorSeries = True
@@ -2309,12 +2335,20 @@ Private Function SanitizeFileName(ByVal fileName As String) As String
 End Function
 
 Private Function ColorPalette(Optional ByVal Style As String = "DefaultStyle") As Variant
-    ' @brief Returns a predefined array of color indices for chart series.
+    ' @brief Returns a predefined array of RGB color values for chart series.
     ' @param Style The name of the color palette to return.
     Select Case Style
-        Case "DefaultStyle": ColorPalette = Array(3, 5, 4, 7, 46, 45, 44, 43, 41, 11, 49, 1, 56, 48, 23, 22, 21, 18, 17, 40, 39, 38, 37, 36, 35, 34, 33)
-        Case "RainbowStyle": ColorPalette = Array(3, 30, 21, 54, 13, 18, 38, 7, 39, 49, 11, 5, 41, 37, 33, 8, 42, 14, 50, 10, 4, 43, 12, 40, 36, 6, 44, 45, 46, 53)
-        Case Else: ColorPalette = Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56)
+        Case "Vibrant"
+            ColorPalette = Array(RGB(27, 158, 119), RGB(217, 95, 2), RGB(117, 112, 179), RGB(231, 41, 138), RGB(102, 166, 30), RGB(230, 171, 2), RGB(166, 118, 29), RGB(102, 102, 102), _
+                                 RGB(23, 190, 207), RGB(188, 189, 34), RGB(255, 127, 14), RGB(148, 103, 189), RGB(140, 86, 75), RGB(227, 119, 194), RGB(127, 127, 127), RGB(44, 160, 44))
+        Case "Rainbow"
+            ColorPalette = Array(RGB(228, 26, 28), RGB(247, 129, 48), RGB(253, 191, 111), RGB(255, 255, 179), RGB(166, 216, 84), RGB(51, 160, 44), RGB(31, 120, 180), RGB(178, 223, 138), _
+                                 RGB(152, 78, 163), RGB(251, 154, 153), RGB(106, 61, 154), RGB(255, 127, 0), RGB(177, 89, 40), RGB(202, 178, 214), RGB(102, 194, 165), RGB(252, 141, 98))
+        Case "Grayscale"
+            ColorPalette = Array(RGB(0, 0, 0), RGB(32, 32, 32), RGB(64, 64, 64), RGB(96, 96, 96), RGB(128, 128, 128), RGB(160, 160, 160), RGB(192, 192, 192), RGB(224, 224, 224))
+        Case Else ' DefaultStyle / Tableau
+            ColorPalette = Array(RGB(31, 119, 180), RGB(255, 127, 14), RGB(44, 160, 44), RGB(214, 39, 40), RGB(148, 103, 189), RGB(140, 86, 75), RGB(227, 119, 194), RGB(127, 127, 127), _
+                                 RGB(188, 189, 34), RGB(23, 190, 207), RGB(174, 199, 232), RGB(255, 187, 120), RGB(152, 223, 138), RGB(255, 152, 150), RGB(197, 176, 213), RGB(196, 156, 148))
     End Select
 End Function
 
