@@ -1119,8 +1119,6 @@ Public Function FormatChart(Optional FormattingOptions As Variant) As Boolean
 
     Application.ScreenUpdating = False
 
-    Dim sKey As String, sValue As String
-    Dim Options As Variant, index As Long
     Dim ser As series, axNo As Axis
 
     ' Update properties from the optional formatting string, if provided.
