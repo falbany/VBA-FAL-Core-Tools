@@ -1341,6 +1341,34 @@ ErrHandler:
     ApplyTheme = False
 End Function
 
+Public Function ApplyPredefinedTheme(ByVal themeName As String) As Boolean
+    ' @brief Applies a predefined, hardcoded theme to the current chart.
+    ' @param themeName The name of the theme to apply (e.g., "IEEE-Publication").
+    ' @return True if the theme was applied successfully, False otherwise.
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart is currently set. Cannot apply theme."
+        ApplyPredefinedTheme = False
+        Exit Function
+    End If
+
+    Dim themeSettings As String
+    themeSettings = Me.ThemePalette(themeName)
+
+    If Me.FormatChart(themeSettings) Then
+        ApplyPredefinedTheme = True
+    Else
+        HandleError "Failed to apply the predefined theme '" & themeName & "'."
+        ApplyPredefinedTheme = False
+    End If
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in ApplyPredefinedTheme: " & Err.Description
+    ApplyPredefinedTheme = False
+End Function
+
 Public Function SaveThemeFromChart(ByVal themeName As String) As Boolean
     ' @brief Extracts the current chart's formatting and saves it as a theme file.
     ' @param themeName The name to give the new theme (e.g., "MyCustomTheme").
@@ -2349,6 +2377,20 @@ Private Function ColorPalette(Optional ByVal Style As String = "DefaultStyle") A
         Case Else ' DefaultStyle / Tableau
             ColorPalette = Array(RGB(31, 119, 180), RGB(255, 127, 14), RGB(44, 160, 44), RGB(214, 39, 40), RGB(148, 103, 189), RGB(140, 86, 75), RGB(227, 119, 194), RGB(127, 127, 127), _
                                  RGB(188, 189, 34), RGB(23, 190, 207), RGB(174, 199, 232), RGB(255, 187, 120), RGB(152, 223, 138), RGB(255, 152, 150), RGB(197, 176, 213), RGB(196, 156, 148))
+    End Select
+End Function
+
+Private Function ThemePalette(ByVal themeName As String) As String
+    ' @brief Returns a predefined theme string for use with the FormatChart function.
+    ' @param themeName The name of the theme to return.
+    ' @availableThemes "IEEE-Publication", "Modern-Dashboard", "Default"
+    Select Case themeName
+        Case "IEEE-Publication"
+            ThemePalette = "FontName=Times New Roman;TitleFontSize=12;XAxisTitleFontSize=10;YAxisTitleFontSize=10;XAxisTicksFontSize=8;YAxisTicksFontSize=8;LegendFontSize=8;TitleFontBold=True;XAxisTitleFontBold=False;YAxisTitleFontBold=False;PlotAreaLineWeight=0.75;SeriesLineWeight=1;SeriesMarkerStyle=-4118;HasLegend=True;PlotAreaBackColor=16777215;X1ShowGridLines=False;Y1ShowGridLines=False"
+        Case "Modern-Dashboard"
+            ThemePalette = "FontName=Segoe UI;TitleFontSize=16;XAxisTitleFontSize=12;YAxisTitleFontSize=12;XAxisTicksFontSize=10;YAxisTicksFontSize=10;LegendFontSize=10;TitleFontBold=True;XAxisTitleFontBold=True;YAxisTitleFontBold=True;PlotAreaLineWeight=0;SeriesLineWeight=2;PlotAreaBackColor=16119285;MajorGridlinesColor=14474460;X1ShowGridLines=False;Y1ShowGridLines=True"
+        Case Else ' Default
+            ThemePalette = "FontName=Calibri;TitleFontSize=14;XAxisTitleFontSize=12;YAxisTitleFontSize=12;XAxisTicksFontSize=10;YAxisTicksFontSize=10;LegendFontSize=10;TitleFontBold=True;XAxisTitleFontBold=False;YAxisTitleFontBold=False;PlotAreaLineWeight=0.75;SeriesLineWeight=1.5;SeriesMarkerStyle=-4142;HasLegend=True;PlotAreaBackColor=-1;X1ShowGridLines=True;Y1ShowGridLines=True"
     End Select
 End Function
 
