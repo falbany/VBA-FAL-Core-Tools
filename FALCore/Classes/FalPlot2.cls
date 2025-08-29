@@ -684,6 +684,7 @@ Public Property Let PlotBy(ByVal value As XlRowCol)
 End Property
 
 '--- Initialization ---
+
 Private Sub Class_Initialize()
     ' @brief Initializes the class with default property values.
     m_ChartType = xlXYScatterLinesNoMarkers
@@ -803,7 +804,7 @@ Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Op
     End If
 
     ' Apply the class's current formatting properties
-    Me.ApplyFormattingFromString
+    Me.FormatChart
 
     Set CreateChart = newChartSheet
     Exit Function
@@ -930,7 +931,7 @@ Public Function CreateChartFromWorksheet(ByVal wks_src As Worksheet, Optional By
     Me.AddSeriesFromRange wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
     Me.DeleteMatchingSeries wks_src.Range(firstcol_name & (firstLine - 1)).value, False
     Me.ColorSeries 1, ((NbColumn / nbseries) - 1), ColorStyle
-    Me.ApplyFormattingFromString tempFormattingOptions
+    Me.FormatChart tempFormattingOptions
 
     Application.ScreenUpdating = True
     Set CreateChartFromWorksheet = m_Chart
@@ -1102,743 +1103,9 @@ Public Function CreateScatterChart(ByVal data As Range, Optional ByVal chartName
     Set CreateScatterChart = Me.CreateChartFromRange(data, xlXYScatterLinesNoMarkers, chartName)
 End Function
 
-'--- Other Public Methods ---
+'--- Formatting and Theming Methods ---
 
-Public Sub FormatChart()
-    ' @brief Applies the current formatting properties to the chart.
-    ' @details This method is a simple wrapper around the more powerful ApplyFormattingFromString method.
-    '          It uses the current state of the class properties to format the chart.
-    On Error GoTo ErrHandler
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to format."
-        Exit Sub
-    End If
-
-    Me.ApplyFormattingFromString
-
-    Exit Sub
-ErrHandler:
-    HandleError "An unexpected error occurred in FormatChart."
-End Sub
-
-Public Function ExportAsImage(Optional ByVal imagePath As String = "", Optional ByVal imageFilterIndex As Long = 1) As Boolean
-    ' @brief Exports the chart object to an image file.
-    ' @param imagePath (Optional) The full path to save the image. If omitted, a "Save As" dialog is shown.
-    ' @param imageFilterIndex (Optional) The default file type for the dialog (1=PNG, 2=JPG, etc.).
-    ' @return True if the export was successful, False otherwise.
-    On Error GoTo ErrHandler
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to export."
-        Exit Function
-    End If
-
-    Dim defaultFileName As String
-    Dim fileExtension As String
-    Dim filters As String
-    Dim selectedFile As Variant
-
-    ExportAsImage = False ' Default to failure
-
-    If imagePath = "" Then
-        filters = "PNG File (*.png),*.png," & _
-                  "JPEG File (*.jpg),*.jpg," & _
-                  "GIF File (*.gif),*.gif," & _
-                  "BMP File (*.bmp),*.bmp"
-
-        defaultFileName = Environ("USERPROFILE") & "\Desktop\" & Me.SanitizeFileName(m_Chart.Name) & ".png"
-
-        With Application.FileDialog(msoFileDialogSaveAs)
-            .InitialFileName = defaultFileName
-            .Title = "Save Chart As..."
-            .filters.Clear
-            .filters.Add "Images", filters, 1
-            .FilterIndex = imageFilterIndex
-
-            If .Show = -1 Then
-                selectedFile = .SelectedItems(1)
-            Else
-                Exit Function ' User cancelled
-            End If
-        End With
-        imagePath = selectedFile
-    End If
-
-    If InStr(imagePath, ".") = 0 Then
-        Select Case imageFilterIndex
-            Case 1: fileExtension = ".png"
-            Case 2: fileExtension = ".jpg"
-            Case 3: fileExtension = ".gif"
-            Case 4: fileExtension = ".bmp"
-            Case Else: fileExtension = ".png"
-        End Select
-        imagePath = imagePath & fileExtension
-    End If
-
-    Dim picType As XlChartPictureType
-    Select Case LCase(Right(imagePath, 3))
-        Case "png": picType = xlPNG
-        Case "jpg": picType = xlJPEG
-        Case "gif": picType = xlGIF
-        Case "bmp": picType = xlBitmap
-        Case Else: picType = xlPNG
-    End Select
-
-    m_Chart.Export Filename:=imagePath, FilterName:=picType
-
-    ExportAsImage = True
-    Exit Function
-
-ErrHandler:
-    HandleError "Error while exporting chart to image: " & Err.Description
-End Function
-
-Public Function GetSelectedChart() As Chart
-    ' @brief Returns the currently selected chart in the application.
-    ' @details This is a helper function to get a reference to the active chart.
-    '          It is not tied to the class instance's m_Chart property.
-    ' @return A Chart object if a chart is selected, otherwise Nothing.
-    On Error GoTo ErrHandle
-
-    If Not ActiveChart Is Nothing Then
-        Set GetSelectedChart = ActiveChart
-    Else
-        Call HandleError("You must select a chart to perform this operation.")
-        Set GetSelectedChart = Nothing
-    End If
-    Exit Function
-
-ErrHandle:
-    Call HandleError("Error getting selected chart.")
-    Set GetSelectedChart = Nothing
-End Function
-
-Public Function CopyChart(myChart As Chart, Optional cpyPosition As String = "Right", Optional offsetPosition As Double = 0) As Variant
-    On Error GoTo ifError
-    Dim parentType  As String
-    Dim newChart    As Chart
-    Dim wks_des     As Worksheet
-
-    parentType = TypeName(myChart.parent)
-    Select Case TypeName(myChart.parent)
-        Case "Workbook"
-            Select Case UCase(cpyPosition)
-                Case "RIGHT", "AFTER": myChart.Copy After:=myChart
-                Case "LEFT", "BEFORE": myChart.Copy Before:=myChart
-                Case Else: myChart.Copy After:=myChart
-            End Select
-            Set newChart = ActiveChart
-        Case Else
-            Set wks_des = myChart.parent.parent
-            myChart.parent.Copy
-            wks_des.Paste
-            Set newChart = wks_des.ChartObjects(wks_des.ChartObjects.count).Chart
-            newChart.parent.Height = myChart.parent.Height
-            newChart.parent.Width = myChart.parent.Width
-            newChart.parent.Top = myChart.parent.Top
-            newChart.parent.Left = myChart.parent.Left
-            Select Case UCase(cpyPosition)
-                Case "RIGHT": newChart.parent.Left = myChart.parent.Left + myChart.parent.Width + 5 + offsetPosition
-                Case "LEFT": newChart.parent.Left = IIf(myChart.parent.Left - myChart.parent.Width - 5 - offsetPosition > 0, myChart.parent.Left - myChart.parent.Width - 5 - offsetPosition, 0)
-                Case "DOWN": newChart.parent.Top = myChart.parent.Top + myChart.parent.Height + 5 + offsetPosition
-                Case "UP": newChart.parent.Top = IIf(myChart.parent.Top - myChart.parent.Height - 5 - offsetPosition > 0, myChart.parent.Top - myChart.parent.Height - 5 - offsetPosition, 0)
-                Case Else: newChart.parent.Left = myChart.parent.Left + myChart.parent.Width + 5 + offsetPosition
-            End Select
-    End Select
-
-    Set CopyChart = newChart
-    Exit Function
-ifError:
-    CopyChart = CVErr(2001)
-End Function
-
-Public Function DeleteUnmatchingSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
-    On Error GoTo ErrHandler
-    Dim i As Integer
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to delete series from."
-        DeleteUnmatchingSeries = False
-        Exit Function
-    End If
-
-    With m_Chart
-        For i = 1 To .FullSeriesCollection.count
-            If compareAbsolute Then
-                If .FullSeriesCollection(i).name <> sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
-            Else
-                If InStr(.FullSeriesCollection(i).name, sMatch) = 0 Then .FullSeriesCollection(i).Delete: i = i - 1
-            End If
-            If i + 1 > .FullSeriesCollection.count Then Exit For
-        Next i
-    End With
-
-    DeleteUnmatchingSeries = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in DeleteUnmatchingSeries."
-    DeleteUnmatchingSeries = False
-End Function
-
-Public Function FormatAsSmithChart(Optional AddBackGround As Boolean = True, Optional FormattingOptions As String = "") As Boolean
-    On Error GoTo ErrHandler
-    Application.ScreenUpdating = False
-    Dim cSerie1         As Variant
-    Dim cSerie2         As Variant
-    Dim picturePath     As String
-    Dim isSmithData     As Boolean
-    Dim fmtOptions      As String
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to format as a Smith Chart."
-        FormatAsSmithChart = False
-        Exit Function
-    End If
-
-    With m_Chart
-        For Each cSerie1 In .FullSeriesCollection
-            If cSerie1.name Like "*I:*" And Not cSerie1.IsFiltered Then
-                For Each cSerie2 In .FullSeriesCollection
-                    If Replace(cSerie1.name, "I:", "") = Replace(cSerie2.name, "R:", "") Then
-                        isSmithData = True
-                        Exit For
-                    End If
-                Next
-            End If
-        Next
-        If Not isSmithData Then
-            HandleError "The chart does not appear to contain valid Smith Chart data (R:/I: series pairs)."
-            FormatAsSmithChart = False
-            Exit Function
-        End If
-
-        fmtOptions = "Y1Min=-1;Y1Max=1;X1Min=-1;X1Max=1;HasTitle=false;HasLegend=false;SquarePlot=1;X1HasTitle=false;Y1HasTitle=false;X1ShowGridLines=false;Y1ShowGridLines=false;X1ShowAxis=false;Y1ShowAxis=false" & _
-                        ";X1ScaleType=" & xlLinear & ";Y1ScaleType=" & xlLinear
-        Me.ApplyFormattingFromString fmtOptions & ";" & FormattingOptions
-
-        For Each cSerie1 In .FullSeriesCollection
-            If cSerie1.name Like "*R:*" And Not cSerie1.IsFiltered Then
-                For Each cSerie2 In .FullSeriesCollection
-                    If Replace(cSerie1.name, "R:", "") = Replace(cSerie2.name, "I:", "") Then
-                        cSerie2.XValues = cSerie1.values
-                        cSerie1.Delete
-                        Exit For
-                    End If
-                Next
-            End If
-        Next
-        If AddBackGround Then
-            picturePath = "SmithChart_BackGround.png" ' This needs to be a valid path
-            If Me.prvFileExists(picturePath) Then
-                .PlotArea.format.Fill.Visible = msoTrue
-                .PlotArea.format.Fill.UserPicture picturePath
-                .PlotArea.format.Fill.TextureTile = msoFalse
-                .PlotArea.format.Fill.Transparency = 0.6
-            End If
-        Else
-            .PlotArea.format.Fill.Visible = msoFalse
-        End If
-    End With
-
-    Application.ScreenUpdating = True
-    FormatAsSmithChart = True
-    Exit Function
-
-ErrHandler:
-    Application.ScreenUpdating = True
-    HandleError "An unexpected error occurred in FormatAsSmithChart."
-    FormatAsSmithChart = False
-End Function
-
-Public Function UnlinkDataFromSource() As Boolean
-    On Error GoTo ifError
-    Dim cSerie          As Variant
-    For Each cSerie In m_Chart.FullSeriesCollection
-        cSerie.XValues = cSerie.XValues
-        cSerie.values = cSerie.values
-        cSerie.name = cSerie.name
-    Next
-    UnlinkDataFromSource = True
-    Exit Function
-ifError:
-    UnlinkDataFromSource = False
-End Function
-
-Public Function ApplyYLogarithmicScale() As Boolean
-    On Error GoTo ErrHandler
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to apply a log scale."
-        ApplyYLogarithmicScale = False
-        Exit Function
-    End If
-
-    Me.ApplyYAxisAbsoluteValue
-    m_Chart.Axes(xlValue, xlPrimary).ScaleType = xlLogarithmic
-    ApplyYLogarithmicScale = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in ApplyYLogarithmicScale."
-    ApplyYLogarithmicScale = False
-End Function
-
-Public Function ApplyYAxisAbsoluteValue() As Boolean
-    On Error GoTo ErrHandler
-    Dim cSerie As Variant
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to apply absolute values."
-        ApplyYAxisAbsoluteValue = False
-        Exit Function
-    End If
-
-    For Each cSerie In m_Chart.FullSeriesCollection
-        cSerie.values = FalArray.a1D_math_Abs(cSerie.values)
-    Next
-    ApplyYAxisAbsoluteValue = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in ApplyYAxisAbsoluteValue."
-    ApplyYAxisAbsoluteValue = False
-End Function
-
-Public Function CalculateDerivative(Optional XSample As Long = 3) As Boolean
-    On Error GoTo ErrHandler
-    Dim cSerie          As Variant
-    Dim a2D_X           As Variant
-    Dim a2D_Y           As Variant
-    Dim a2D_XY          As Variant
-    Dim a1D_dY          As Variant
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to calculate derivatives."
-        CalculateDerivative = False
-        Exit Function
-    End If
-
-    With m_Chart
-        For Each cSerie In .FullSeriesCollection
-            a2D_X = FalArray.a1D_To_Columna2D(cSerie.XValues)
-            a2D_Y = FalArray.a1D_To_Columna2D(cSerie.values)
-            a2D_XY = FalArray.a2D_Merge_ByColumn(a2D_X, a2D_Y)
-            a2D_dY = FalArray.a2D_math_Derivate(a2D_XY, XSample, 2)
-            a1D_dY = FalArray.a2D_to_a1D_Column(a2D_dY, 2)
-            cSerie.values = a1D_dY
-            cSerie.name = "d" & cSerie.name
-        Next
-    End With
-    CalculateDerivative = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in CalculateDerivative."
-    CalculateDerivative = False
-End Function
-
-Public Function FilterSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
-    ' @brief Filters series in a chart based on a match condition.
-    On Error GoTo ErrHandler
-    Dim i As Integer
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to filter series."
-        FilterSeries = False
-        Exit Function
-    End If
-
-    With m_Chart
-        For i = 1 To .FullSeriesCollection.count
-            If compareAbsolute Then
-                .FullSeriesCollection(i).IsFiltered = IIf(.FullSeriesCollection(i).name = sMatch, False, True)
-            Else
-                .FullSeriesCollection(i).IsFiltered = IIf(InStr(.FullSeriesCollection(i).name, sMatch) > 0, False, True)
-            End If
-        Next i
-    End With
-    FilterSeries = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in FilterSeries."
-    FilterSeries = False
-End Function
-
-Public Function DeleteMatchingSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
-    ' @brief Deletes series in a chart based on a match condition.
-    On Error GoTo ErrHandler
-    Dim i As Integer
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to delete series from."
-        DeleteMatchingSeries = False
-        Exit Function
-    End If
-
-    With m_Chart
-        For i = 1 To .FullSeriesCollection.count
-            If compareAbsolute Then
-                If .FullSeriesCollection(i).name = sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
-            Else
-                If InStr(.FullSeriesCollection(i).name, sMatch) > 0 Then .FullSeriesCollection(i).Delete: i = i - 1
-            End If
-            If i + 1 > .FullSeriesCollection.count Then Exit For
-        Next i
-    End With
-
-    DeleteMatchingSeries = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in DeleteMatchingSeries."
-    DeleteMatchingSeries = False
-End Function
-
-Public Function ResizeFonts(Optional fontSize As Double = 14) As Boolean
-    ' @brief Resizes all fonts in a chart to a specified size.
-    On Error GoTo ErrHandler
-    If m_Chart Is Nothing Then
-        HandleError "No chart has been set to resize fonts."
-        ResizeFonts = False
-        Exit Function
-    End If
-
-    m_Chart.ChartArea.format.TextFrame2.TextRange.Font.Size = fontSize
-    ResizeFonts = True
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in ResizeFonts."
-    ResizeFonts = False
-End Function
-
-Public Function ClearSeries() As Boolean
-    ' @brief Removes all series from the chart.
-    If m_Chart Is Nothing Then Exit Function
-
-    On Error GoTo ifError
-    Application.ScreenUpdating = False
-    ' Ensure the chart has existing series
-    If m_Chart.SeriesCollection.Count > 0 Then
-        ' Delete existing series
-        Do While m_Chart.SeriesCollection.Count > 0
-            m_Chart.SeriesCollection(1).Delete
-        Loop
-    End If
-    If m_Chart.SeriesCollection.Count = 0 Then ClearSeries = True Else ClearSeries = False
-    Application.ScreenUpdating = True
-    Exit Function
-ifError:
-    Application.ScreenUpdating = True
-    ClearSeries = False
-End Function
-
-Public Function SetSourceData(ByVal rangeData As Range, Optional ByVal PlotBy As XlRowCol = xlColumns) As Boolean
-    ' @brief Sets the source data for the chart from a range.
-    If m_Chart Is Nothing Then Exit Function
-    If TypeName(rangeData) <> "Range" Then SetSourceData = False: Exit Function
-
-    On Error GoTo ifError
-    m_Chart.SetSourceData Source:=rangeData
-    m_Chart.PlotBy = PlotBy
-    SetSourceData = True
-    Exit Function
-ifError:
-    SetSourceData = False
-End Function
-
-Public Function AddSeriesFromRange(ByVal data_src As Range) As Boolean
-    ' @brief Adds a new series to the chart from a data range.
-    If m_Chart Is Nothing Then Exit Function
-
-    On Error GoTo ifError
-    Application.ScreenUpdating = False
-    Dim seriesRange As Range
-    Dim newSeries As series
-    Dim i As Integer
-
-    ' Add a series for each column in the data source
-    For i = 2 To data_src.Columns.Count ' Start from column 2 to skip the first column (XValues)
-        If m_Chart.FullSeriesCollection.Count >= 255 Then GoTo ifError  ' Max Series exceeded
-
-        If data_src.Cells(1, i).value <> data_src.Cells(1, 1).value Then
-            Set newSeries = m_Chart.SeriesCollection.newSeries
-
-            ' Set the series values
-            Set seriesRange = data_src.Columns(i).Offset(1, 0).Resize(data_src.Rows.Count - 1, 1)
-            newSeries.values = seriesRange
-
-            ' Set the X-axis values
-            Set seriesRange = data_src.Columns(1).Offset(1, 0).Resize(data_src.Rows.Count - 1, 1)
-            newSeries.XValues = seriesRange
-
-            ' Set series names
-            newSeries.name = "='" & data_src.Parent.name & "'!" & data_src.Cells(1, i).Address
-        End If
-    Next i
-    Application.ScreenUpdating = True
-    AddSeriesFromRange = True
-    Exit Function
-ifError:
-    Application.ScreenUpdating = True
-    AddSeriesFromRange = False
-End Function
-
-Public Function AddSeriesFromArray(ByVal Arr2D As Variant) As Boolean
-    ' @brief Adds a new series to the chart from a 2D array.
-    If m_Chart Is Nothing Then Exit Function
-
-    On Error GoTo ifError
-    Dim newSeries As series
-    Dim i As Integer
-
-    ' Add a series for each element in the array
-    For i = LBound(Arr2D, 2) + 1 To UBound(Arr2D, 2)
-        If m_Chart.FullSeriesCollection.Count >= 255 Then Exit Function  ' Max Series exceeded
-
-        Set newSeries = m_Chart.SeriesCollection.newSeries
-
-        ' Set the series values
-        newSeries.values = Application.Index(Arr2D, 0, i)
-
-        ' Set the X-axis values (first column of the array)
-        newSeries.XValues = Application.Index(Arr2D, 0, 1)
-
-        ' Set series names
-        newSeries.name = Arr2D(LBound(Arr2D, 1), i)
-    Next i
-    AddSeriesFromArray = True
-    Exit Function
-ifError:
-    AddSeriesFromArray = False
-End Function
-
-Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal Style As String = "DefaultStyle") As Boolean
-    ' @brief Applies a color palette to the chart's series.
-    If m_Chart Is Nothing Then Exit Function
-
-    On Error GoTo ErrHandler
-    Application.ScreenUpdating = False
-
-    Dim currentSeries As series
-    Dim aColor As Variant
-    Dim lbColor As Long
-    Dim ubColor As Long
-    Dim iColor As Long
-    Dim seriesCounterInGroup As Long
-    Dim seriesCounterBeforeChange As Long
-
-    aColor = Me.ColorPalette(Style)
-    If IsEmpty(aColor) Then
-        HandleError "Color style '" & Style & "' not found or palette is empty."
-        ColorSeries = False
-        Exit Function
-    End If
-
-    lbColor = LBound(aColor)
-    ubColor = UBound(aColor)
-    iColor = lbColor
-
-    Dim effectiveNbSeriesByGroup As Long
-    If nbSeriesByGroup = -1 Then
-        effectiveNbSeriesByGroup = m_Chart.FullSeriesCollection.Count
-    ElseIf nbSeriesByGroup <= 0 Then
-        HandleError "The parameter 'nbSeriesByGroup' must be -1 or a positive number."
-        ColorSeries = False
-        Exit Function
-    Else
-        effectiveNbSeriesByGroup = nbSeriesByGroup
-    End If
-
-    seriesCounterInGroup = 0
-    seriesCounterBeforeChange = 0
-
-    For Each currentSeries In m_Chart.FullSeriesCollection
-        currentSeries.Border.ColorIndex = aColor(iColor)
-
-        seriesCounterInGroup = seriesCounterInGroup + 1
-        seriesCounterBeforeChange = seriesCounterBeforeChange + 1
-
-        If seriesCounterBeforeChange >= nbBeforeChange Then
-            iColor = iColor + 1
-            seriesCounterBeforeChange = 0
-        End If
-
-        If seriesCounterInGroup >= effectiveNbSeriesByGroup Then
-            iColor = lbColor
-            seriesCounterInGroup = 0
-        ElseIf iColor > ubColor Then
-            iColor = lbColor
-        End If
-    Next currentSeries
-
-    Application.ScreenUpdating = True
-    ColorSeries = True
-    Exit Function
-
-ErrHandler:
-    Application.ScreenUpdating = True
-    HandleError "Error while coloring series: " & Err.Description
-    ColorSeries = False
-End Function
-
-Public Function SaveThemeFromChart(ByVal themeName As String) As Boolean
-    ' @brief Extracts the current chart's formatting and saves it as a theme file.
-    ' @param themeName The name to give the new theme (e.g., "MyCustomTheme").
-    ' @return True if the theme was saved successfully, False otherwise.
-    On Error GoTo ErrHandler
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart is currently set. Cannot save theme."
-        SaveThemeFromChart = False
-        Exit Function
-    End If
-
-    Dim themeSettings As String
-    Dim themeFolderPath As String
-    Dim themeFilePath As String
-
-    ' Build the theme string from the current chart's properties
-    With m_Chart
-        themeSettings = "ChartType=" & .ChartType & ";"
-
-        ' Titles and Fonts
-        If .HasTitle Then
-            themeSettings = themeSettings & "HasTitle=True;"
-            themeSettings = themeSettings & "ChartTitle=" & .chartTitle.Text & ";"
-            themeSettings = themeSettings & "TitleFontSize=" & .chartTitle.Font.Size & ";"
-            themeSettings = themeSettings & "TitleFontBold=" & .chartTitle.Font.Bold & ";"
-            themeSettings = themeSettings & "FontName=" & .chartTitle.Font.Name & ";" ' Use title font as main font
-        Else
-            themeSettings = themeSettings & "HasTitle=False;"
-        End If
-
-        ' Axes
-        ' Primary X-Axis
-        With .Axes(xlCategory, xlPrimary)
-            themeSettings = themeSettings & "X1ShowAxis=" & IIf(.Format.Line.Visible = msoTrue, "True", "False") & ";"
-            themeSettings = themeSettings & "X1ShowGridLines=" & .HasMajorGridlines & ";"
-            If .HasMajorGridlines Then themeSettings = themeSettings & "MajorGridlinesColor=" & .MajorGridlines.Format.Line.ForeColor.RGB & ";"
-            If .HasTitle Then
-                themeSettings = themeSettings & "X1HasTitle=True;"
-                themeSettings = themeSettings & "X1Title=" & .AxisTitle.Text & ";"
-                themeSettings = themeSettings & "XAxisTitleFontSize=" & .AxisTitle.Font.Size & ";"
-                themeSettings = themeSettings & "XAxisTitleFontBold=" & .AxisTitle.Font.Bold & ";"
-            Else
-                themeSettings = themeSettings & "X1HasTitle=False;"
-            End If
-            themeSettings = themeSettings & "XAxisTicksFontSize=" & .TickLabels.Font.Size & ";"
-            themeSettings = themeSettings & "X1LabelNumberFormat=" & .TickLabels.NumberFormat & ";"
-        End With
-
-        ' Primary Y-Axis
-        With .Axes(xlValue, xlPrimary)
-            themeSettings = themeSettings & "Y1ShowAxis=" & IIf(.Format.Line.Visible = msoTrue, "True", "False") & ";"
-            themeSettings = themeSettings & "Y1ShowGridLines=" & .HasMajorGridlines & ";"
-            If .HasTitle Then
-                themeSettings = themeSettings & "Y1HasTitle=True;"
-                themeSettings = themeSettings & "Y1Title=" & .AxisTitle.Text & ";"
-                themeSettings = themeSettings & "YAxisTitleFontSize=" & .AxisTitle.Font.Size & ";"
-                themeSettings = themeSettings & "YAxisTitleFontBold=" & .AxisTitle.Font.Bold & ";"
-            Else
-                themeSettings = themeSettings & "Y1HasTitle=False;"
-            End If
-            themeSettings = themeSettings & "YAxisTicksFontSize=" & .TickLabels.Font.Size & ";"
-            themeSettings = themeSettings & "Y1LabelNumberFormat=" & .TickLabels.NumberFormat & ";"
-        End With
-
-        ' Legend
-        If .HasLegend Then
-            themeSettings = themeSettings & "HasLegend=True;"
-            themeSettings = themeSettings & "LegendPosition=" & .Legend.Position & ";"
-            themeSettings = themeSettings & "LegendFontSize=" & .Legend.Font.Size & ";"
-            themeSettings = themeSettings & "LegendInLayout=" & .Legend.IncludeInLayout & ";"
-        Else
-            themeSettings = themeSettings & "HasLegend=False;"
-        End If
-
-        ' Plot Area
-        If .PlotArea.Format.Fill.Visible = msoTrue Then
-            themeSettings = themeSettings & "PlotAreaBackColor=" & .PlotArea.Format.Fill.ForeColor.RGB & ";"
-        End If
-        themeSettings = themeSettings & "PlotAreaLineWeight=" & .PlotArea.Format.Line.Weight & ";"
-
-        ' Series formatting (taking the first series as representative)
-        If .SeriesCollection.Count > 0 Then
-            Dim ser As series
-            Set ser = .SeriesCollection(1)
-            themeSettings = themeSettings & "SeriesLineWeight=" & ser.Format.Line.Weight & ";"
-            themeSettings = themeSettings & "SeriesLineDashStyle=" & ser.Format.Line.DashStyle & ";"
-            themeSettings = themeSettings & "SeriesMarkerStyle=" & ser.MarkerStyle & ";"
-        End If
-    End With
-
-    ' Define file path. Themes are stored relative to the workbook.
-    If ThisWorkbook.Path <> "" Then
-        themeFolderPath = Me.prvCombinePaths(ThisWorkbook.Path, "FALCore/Themes")
-    Else
-        ' Fallback if workbook is not saved (e.g., new file)
-        HandleError "Please save the workbook before saving a theme."
-        SaveThemeFromChart = False
-        Exit Function
-    End If
-
-    themeFilePath = Me.prvCombinePaths(themeFolderPath, themeName & ".theme")
-
-    ' Save the theme file
-    If Me.prvSaveStringToFile(themeSettings, themeFilePath) Then
-        SaveThemeFromChart = True
-    Else
-        HandleError "Failed to save the theme file to: " & themeFilePath
-        SaveThemeFromChart = False
-    End If
-
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in SaveThemeFromChart: " & Err.Description
-    SaveThemeFromChart = False
-End Function
-
-Public Function ApplyTheme(ByVal themeName As String) As Boolean
-    ' @brief Loads a theme from a file and applies it to the current chart.
-    ' @param themeName The name of the theme to apply.
-    ' @return True if the theme was applied successfully, False otherwise.
-    On Error GoTo ErrHandler
-
-    If m_Chart Is Nothing Then
-        HandleError "No chart is currently set. Cannot apply theme."
-        ApplyTheme = False
-        Exit Function
-    End If
-
-    Dim themeSettings As String
-    themeSettings = Me.LoadTheme(themeName)
-
-    If themeSettings <> "" Then
-        ' Apply the theme settings
-        If Me.ApplyFormattingFromString(themeSettings) Then
-            ' Store the theme name
-            m_ThemeName = themeName
-            ApplyTheme = True
-        Else
-            HandleError "Failed to apply the theme '" & themeName & "'."
-            ApplyTheme = False
-        End If
-    Else
-        ' LoadTheme already handled the error message
-        ApplyTheme = False
-    End If
-
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in ApplyTheme: " & Err.Description
-    ApplyTheme = False
-End Function
-
-Public Function ApplyFormattingFromString(Optional FormattingOptions As Variant) As Boolean
+Public Function FormatChart(Optional FormattingOptions As Variant) As Boolean
     ' @brief Applies a multitude of formatting options to the chart object from a string.
     ' @details This is the main formatting engine for the class. It uses the class's internal properties as a baseline for the chart's style.
     '          These properties can be individually overridden by providing a semicolon-delimited string of key-value pairs in the `FormattingOptions` parameter.
@@ -2028,13 +1295,237 @@ Public Function ApplyFormattingFromString(Optional FormattingOptions As Variant)
     End With
 
     Application.ScreenUpdating = True
-    ApplyFormattingFromString = True
+    FormatChart = True
     Exit Function
 
 ErrHandler:
     Application.ScreenUpdating = True
     HandleError "Error while formatting chart: " & Err.Description
-    ApplyFormattingFromString = False
+    FormatChart = False
+End Function
+
+Public Function ApplyTheme(ByVal themeName As String) As Boolean
+    ' @brief Loads a theme from a file and applies it to the current chart.
+    ' @param themeName The name of the theme to apply.
+    ' @return True if the theme was applied successfully, False otherwise.
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart is currently set. Cannot apply theme."
+        ApplyTheme = False
+        Exit Function
+    End If
+
+    Dim themeSettings As String
+    themeSettings = Me.LoadTheme(themeName)
+
+    If themeSettings <> "" Then
+        ' Apply the theme settings
+        If Me.FormatChart(themeSettings) Then
+            ' Store the theme name
+            m_ThemeName = themeName
+            ApplyTheme = True
+        Else
+            HandleError "Failed to apply the theme '" & themeName & "'."
+            ApplyTheme = False
+        End If
+    Else
+        ' LoadTheme already handled the error message
+        ApplyTheme = False
+    End If
+
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in ApplyTheme: " & Err.Description
+    ApplyTheme = False
+End Function
+
+Public Function SaveThemeFromChart(ByVal themeName As String) As Boolean
+    ' @brief Extracts the current chart's formatting and saves it as a theme file.
+    ' @param themeName The name to give the new theme (e.g., "MyCustomTheme").
+    ' @return True if the theme was saved successfully, False otherwise.
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart is currently set. Cannot save theme."
+        SaveThemeFromChart = False
+        Exit Function
+    End If
+
+    Dim themeSettings As String
+    Dim themeFolderPath As String
+    Dim themeFilePath As String
+
+    ' Build the theme string from the current chart's properties
+    With m_Chart
+        themeSettings = "ChartType=" & .ChartType & ";"
+
+        ' Titles and Fonts
+        If .HasTitle Then
+            themeSettings = themeSettings & "HasTitle=True;"
+            themeSettings = themeSettings & "ChartTitle=" & .chartTitle.Text & ";"
+            themeSettings = themeSettings & "TitleFontSize=" & .chartTitle.Font.Size & ";"
+            themeSettings = themeSettings & "TitleFontBold=" & .chartTitle.Font.Bold & ";"
+            themeSettings = themeSettings & "FontName=" & .chartTitle.Font.Name & ";" ' Use title font as main font
+        Else
+            themeSettings = themeSettings & "HasTitle=False;"
+        End If
+
+        ' Axes
+        ' Primary X-Axis
+        With .Axes(xlCategory, xlPrimary)
+            themeSettings = themeSettings & "X1ShowAxis=" & IIf(.Format.Line.Visible = msoTrue, "True", "False") & ";"
+            themeSettings = themeSettings & "X1ShowGridLines=" & .HasMajorGridlines & ";"
+            If .HasMajorGridlines Then themeSettings = themeSettings & "MajorGridlinesColor=" & .MajorGridlines.Format.Line.ForeColor.RGB & ";"
+            If .HasTitle Then
+                themeSettings = themeSettings & "X1HasTitle=True;"
+                themeSettings = themeSettings & "X1Title=" & .AxisTitle.Text & ";"
+                themeSettings = themeSettings & "XAxisTitleFontSize=" & .AxisTitle.Font.Size & ";"
+                themeSettings = themeSettings & "XAxisTitleFontBold=" & .AxisTitle.Font.Bold & ";"
+            Else
+                themeSettings = themeSettings & "X1HasTitle=False;"
+            End If
+            themeSettings = themeSettings & "XAxisTicksFontSize=" & .TickLabels.Font.Size & ";"
+            themeSettings = themeSettings & "X1LabelNumberFormat=" & .TickLabels.NumberFormat & ";"
+        End With
+
+        ' Primary Y-Axis
+        With .Axes(xlValue, xlPrimary)
+            themeSettings = themeSettings & "Y1ShowAxis=" & IIf(.Format.Line.Visible = msoTrue, "True", "False") & ";"
+            themeSettings = themeSettings & "Y1ShowGridLines=" & .HasMajorGridlines & ";"
+            If .HasTitle Then
+                themeSettings = themeSettings & "Y1HasTitle=True;"
+                themeSettings = themeSettings & "Y1Title=" & .AxisTitle.Text & ";"
+                themeSettings = themeSettings & "YAxisTitleFontSize=" & .AxisTitle.Font.Size & ";"
+                themeSettings = themeSettings & "YAxisTitleFontBold=" & .AxisTitle.Font.Bold & ";"
+            Else
+                themeSettings = themeSettings & "Y1HasTitle=False;"
+            End If
+            themeSettings = themeSettings & "YAxisTicksFontSize=" & .TickLabels.Font.Size & ";"
+            themeSettings = themeSettings & "Y1LabelNumberFormat=" & .TickLabels.NumberFormat & ";"
+        End With
+
+        ' Legend
+        If .HasLegend Then
+            themeSettings = themeSettings & "HasLegend=True;"
+            themeSettings = themeSettings & "LegendPosition=" & .Legend.Position & ";"
+            themeSettings = themeSettings & "LegendFontSize=" & .Legend.Font.Size & ";"
+            themeSettings = themeSettings & "LegendInLayout=" & .Legend.IncludeInLayout & ";"
+        Else
+            themeSettings = themeSettings & "HasLegend=False;"
+        End If
+
+        ' Plot Area
+        If .PlotArea.Format.Fill.Visible = msoTrue Then
+            themeSettings = themeSettings & "PlotAreaBackColor=" & .PlotArea.Format.Fill.ForeColor.RGB & ";"
+        End If
+        themeSettings = themeSettings & "PlotAreaLineWeight=" & .PlotArea.Format.Line.Weight & ";"
+
+        ' Series formatting (taking the first series as representative)
+        If .SeriesCollection.Count > 0 Then
+            Dim ser As series
+            Set ser = .SeriesCollection(1)
+            themeSettings = themeSettings & "SeriesLineWeight=" & ser.Format.Line.Weight & ";"
+            themeSettings = themeSettings & "SeriesLineDashStyle=" & ser.Format.Line.DashStyle & ";"
+            themeSettings = themeSettings & "SeriesMarkerStyle=" & ser.MarkerStyle & ";"
+        End If
+    End With
+
+    ' Define file path. Themes are stored relative to the workbook.
+    If ThisWorkbook.Path <> "" Then
+        themeFolderPath = Me.prvCombinePaths(ThisWorkbook.Path, "FALCore/Themes")
+    Else
+        ' Fallback if workbook is not saved (e.g., new file)
+        HandleError "Please save the workbook before saving a theme."
+        SaveThemeFromChart = False
+        Exit Function
+    End If
+
+    themeFilePath = Me.prvCombinePaths(themeFolderPath, themeName & ".theme")
+
+    ' Save the theme file
+    If Me.prvSaveStringToFile(themeSettings, themeFilePath) Then
+        SaveThemeFromChart = True
+    Else
+        HandleError "Failed to save the theme file to: " & themeFilePath
+        SaveThemeFromChart = False
+    End If
+
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in SaveThemeFromChart: " & Err.Description
+    SaveThemeFromChart = False
+End Function
+
+Public Function ColorSeries(Optional ByVal nbBeforeChange As Long = 1, Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal Style As String = "DefaultStyle") As Boolean
+    ' @brief Applies a color palette to the chart's series.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ErrHandler
+    Application.ScreenUpdating = False
+
+    Dim currentSeries As series
+    Dim aColor As Variant
+    Dim lbColor As Long
+    Dim ubColor As Long
+    Dim iColor As Long
+    Dim seriesCounterInGroup As Long
+    Dim seriesCounterBeforeChange As Long
+
+    aColor = Me.ColorPalette(Style)
+    If IsEmpty(aColor) Then
+        HandleError "Color style '" & Style & "' not found or palette is empty."
+        ColorSeries = False
+        Exit Function
+    End If
+
+    lbColor = LBound(aColor)
+    ubColor = UBound(aColor)
+    iColor = lbColor
+
+    Dim effectiveNbSeriesByGroup As Long
+    If nbSeriesByGroup = -1 Then
+        effectiveNbSeriesByGroup = m_Chart.FullSeriesCollection.Count
+    ElseIf nbSeriesByGroup <= 0 Then
+        HandleError "The parameter 'nbSeriesByGroup' must be -1 or a positive number."
+        ColorSeries = False
+        Exit Function
+    Else
+        effectiveNbSeriesByGroup = nbSeriesByGroup
+    End If
+
+    seriesCounterInGroup = 0
+    seriesCounterBeforeChange = 0
+
+    For Each currentSeries In m_Chart.FullSeriesCollection
+        currentSeries.Border.ColorIndex = aColor(iColor)
+
+        seriesCounterInGroup = seriesCounterInGroup + 1
+        seriesCounterBeforeChange = seriesCounterBeforeChange + 1
+
+        If seriesCounterBeforeChange >= nbBeforeChange Then
+            iColor = iColor + 1
+            seriesCounterBeforeChange = 0
+        End If
+
+        If seriesCounterInGroup >= effectiveNbSeriesByGroup Then
+            iColor = lbColor
+            seriesCounterInGroup = 0
+        ElseIf iColor > ubColor Then
+            iColor = lbColor
+        End If
+    Next currentSeries
+
+    Application.ScreenUpdating = True
+    ColorSeries = True
+    Exit Function
+
+ErrHandler:
+    Application.ScreenUpdating = True
+    HandleError "Error while coloring series: " & Err.Description
+    ColorSeries = False
 End Function
 
 Public Function FormatTextSubscripts() As Boolean
@@ -2070,10 +1561,501 @@ Public Function FormatTextSubscripts() As Boolean
     FormatTextSubscripts = True
 End Function
 
+Public Function ResizeFonts(Optional fontSize As Double = 14) As Boolean
+    ' @brief Resizes all fonts in a chart to a specified size.
+    On Error GoTo ErrHandler
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to resize fonts."
+        ResizeFonts = False
+        Exit Function
+    End If
+
+    m_Chart.ChartArea.format.TextFrame2.TextRange.Font.Size = fontSize
+    ResizeFonts = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in ResizeFonts."
+    ResizeFonts = False
+End Function
+
+'--- Other Public Methods ---
+
+Public Function ExportAsImage(Optional ByVal imagePath As String = "", Optional ByVal imageFilterIndex As Long = 1) As Boolean
+    ' @brief Exports the chart object to an image file.
+    ' @param imagePath (Optional) The full path to save the image. If omitted, a "Save As" dialog is shown.
+    ' @param imageFilterIndex (Optional) The default file type for the dialog (1=PNG, 2=JPG, etc.).
+    ' @return True if the export was successful, False otherwise.
+    On Error GoTo ErrHandler
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to export."
+        Exit Function
+    End If
+
+    Dim defaultFileName As String
+    Dim fileExtension As String
+    Dim filters As String
+    Dim selectedFile As Variant
+
+    ExportAsImage = False ' Default to failure
+
+    If imagePath = "" Then
+        filters = "PNG File (*.png),*.png," & _
+                  "JPEG File (*.jpg),*.jpg," & _
+                  "GIF File (*.gif),*.gif," & _
+                  "BMP File (*.bmp),*.bmp"
+
+        defaultFileName = Environ("USERPROFILE") & "\Desktop\" & Me.SanitizeFileName(m_Chart.Name) & ".png"
+
+        With Application.FileDialog(msoFileDialogSaveAs)
+            .InitialFileName = defaultFileName
+            .Title = "Save Chart As..."
+            .filters.Clear
+            .filters.Add "Images", filters, 1
+            .FilterIndex = imageFilterIndex
+
+            If .Show = -1 Then
+                selectedFile = .SelectedItems(1)
+            Else
+                Exit Function ' User cancelled
+            End If
+        End With
+        imagePath = selectedFile
+    End If
+
+    If InStr(imagePath, ".") = 0 Then
+        Select Case imageFilterIndex
+            Case 1: fileExtension = ".png"
+            Case 2: fileExtension = ".jpg"
+            Case 3: fileExtension = ".gif"
+            Case 4: fileExtension = ".bmp"
+            Case Else: fileExtension = ".png"
+        End Select
+        imagePath = imagePath & fileExtension
+    End If
+
+    Dim picType As XlChartPictureType
+    Select Case LCase(Right(imagePath, 3))
+        Case "png": picType = xlPNG
+        Case "jpg": picType = xlJPEG
+        Case "gif": picType = xlGIF
+        Case "bmp": picType = xlBitmap
+        Case Else: picType = xlPNG
+    End Select
+
+    m_Chart.Export Filename:=imagePath, FilterName:=picType
+
+    ExportAsImage = True
+    Exit Function
+
+ErrHandler:
+    HandleError "Error while exporting chart to image: " & Err.Description
+End Function
+
+Public Sub SetChartFromSelection()
+    ' @brief Sets the class's internal chart object from the currently selected chart.
+    ' @details This procedure allows the user to easily assign the active chart to the class instance for manipulation.
+    On Error GoTo ErrHandler
+
+    If Not ActiveChart Is Nothing Then
+        Set Me.Chart = ActiveChart
+    Else
+        HandleError "No chart is currently selected. Please select a chart and try again."
+    End If
+    Exit Sub
+
+ErrHandler:
+    HandleError "An unexpected error occurred while setting the chart from selection."
+End Sub
+
+Public Function CopyChart(myChart As Chart, Optional cpyPosition As String = "Right", Optional offsetPosition As Double = 0) As Variant
+    On Error GoTo ifError
+    Dim parentType  As String
+    Dim newChart    As Chart
+    Dim wks_des     As Worksheet
+
+    parentType = TypeName(myChart.parent)
+    Select Case TypeName(myChart.parent)
+        Case "Workbook"
+            Select Case UCase(cpyPosition)
+                Case "RIGHT", "AFTER": myChart.Copy After:=myChart
+                Case "LEFT", "BEFORE": myChart.Copy Before:=myChart
+                Case Else: myChart.Copy After:=myChart
+            End Select
+            Set newChart = ActiveChart
+        Case Else
+            Set wks_des = myChart.parent.parent
+            myChart.parent.Copy
+            wks_des.Paste
+            Set newChart = wks_des.ChartObjects(wks_des.ChartObjects.count).Chart
+            newChart.parent.Height = myChart.parent.Height
+            newChart.parent.Width = myChart.parent.Width
+            newChart.parent.Top = myChart.parent.Top
+            newChart.parent.Left = myChart.parent.Left
+            Select Case UCase(cpyPosition)
+                Case "RIGHT": newChart.parent.Left = myChart.parent.Left + myChart.parent.Width + 5 + offsetPosition
+                Case "LEFT": newChart.parent.Left = IIf(myChart.parent.Left - myChart.parent.Width - 5 - offsetPosition > 0, myChart.parent.Left - myChart.parent.Width - 5 - offsetPosition, 0)
+                Case "DOWN": newChart.parent.Top = myChart.parent.Top + myChart.parent.Height + 5 + offsetPosition
+                Case "UP": newChart.parent.Top = IIf(myChart.parent.Top - myChart.parent.Height - 5 - offsetPosition > 0, myChart.parent.Top - myChart.parent.Height - 5 - offsetPosition, 0)
+                Case Else: newChart.parent.Left = myChart.parent.Left + myChart.parent.Width + 5 + offsetPosition
+            End Select
+    End Select
+
+    Set CopyChart = newChart
+    Exit Function
+ifError:
+    CopyChart = CVErr(2001)
+End Function
+
+Public Function DeleteUnmatchingSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+    On Error GoTo ErrHandler
+    Dim i As Integer
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to delete series from."
+        DeleteUnmatchingSeries = False
+        Exit Function
+    End If
+
+    With m_Chart
+        For i = 1 To .FullSeriesCollection.count
+            If compareAbsolute Then
+                If .FullSeriesCollection(i).name <> sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
+            Else
+                If InStr(.FullSeriesCollection(i).name, sMatch) = 0 Then .FullSeriesCollection(i).Delete: i = i - 1
+            End If
+            If i + 1 > .FullSeriesCollection.count Then Exit For
+        Next i
+    End With
+
+    DeleteUnmatchingSeries = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in DeleteUnmatchingSeries."
+    DeleteUnmatchingSeries = False
+End Function
+
+Public Function FormatAsSmithChart(Optional AddBackGround As Boolean = True, Optional FormattingOptions As String = "") As Boolean
+    On Error GoTo ErrHandler
+    Application.ScreenUpdating = False
+    Dim cSerie1         As Variant
+    Dim cSerie2         As Variant
+    Dim picturePath     As String
+    Dim isSmithData     As Boolean
+    Dim fmtOptions      As String
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to format as a Smith Chart."
+        FormatAsSmithChart = False
+        Exit Function
+    End If
+
+    With m_Chart
+        For Each cSerie1 In .FullSeriesCollection
+            If cSerie1.name Like "*I:*" And Not cSerie1.IsFiltered Then
+                For Each cSerie2 In .FullSeriesCollection
+                    If Replace(cSerie1.name, "I:", "") = Replace(cSerie2.name, "R:", "") Then
+                        isSmithData = True
+                        Exit For
+                    End If
+                Next
+            End If
+        Next
+        If Not isSmithData Then
+            HandleError "The chart does not appear to contain valid Smith Chart data (R:/I: series pairs)."
+            FormatAsSmithChart = False
+            Exit Function
+        End If
+
+        fmtOptions = "Y1Min=-1;Y1Max=1;X1Min=-1;X1Max=1;HasTitle=false;HasLegend=false;SquarePlot=1;X1HasTitle=false;Y1HasTitle=false;X1ShowGridLines=false;Y1ShowGridLines=false;X1ShowAxis=false;Y1ShowAxis=false" & _
+                        ";X1ScaleType=" & xlLinear & ";Y1ScaleType=" & xlLinear
+        Me.FormatChart fmtOptions & ";" & FormattingOptions
+
+        For Each cSerie1 In .FullSeriesCollection
+            If cSerie1.name Like "*R:*" And Not cSerie1.IsFiltered Then
+                For Each cSerie2 In .FullSeriesCollection
+                    If Replace(cSerie1.name, "R:", "") = Replace(cSerie2.name, "I:", "") Then
+                        cSerie2.XValues = cSerie1.values
+                        cSerie1.Delete
+                        Exit For
+                    End If
+                Next
+            End If
+        Next
+        If AddBackGround Then
+            picturePath = "SmithChart_BackGround.png" ' This needs to be a valid path
+            If Me.prvFileExists(picturePath) Then
+                .PlotArea.format.Fill.Visible = msoTrue
+                .PlotArea.format.Fill.UserPicture picturePath
+                .PlotArea.format.Fill.TextureTile = msoFalse
+                .PlotArea.format.Fill.Transparency = 0.6
+            End If
+        Else
+            .PlotArea.format.Fill.Visible = msoFalse
+        End If
+    End With
+
+    Application.ScreenUpdating = True
+    FormatAsSmithChart = True
+    Exit Function
+
+ErrHandler:
+    Application.ScreenUpdating = True
+    HandleError "An unexpected error occurred in FormatAsSmithChart."
+    FormatAsSmithChart = False
+End Function
+
+Public Function UnlinkDataFromSource() As Boolean
+    On Error GoTo ifError
+    Dim cSerie          As Variant
+    For Each cSerie In m_Chart.FullSeriesCollection
+        cSerie.XValues = cSerie.XValues
+        cSerie.values = cSerie.values
+        cSerie.name = cSerie.name
+    Next
+    UnlinkDataFromSource = True
+    Exit Function
+ifError:
+    UnlinkDataFromSource = False
+End Function
+
+Public Function ApplyYLogarithmicScale() As Boolean
+    On Error GoTo ErrHandler
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to apply a log scale."
+        ApplyYLogarithmicScale = False
+        Exit Function
+    End If
+
+    Me.ApplyYAxisAbsoluteValue
+    m_Chart.Axes(xlValue, xlPrimary).ScaleType = xlLogarithmic
+    ApplyYLogarithmicScale = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in ApplyYLogarithmicScale."
+    ApplyYLogarithmicScale = False
+End Function
+
+Public Function ApplyYAxisAbsoluteValue() As Boolean
+    On Error GoTo ErrHandler
+    Dim cSerie As Variant
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to apply absolute values."
+        ApplyYAxisAbsoluteValue = False
+        Exit Function
+    End If
+
+    For Each cSerie In m_Chart.FullSeriesCollection
+        cSerie.values = FalArray.a1D_math_Abs(cSerie.values)
+    Next
+    ApplyYAxisAbsoluteValue = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in ApplyYAxisAbsoluteValue."
+    ApplyYAxisAbsoluteValue = False
+End Function
+
+Public Function CalculateDerivative(Optional XSample As Long = 3) As Boolean
+    On Error GoTo ErrHandler
+    Dim cSerie          As Variant
+    Dim a2D_X           As Variant
+    Dim a2D_Y           As Variant
+    Dim a2D_XY          As Variant
+    Dim a1D_dY          As Variant
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to calculate derivatives."
+        CalculateDerivative = False
+        Exit Function
+    End If
+
+    With m_Chart
+        For Each cSerie In .FullSeriesCollection
+            a2D_X = FalArray.a1D_To_Columna2D(cSerie.XValues)
+            a2D_Y = FalArray.a1D_To_Columna2D(cSerie.values)
+            a2D_XY = FalArray.a2D_Merge_ByColumn(a2D_X, a2D_Y)
+            a2D_dY = FalArray.a2D_math_Derivate(a2D_XY, XSample, 2)
+            a1D_dY = FalArray.a2D_to_a1D_Column(a2D_dY, 2)
+            cSerie.values = a1D_dY
+            cSerie.name = "d" & cSerie.name
+        Next
+    End With
+    CalculateDerivative = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in CalculateDerivative."
+    CalculateDerivative = False
+End Function
+
+Public Function FilterSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+    ' @brief Filters series in a chart based on a match condition.
+    On Error GoTo ErrHandler
+    Dim i As Integer
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to filter series."
+        FilterSeries = False
+        Exit Function
+    End If
+
+    With m_Chart
+        For i = 1 To .FullSeriesCollection.count
+            If compareAbsolute Then
+                .FullSeriesCollection(i).IsFiltered = IIf(.FullSeriesCollection(i).name = sMatch, False, True)
+            Else
+                .FullSeriesCollection(i).IsFiltered = IIf(InStr(.FullSeriesCollection(i).name, sMatch) > 0, False, True)
+            End If
+        Next i
+    End With
+    FilterSeries = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in FilterSeries."
+    FilterSeries = False
+End Function
+
+Public Function DeleteMatchingSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
+    ' @brief Deletes series in a chart based on a match condition.
+    On Error GoTo ErrHandler
+    Dim i As Integer
+
+    If m_Chart Is Nothing Then
+        HandleError "No chart has been set to delete series from."
+        DeleteMatchingSeries = False
+        Exit Function
+    End If
+
+    With m_Chart
+        For i = 1 To .FullSeriesCollection.count
+            If compareAbsolute Then
+                If .FullSeriesCollection(i).name = sMatch Then .FullSeriesCollection(i).Delete: i = i - 1
+            Else
+                If InStr(.FullSeriesCollection(i).name, sMatch) > 0 Then .FullSeriesCollection(i).Delete: i = i - 1
+            End If
+            If i + 1 > .FullSeriesCollection.count Then Exit For
+        Next i
+    End With
+
+    DeleteMatchingSeries = True
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in DeleteMatchingSeries."
+    DeleteMatchingSeries = False
+End Function
+
+Public Function ClearSeries() As Boolean
+    ' @brief Removes all series from the chart.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ifError
+    Application.ScreenUpdating = False
+    ' Ensure the chart has existing series
+    If m_Chart.SeriesCollection.Count > 0 Then
+        ' Delete existing series
+        Do While m_Chart.SeriesCollection.Count > 0
+            m_Chart.SeriesCollection(1).Delete
+        Loop
+    End If
+    If m_Chart.SeriesCollection.Count = 0 Then ClearSeries = True Else ClearSeries = False
+    Application.ScreenUpdating = True
+    Exit Function
+ifError:
+    Application.ScreenUpdating = True
+    ClearSeries = False
+End Function
+
+Public Function SetSourceData(ByVal rangeData As Range, Optional ByVal PlotBy As XlRowCol = xlColumns) As Boolean
+    ' @brief Sets the source data for the chart from a range.
+    If m_Chart Is Nothing Then Exit Function
+    If TypeName(rangeData) <> "Range" Then SetSourceData = False: Exit Function
+
+    On Error GoTo ifError
+    m_Chart.SetSourceData Source:=rangeData
+    m_Chart.PlotBy = PlotBy
+    SetSourceData = True
+    Exit Function
+ifError:
+    SetSourceData = False
+End Function
+
+Public Function AddSeriesFromRange(ByVal data_src As Range) As Boolean
+    ' @brief Adds a new series to the chart from a data range.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ifError
+    Application.ScreenUpdating = False
+    Dim seriesRange As Range
+    Dim newSeries As series
+    Dim i As Integer
+
+    ' Add a series for each column in the data source
+    For i = 2 To data_src.Columns.Count ' Start from column 2 to skip the first column (XValues)
+        If m_Chart.FullSeriesCollection.Count >= 255 Then GoTo ifError  ' Max Series exceeded
+
+        If data_src.Cells(1, i).value <> data_src.Cells(1, 1).value Then
+            Set newSeries = m_Chart.SeriesCollection.newSeries
+
+            ' Set the series values
+            Set seriesRange = data_src.Columns(i).Offset(1, 0).Resize(data_src.Rows.Count - 1, 1)
+            newSeries.values = seriesRange
+
+            ' Set the X-axis values
+            Set seriesRange = data_src.Columns(1).Offset(1, 0).Resize(data_src.Rows.Count - 1, 1)
+            newSeries.XValues = seriesRange
+
+            ' Set series names
+            newSeries.name = "='" & data_src.Parent.name & "'!" & data_src.Cells(1, i).Address
+        End If
+    Next i
+    Application.ScreenUpdating = True
+    AddSeriesFromRange = True
+    Exit Function
+ifError:
+    Application.ScreenUpdating = True
+    AddSeriesFromRange = False
+End Function
+
+Public Function AddSeriesFromArray(ByVal Arr2D As Variant) As Boolean
+    ' @brief Adds a new series to the chart from a 2D array.
+    If m_Chart Is Nothing Then Exit Function
+
+    On Error GoTo ifError
+    Dim newSeries As series
+    Dim i As Integer
+
+    ' Add a series for each element in the array
+    For i = LBound(Arr2D, 2) + 1 To UBound(Arr2D, 2)
+        If m_Chart.FullSeriesCollection.Count >= 255 Then Exit Function  ' Max Series exceeded
+
+        Set newSeries = m_Chart.SeriesCollection.newSeries
+
+        ' Set the series values
+        newSeries.values = Application.Index(Arr2D, 0, i)
+
+        ' Set the X-axis values (first column of the array)
+        newSeries.XValues = Application.Index(Arr2D, 0, 1)
+
+        ' Set series names
+        newSeries.name = Arr2D(LBound(Arr2D, 1), i)
+    Next i
+    AddSeriesFromArray = True
+    Exit Function
+ifError:
+    AddSeriesFromArray = False
+End Function
+
 Public Function AddTrendline(ByVal seriesIndex As Integer, Optional ByVal trendlineType As XlTrendlineType = xlLinear, Optional ByVal order As Integer = 2, Optional ByVal forecastForward As Double = 0, Optional ByVal forecastBackward As Double = 0, Optional ByVal displayEquation As Boolean = False, Optional ByVal displayRSquared As Boolean = False) As Boolean
     ' @brief Adds a trendline to a specified series on the chart.
     ' @param seriesIndex The index number of the series to add the trendline to.
-    ' @param trendlineType (Optional) The type of trendline to add (e.g., xlLinear, xlPolynomial). Defaults to xlLinear.
+    ' @param trendlineType (Optional) The type of trendline to add (e.g., xlLinear, xlPolynomial).Defaults to xlLinear.
     ' @param order (Optional) The polynomial order if the trendlineType is xlPolynomial. Defaults to 2.
     ' @param forecastForward (Optional) The number of periods to forecast forward. Defaults to 0.
     ' @param forecastBackward (Optional) The number of periods to forecast backward. Defaults to 0.
@@ -2177,6 +2159,46 @@ Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartT
 ifError:
     Set CreateChartFromRange = Nothing
 End Function
+
+Private Function LoadTheme(ByVal themeName As String) As String
+    ' @brief Loads theme settings from a .theme file.
+    ' @param themeName The name of the theme to load.
+    ' @return A string containing the theme settings, or an empty string on failure.
+    On Error GoTo ErrHandler
+
+    Dim themeFolderPath As String
+    Dim themeFilePath As String
+    Dim themeSettings As String
+
+    ' Define file path
+    If ThisWorkbook.Path <> "" Then
+        themeFolderPath = Me.prvCombinePaths(ThisWorkbook.Path, "FALCore/Themes")
+    Else
+        HandleError "Please save the workbook before loading a theme."
+        LoadTheme = ""
+        Exit Function
+    End If
+
+    themeFilePath = Me.prvCombinePaths(themeFolderPath, themeName & ".theme")
+
+    If Me.prvFileExists(themeFilePath) Then
+        themeSettings = Me.prvReadFile(themeFilePath)
+        LoadTheme = themeSettings
+    Else
+        HandleError "Theme file not found: " & themeFilePath
+        LoadTheme = ""
+    End If
+
+    Exit Function
+
+ErrHandler:
+    HandleError "An unexpected error occurred in LoadTheme: " & Err.Description
+    LoadTheme = ""
+End Function
+
+Private Sub HandleError(ByVal ErrMsg As String)
+    MsgBox "An error occurred:" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Operation impossible"
+End Sub
 
 Private Function prvRemoveChars(ByVal text As String, ByVal charsToRemove As String) As String
     ' @brief Removes specified characters from a string.
