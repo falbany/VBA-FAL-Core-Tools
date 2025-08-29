@@ -1123,77 +1123,9 @@ Public Function FormatChart(Optional FormattingOptions As Variant) As Boolean
     Dim Options As Variant, index As Long
     Dim ser As series, axNo As Axis
 
-    ' Use class properties as default values. The FormattingOptions string will override them.
-    ' This section processes the optional FormattingOptions string.
+    ' Update properties from the optional formatting string, if provided.
     If Not IsMissing(FormattingOptions) Then
-        If Len(FormattingOptions & "") > 0 Then
-            Options = Split(FormattingOptions, ";")
-            For index = 0 To UBound(Options)
-                Dim delimiterPos As Long
-                delimiterPos = InStr(1, Options(index), "=")
-                If delimiterPos > 0 Then
-                    sKey = Trim(Left(Options(index), delimiterPos - 1))
-                    sValue = Trim(Mid(Options(index), delimiterPos + 1))
-
-                    Select Case LCase(sKey)
-                        Case "charttype": m_ChartType = CLng(sValue)
-                        Case "charttitle", "title": m_ChartTitle = sValue
-                        Case "plotby": m_PlotBy = CLng(sValue)
-                        Case "fontname": m_FontName = sValue
-                        Case "titlefontsize": m_TitleFontSize = CInt(sValue)
-                        Case "xaxistitlefontsize": m_XAxisTitleFontSize = CInt(sValue)
-                        Case "yaxistitlefontsize": m_YAxisTitleFontSize = CInt(sValue)
-                        Case "xaxisticksfontsize": m_XAxisTicksFontSize = CInt(sValue)
-                        Case "yaxisticksfontsize": m_YAxisTicksFontSize = CInt(sValue)
-                        Case "hastitle": m_HasTitle = CBool(sValue)
-                        Case "haslegend": m_HasLegend = CBool(sValue)
-                        Case "x1showaxis": m_X1ShowAxis = CBool(sValue)
-                        Case "y1showaxis": m_Y1ShowAxis = CBool(sValue)
-                        Case "x1showgridlines", "xshowgridlines": m_X1ShowGridLines = CBool(sValue)
-                        Case "y1showgridlines", "yshowgridlines": m_Y1ShowGridLines = CBool(sValue)
-                        Case "x1hastitle", "xhastitle": m_X1HasTitle = CBool(sValue)
-                        Case "x1title", "xtitle": m_X1Title = sValue
-                        Case "x2title": m_X2Title = sValue
-                        Case "y1hastitle", "yhastitle": m_Y1HasTitle = CBool(sValue)
-                        Case "y1title", "ytitle": m_Y1Title = sValue
-                        Case "y2hastitle": m_Y2HasTitle = CBool(sValue)
-                        Case "y2title": m_Y2Title = sValue
-                        Case "legendfontsize": m_LegendFontSize = CInt(sValue)
-                        Case "legendposition": m_LegendPosition = CLng(sValue)
-                        Case "legendinlayout": m_LegendInLayout = CBool(sValue)
-                        Case "plotarealineweight": m_PlotAreaLineWeight = CDbl(sValue)
-                        Case "serieslineweight": m_SeriesLineWeight = CDbl(sValue)
-                        Case "serieslinedashstyle": m_SeriesLineDashStyle = CLng(sValue)
-                        Case "seriesmarkerstyle": m_SeriesMarkerStyle = CLng(sValue)
-                        Case "hasdatalabels": m_HasDataLabels = CBool(sValue)
-                        Case "x1labelnumberformat": m_X1LabelNumberFormat = sValue
-                        Case "x2labelnumberformat": m_X2LabelNumberFormat = sValue
-                        Case "y1labelnumberformat": m_Y1LabelNumberFormat = sValue
-                        Case "y2labelnumberformat": m_Y2LabelNumberFormat = sValue
-                        Case "x1scaletype": m_X1ScaleType = CLng(sValue)
-                        Case "y1scaletype": m_Y1ScaleType = CLng(sValue)
-                        Case "x2scaletype": m_X2ScaleType = CLng(sValue)
-                        Case "y2scaletype": m_Y2ScaleType = CLng(sValue)
-                        Case "x1min", "xmin": m_X1Min = CDbl(sValue)
-                        Case "x1max", "xmax": m_X1Max = CDbl(sValue)
-                        Case "y1min", "ymin": m_Y1Min = CDbl(sValue)
-                        Case "y1max", "ymax": m_Y1Max = CDbl(sValue)
-                        Case "x2min": m_X2Min = CDbl(sValue)
-                        Case "x2max": m_X2Max = CDbl(sValue)
-                        Case "y2min": m_Y2Min = CDbl(sValue)
-                        Case "y2max": m_Y2Max = CDbl(sValue)
-                        Case "squareplot": m_SquarePlot = CBool(sValue)
-                        Case "crossesat": m_CrossesAt = CDbl(sValue)
-                        '--- Modern Theme Properties ---
-                        Case "plotareabackcolor": m_PlotAreaBackColor = CLng(sValue)
-                        Case "majorgridlinescolor": m_MajorGridlinesColor = CLng(sValue)
-                        Case "titlefontbold": m_TitleFontBold = CBool(sValue)
-                        Case "xaxistitlefontbold": m_XAxisTitleFontBold = CBool(sValue)
-                        Case "yaxistitlefontbold": m_YAxisTitleFontBold = CBool(sValue)
-                    End Select
-                End If
-            Next index
-        End If
+        Me.prvUpdatePropertiesFromString FormattingOptions
     End If
 
     With m_Chart
@@ -2190,6 +2122,83 @@ ErrHandler:
 End Function
 
 '--- Private Helper Functions ---
+
+Private Sub prvUpdatePropertiesFromString(ByVal FormattingOptions As String)
+    ' @brief Parses a semicolon-delimited string of key-value pairs and updates the class's internal properties.
+    ' @param FormattingOptions A string of key-value pairs (e.g., "Title=MyTitle;XTitle=X-Axis;TitleFontSize=16").
+
+    Dim sKey As String, sValue As String
+    Dim Options As Variant, index As Long
+
+    If Len(FormattingOptions & "") > 0 Then
+        Options = Split(FormattingOptions, ";")
+        For index = 0 To UBound(Options)
+            Dim delimiterPos As Long
+            delimiterPos = InStr(1, Options(index), "=")
+            If delimiterPos > 0 Then
+                sKey = Trim(Left(Options(index), delimiterPos - 1))
+                sValue = Trim(Mid(Options(index), delimiterPos + 1))
+
+                Select Case LCase(sKey)
+                    Case "charttype": m_ChartType = CLng(sValue)
+                    Case "charttitle", "title": m_ChartTitle = sValue
+                    Case "plotby": m_PlotBy = CLng(sValue)
+                    Case "fontname": m_FontName = sValue
+                    Case "titlefontsize": m_TitleFontSize = CInt(sValue)
+                    Case "xaxistitlefontsize": m_XAxisTitleFontSize = CInt(sValue)
+                    Case "yaxistitlefontsize": m_YAxisTitleFontSize = CInt(sValue)
+                    Case "xaxisticksfontsize": m_XAxisTicksFontSize = CInt(sValue)
+                    Case "yaxisticksfontsize": m_YAxisTicksFontSize = CInt(sValue)
+                    Case "hastitle": m_HasTitle = CBool(sValue)
+                    Case "haslegend": m_HasLegend = CBool(sValue)
+                    Case "x1showaxis": m_X1ShowAxis = CBool(sValue)
+                    Case "y1showaxis": m_Y1ShowAxis = CBool(sValue)
+                    Case "x1showgridlines", "xshowgridlines": m_X1ShowGridLines = CBool(sValue)
+                    Case "y1showgridlines", "yshowgridlines": m_Y1ShowGridLines = CBool(sValue)
+                    Case "x1hastitle", "xhastitle": m_X1HasTitle = CBool(sValue)
+                    Case "x1title", "xtitle": m_X1Title = sValue
+                    Case "x2title": m_X2Title = sValue
+                    Case "y1hastitle", "yhastitle": m_Y1HasTitle = CBool(sValue)
+                    Case "y1title", "ytitle": m_Y1Title = sValue
+                    Case "y2hastitle": m_Y2HasTitle = CBool(sValue)
+                    Case "y2title": m_Y2Title = sValue
+                    Case "legendfontsize": m_LegendFontSize = CInt(sValue)
+                    Case "legendposition": m_LegendPosition = CLng(sValue)
+                    Case "legendinlayout": m_LegendInLayout = CBool(sValue)
+                    Case "plotarealineweight": m_PlotAreaLineWeight = CDbl(sValue)
+                    Case "serieslineweight": m_SeriesLineWeight = CDbl(sValue)
+                    Case "serieslinedashstyle": m_SeriesLineDashStyle = CLng(sValue)
+                    Case "seriesmarkerstyle": m_SeriesMarkerStyle = CLng(sValue)
+                    Case "hasdatalabels": m_HasDataLabels = CBool(sValue)
+                    Case "x1labelnumberformat": m_X1LabelNumberFormat = sValue
+                    Case "x2labelnumberformat": m_X2LabelNumberFormat = sValue
+                    Case "y1labelnumberformat": m_Y1LabelNumberFormat = sValue
+                    Case "y2labelnumberformat": m_Y2LabelNumberFormat = sValue
+                    Case "x1scaletype": m_X1ScaleType = CLng(sValue)
+                    Case "y1scaletype": m_Y1ScaleType = CLng(sValue)
+                    Case "x2scaletype": m_X2ScaleType = CLng(sValue)
+                    Case "y2scaletype": m_Y2ScaleType = CLng(sValue)
+                    Case "x1min", "xmin": m_X1Min = CDbl(sValue)
+                    Case "x1max", "xmax": m_X1Max = CDbl(sValue)
+                    Case "y1min", "ymin": m_Y1Min = CDbl(sValue)
+                    Case "y1max", "ymax": m_Y1Max = CDbl(sValue)
+                    Case "x2min": m_X2Min = CDbl(sValue)
+                    Case "x2max": m_X2Max = CDbl(sValue)
+                    Case "y2min": m_Y2Min = CDbl(sValue)
+                    Case "y2max": m_Y2Max = CDbl(sValue)
+                    Case "squareplot": m_SquarePlot = CBool(sValue)
+                    Case "crossesat": m_CrossesAt = CDbl(sValue)
+                    '--- Modern Theme Properties ---
+                    Case "plotareabackcolor": m_PlotAreaBackColor = CLng(sValue)
+                    Case "majorgridlinescolor": m_MajorGridlinesColor = CLng(sValue)
+                    Case "titlefontbold": m_TitleFontBold = CBool(sValue)
+                    Case "xaxistitlefontbold": m_XAxisTitleFontBold = CBool(sValue)
+                    Case "yaxistitlefontbold": m_YAxisTitleFontBold = CBool(sValue)
+                End Select
+            End If
+        Next index
+    End If
+End Sub
 
 Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartType As XlChartType = xlXYScatter, Optional ByVal chartName As String = "") As Chart
     ' @brief Helper to create and format a chart from a range.
