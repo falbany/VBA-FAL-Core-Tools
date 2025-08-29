@@ -683,44 +683,7 @@ Public Property Let PlotBy(ByVal value As XlRowCol)
     End If
 End Property
 
-'--- Private Methods ---
-
-Private Function LoadTheme(ByVal themeName As String) As String
-    ' @brief Loads theme settings from a .theme file.
-    ' @param themeName The name of the theme to load.
-    ' @return A string containing the theme settings, or an empty string on failure.
-    On Error GoTo ErrHandler
-
-    Dim themeFolderPath As String
-    Dim themeFilePath As String
-    Dim themeSettings As String
-
-    ' Define file path
-    If ThisWorkbook.Path <> "" Then
-        themeFolderPath = Me.prvCombinePaths(ThisWorkbook.Path, "FALCore/Themes")
-    Else
-        HandleError "Please save the workbook before loading a theme."
-        LoadTheme = ""
-        Exit Function
-    End If
-
-    themeFilePath = Me.prvCombinePaths(themeFolderPath, themeName & ".theme")
-
-    If Me.prvFileExists(themeFilePath) Then
-        themeSettings = Me.prvReadFile(themeFilePath)
-        LoadTheme = themeSettings
-    Else
-        HandleError "Theme file not found: " & themeFilePath
-        LoadTheme = ""
-    End If
-
-    Exit Function
-
-ErrHandler:
-    HandleError "An unexpected error occurred in LoadTheme: " & Err.Description
-    LoadTheme = ""
-End Function
-
+'--- Initialization ---
 Private Sub Class_Initialize()
     ' @brief Initializes the class with default property values.
     m_ChartType = xlXYScatterLinesNoMarkers
@@ -773,7 +736,373 @@ Private Sub Class_Initialize()
     m_YAxisTitleFontBold = False
 End Sub
 
-'--- Public Methods ---
+'--- Public Create Methods ---
+
+Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal chartType As XlChartType = xlXYScatterLinesNoMarkers, Optional ByVal rangeData As Range) As Chart
+    ' @brief Creates a new chart sheet, assigns it to the class, and formats it using the class's properties.
+    ' @param ChartName The name for the new chart sheet.
+    ' @param wbk The workbook in which to create the chart.
+    ' @param chartType (Optional) The type of chart to create. Defaults to xlXYScatterLinesNoMarkers.
+    ' @param rangeData (Optional) The data range to plot.
+    ' @return The created Chart object, or Nothing on failure.
+    On Error GoTo ifError
+
+    Dim tempName As String
+    Dim finalName As String
+    Dim counter As Long
+    Dim ch As Chart
+    Dim ws As Worksheet
+
+    ' Sanitize original name
+    tempName = Me.prvRemoveChars(ChartName, ":\/?*[];")
+    finalName = Me.prvResizeString(tempName, 31)
+    counter = 1
+
+    ' Loop to find a unique name across both charts and worksheets
+    Do
+        ' Check for chart with this name
+        Set ch = Nothing
+        On Error Resume Next
+        Set ch = wbk.Charts(finalName)
+        On Error GoTo 0
+
+        ' Check for worksheet with this name
+        Set ws = Nothing
+        On Error Resume Next
+        Set ws = wbk.Worksheets(finalName)
+        On Error GoTo 0
+
+        If ch Is Nothing And ws Is Nothing Then
+            ' Name is unique
+            Exit Do
+        Else
+            ' Name exists, generate a new one
+            counter = counter + 1
+            Dim suffix As String
+            suffix = " (" & counter & ")"
+            finalName = Me.prvResizeString(tempName, 31 - Len(suffix)) & suffix
+        End If
+    Loop
+
+    Dim newChartSheet As Chart
+    Set newChartSheet = wbk.Charts.Add
+    With newChartSheet
+        .Move After:=wbk.Worksheets(wbk.Worksheets.Count)
+        .name = finalName
+        .chartType = chartType
+    End With
+
+    ' Assign the new chart to the class instance
+    Set Me.Chart = newChartSheet
+
+    If Not rangeData Is Nothing Then
+        Me.SetSourceData rangeData
+    Else
+        ' If no data, clear any default series Excel might have added
+        Me.ClearSeries
+    End If
+
+    ' Apply the class's current formatting properties
+    Me.ApplyFormattingFromString
+
+    Set CreateChart = newChartSheet
+    Exit Function
+
+ifError:
+    Set CreateChart = Nothing
+    HandleError "Failed to create chart '" & ChartName & "'. " & Err.Description
+End Function
+
+Public Function CreateChartFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Chart
+    ' @brief Creates and formats a chart from a 2D VBA array.
+    ' @details The function writes the array to a temporary worksheet, creates a chart from that worksheet range, and then deletes the temporary sheet.
+    ' @param Arr2D A 2D array where the first column is X-values and subsequent columns are Y-values. The first row contains series names.
+    ' @param ChartName (Optional) The name for the new chart.
+    ' @param FormattingOptions (Optional) A string for advanced formatting overrides.
+    ' @return The created Chart object, or Nothing on failure.
+    On Error GoTo ifError
+
+    Dim tempWb As Workbook
+    Dim tempWs As Worksheet
+    Dim tempRange As Range
+
+    ' Create a temporary workbook and worksheet
+    Set tempWb = Application.Workbooks.Add
+    Set tempWs = tempWb.Worksheets(1)
+
+    ' Write the array to the temporary worksheet
+    Set tempRange = tempWs.Range("A1").Resize(UBound(Arr2D, 1) - LBound(Arr2D, 1) + 1, UBound(Arr2D, 2) - LBound(Arr2D, 2) + 1)
+    tempRange.value = Arr2D
+
+    ' Create the chart from the temporary range
+    Dim newChart As Chart
+    Set newChart = Me.CreateChartFromRange(tempRange, xlXYScatter, ChartName)
+    ' Note: FormattingOptions from the original call are not used here, as CreateChartFromRange doesn't accept them directly.
+    ' This could be a point of future improvement if needed.
+
+    If newChart Is Nothing Then
+        GoTo cleanup
+    End If
+
+    Set CreateChartFromArray = newChart
+
+cleanup:
+    ' Clean up the temporary workbook
+    Application.DisplayAlerts = False
+    tempWb.Close SaveChanges:=False
+    Application.DisplayAlerts = True
+
+    If newChart Is Nothing Then Set CreateChartFromArray = Nothing ' Ensure it's nothing on error
+    Exit Function
+ifError:
+    Set CreateChartFromArray = Nothing
+    Resume cleanup
+End Function
+
+Public Function CreateChartFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Chart
+    ' @brief Automatically detects a data table in a worksheet and creates a chart from it.
+    ' @details This powerful function attempts to find the boundaries of a data table starting from `DataTopLeftCell`, then creates and formats a chart from it.
+    ' @param wks_src The source worksheet containing the data.
+    ' @param DataTopLeftCell (Optional) The top-left cell of the data table (e.g., "A1").
+    ' @param ColorStyle (Optional) The name of the color palette to use.
+    ' @param plotSeries (Optional) This parameter is currently unused.
+    ' @param nbseries (Optional) The number of series to group for coloring. If omitted, it's auto-detected.
+    ' @param sPlot (Optional) A suffix to add to the chart name.
+    ' @param FormattingOptions (Optional) A string for advanced formatting overrides.
+    ' @return The created Chart object, or Nothing on failure.
+    On Error GoTo ifError
+    Application.ScreenUpdating = False
+
+    Dim aLabel() As String
+    Dim LastCol_Index As Long
+    Dim LastLineTbl() As Long
+    Dim Chart_Name As String
+    Dim firstLine As Long
+    Dim TopLeftCell As Range
+    Dim chartTitle As String
+    Dim NbLine As Long
+    Dim NbColumn As Long
+    Dim ColIndex As Long
+    Dim tmpName As String
+
+    Set TopLeftCell = wks_src.Range(DataTopLeftCell)
+    chartTitle = Me.prvRemoveSubstrings(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
+    chartTitle = Me.prvResizeString(chartTitle, 31)
+
+    '--- Data Table Detection ---
+    Dim LastLine As Long
+    LastLine = FalWork.Get_Last_Row(wks_src, TopLeftCell.Column)
+    firstLine = Me.FindFirstRowFromBottom(wks_src, TopLeftCell.Column, LastLine)
+
+    LastCol_Index = FalWork.Get_Last_Column(wks_src, firstLine)
+    Dim LastCol_Name As String, firstcol_name As String
+    LastCol_Name = Me.prvColumnNumberToLetter(LastCol_Index)
+    firstcol_name = Me.prvColumnNumberToLetter(TopLeftCell.Column)
+
+    NbLine = LastLine - firstLine
+    NbColumn = LastCol_Index - (TopLeftCell.Column - 1)
+
+    ReDim LastLineTbl(LastCol_Index)
+    For ColIndex = TopLeftCell.Column To LastCol_Index
+        LastLineTbl(ColIndex) = FalWork.Get_Last_Row(wks_src, ColIndex)
+    Next
+
+    ReDim aLabel(LastCol_Index)
+    For ColIndex = TopLeftCell.Column To LastCol_Index
+        tmpName = wks_src.Cells(firstLine - 1, ColIndex).value
+        If tmpName = "" Or tmpName = False Then
+            wks_src.Cells(firstLine - 1, ColIndex).value = "Col " & ColIndex
+        End If
+        aLabel(ColIndex) = wks_src.Cells(firstLine - 1, ColIndex).value
+    Next
+
+    If nbseries < 1 Then
+        nbseries = FalArray.aXD_count_Occurrence(aLabel, Left(aLabel(2), InStr(aLabel(2), " (") - 1), False, False)
+    End If
+
+    '--- Plot All Series ---
+    Chart_Name = Me.prvResizeString(Me.prvRemoveChars(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
+    Dim tempFormattingOptions As String
+    tempFormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
+
+    If Me.CreateChart(Chart_Name, wks_src.Parent) Is Nothing Then GoTo ifError
+
+    Me.AddSeriesFromRange wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
+    Me.DeleteMatchingSeries wks_src.Range(firstcol_name & (firstLine - 1)).value, False
+    Me.ColorSeries 1, ((NbColumn / nbseries) - 1), ColorStyle
+    Me.ApplyFormattingFromString tempFormattingOptions
+
+    Application.ScreenUpdating = True
+    Set CreateChartFromWorksheet = m_Chart
+    Exit Function
+ifError:
+    Application.ScreenUpdating = True
+    Set CreateChartFromWorksheet = Nothing
+End Function
+
+Public Function CreateSmithChart() As Chart
+    ' @brief Creates a Smith chart from the currently selected chart.
+    On Error GoTo ErrHandler
+    Application.ScreenUpdating = False
+
+    If ActiveChart Is Nothing Then
+        HandleError "Please select a chart first."
+        Set CreateSmithChart = Nothing
+        Exit Function
+    End If
+
+    Set m_Chart = Me.CopyChart(ActiveChart)
+    If m_Chart Is Nothing Then
+        HandleError "Failed to copy the chart."
+        Set CreateSmithChart = Nothing
+        Exit Function
+    End If
+
+    Me.DeleteUnmatchingSeries ":", False
+    Me.FormatAsSmithChart True
+    Me.UnlinkDataFromSource
+
+    Set CreateSmithChart = m_Chart
+    Application.ScreenUpdating = True
+    Exit Function
+ErrHandler:
+    Application.ScreenUpdating = True
+    HandleError "An unexpected error occurred in CreateSmithChart."
+    Set CreateSmithChart = Nothing
+End Function
+
+Public Function CreateYLogChartFromActive() As Chart
+    ' @brief Creates a copy of the selected chart with a logarithmic Y-axis.
+    On Error GoTo ErrHandler
+    Application.ScreenUpdating = False
+
+    If ActiveChart Is Nothing Then
+        HandleError "Please select a chart first."
+        Set CreateYLogChartFromActive = Nothing
+        Exit Function
+    End If
+
+    Set m_Chart = Me.CopyChart(ActiveChart)
+    If m_Chart Is Nothing Then
+        HandleError "Failed to copy the chart."
+        Set CreateYLogChartFromActive = Nothing
+        Exit Function
+    End If
+
+    Me.ApplyYLogarithmicScale
+    Me.UnlinkDataFromSource
+
+    Set CreateYLogChartFromActive = m_Chart
+    Application.ScreenUpdating = True
+    Exit Function
+ErrHandler:
+    Application.ScreenUpdating = True
+    HandleError "An unexpected error occurred in CreateYLogChartFromActive."
+    Set CreateYLogChartFromActive = Nothing
+End Function
+
+Public Function CreateDerivativeChartFromActive() As Chart
+    ' @brief Creates a copy of the selected chart with its series' derivatives.
+    On Error GoTo ErrHandler
+    Application.ScreenUpdating = False
+
+    If ActiveChart Is Nothing Then
+        HandleError "Please select a chart first."
+        Set CreateDerivativeChartFromActive = Nothing
+        Exit Function
+    End If
+
+    Set m_Chart = Me.CopyChart(ActiveChart)
+    If m_Chart Is Nothing Then
+        HandleError "Failed to copy the chart."
+        Set CreateDerivativeChartFromActive = Nothing
+        Exit Function
+    End If
+
+    Me.CalculateDerivative
+    Me.UnlinkDataFromSource
+
+    Set CreateDerivativeChartFromActive = m_Chart
+    Application.ScreenUpdating = True
+    Exit Function
+ErrHandler:
+    Application.ScreenUpdating = True
+    HandleError "An unexpected error occurred in CreateDerivativeChartFromActive."
+    Set CreateDerivativeChartFromActive = Nothing
+End Function
+
+Public Function CreateBarChart(ByVal data As Range, Optional ByVal chartName As String = "Bar Chart", Optional ByVal style As XlChartType = xlBarClustered) As Chart
+    ' @brief Creates a new bar chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of bar chart to create. Defaults to xlBarClustered.
+    ' @return The created Chart object, or Nothing on failure.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateBarChart ActiveSheet.Range("A1:B5")
+    Set CreateBarChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreatePieChart(ByVal data As Range, Optional ByVal chartName As String = "Pie Chart", Optional ByVal style As XlChartType = xlPie) As Chart
+    ' @brief Creates a new pie chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of pie chart to create. Defaults to xlPie.
+    ' @return The created Chart object, or Nothing on failure.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreatePieChart ActiveSheet.Range("A1:B5")
+    Set CreatePieChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateLineChart(ByVal data As Range, Optional ByVal chartName As String = "Line Chart", Optional ByVal style As XlChartType = xlLine) As Chart
+    ' @brief Creates a new line chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of line chart to create. Defaults to xlLine.
+    ' @return The created Chart object, or Nothing on failure.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateLineChart ActiveSheet.Range("A1:B5")
+    Set CreateLineChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateAreaChart(ByVal data As Range, Optional ByVal chartName As String = "Area Chart", Optional ByVal style As XlChartType = xlArea) As Chart
+    ' @brief Creates a new area chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of area chart to create. Defaults to xlArea.
+    ' @return The created Chart object, or Nothing on failure.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateAreaChart ActiveSheet.Range("A1:B5")
+    Set CreateAreaChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateSurfaceChart(ByVal data As Range, Optional ByVal chartName As String = "Surface Chart", Optional ByVal style As XlChartType = xlSurface) As Chart
+    ' @brief Creates a new surface chart from a data range.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @param style (Optional) The specific type of surface chart to create. Defaults to xlSurface.
+    ' @return The created Chart object, or Nothing on failure.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateSurfaceChart ActiveSheet.Range("A1:C10")
+    Set CreateSurfaceChart = Me.CreateChartFromRange(data, style, chartName)
+End Function
+
+Public Function CreateScatterChart(ByVal data As Range, Optional ByVal chartName As String = "Scatter Chart") As Chart
+    ' @brief Creates a new, formatted scatter chart from a data range using the default class scatter type.
+    ' @param data The range containing the data to plot.
+    ' @param chartName (Optional) The name for the new chart.
+    ' @return The created Chart object, or Nothing on failure.
+    ' @example
+    ' Dim plot As New FalPlot
+    ' plot.CreateScatterChart ActiveSheet.Range("A1:B10"), "My Scatter Plot"
+    Set CreateScatterChart = Me.CreateChartFromRange(data, xlXYScatterLinesNoMarkers, chartName)
+End Function
+
+'--- Other Public Methods ---
 
 Public Sub FormatChart()
     ' @brief Applies the current formatting properties to the chart.
@@ -790,85 +1119,6 @@ Public Sub FormatChart()
     Exit Sub
 ErrHandler:
     HandleError "An unexpected error occurred in FormatChart."
-End Sub
-
-Public Sub CreateSmithChart()
-    ' @brief Creates a Smith chart from the currently selected chart.
-    On Error GoTo ErrHandler
-    Application.ScreenUpdating = False
-
-    If ActiveChart Is Nothing Then
-        HandleError "Please select a chart first."
-        Exit Sub
-    End If
-
-    Set m_Chart = Me.CopyChart(ActiveChart)
-    If m_Chart Is Nothing Then
-        HandleError "Failed to copy the chart."
-        Exit Sub
-    End If
-
-    Me.DeleteUnmatchingSeries ":", False
-    Me.FormatAsSmithChart True
-    Me.UnlinkDataFromSource
-
-    Application.ScreenUpdating = True
-    Exit Sub
-ErrHandler:
-    Application.ScreenUpdating = True
-    HandleError "An unexpected error occurred in CreateSmithChart."
-End Sub
-
-Public Sub CreateYLogChartFromActive()
-    ' @brief Creates a copy of the selected chart with a logarithmic Y-axis.
-    On Error GoTo ErrHandler
-    Application.ScreenUpdating = False
-
-    If ActiveChart Is Nothing Then
-        HandleError "Please select a chart first."
-        Exit Sub
-    End If
-
-    Set m_Chart = Me.CopyChart(ActiveChart)
-    If m_Chart Is Nothing Then
-        HandleError "Failed to copy the chart."
-        Exit Sub
-    End If
-
-    Me.ApplyYLogarithmicScale
-    Me.UnlinkDataFromSource
-
-    Application.ScreenUpdating = True
-    Exit Sub
-ErrHandler:
-    Application.ScreenUpdating = True
-    HandleError "An unexpected error occurred in CreateYLogChartFromActive."
-End Sub
-
-Public Sub CreateDerivativeChartFromActive()
-    ' @brief Creates a copy of the selected chart with its series' derivatives.
-    On Error GoTo ErrHandler
-    Application.ScreenUpdating = False
-
-    If ActiveChart Is Nothing Then
-        HandleError "Please select a chart first."
-        Exit Sub
-    End If
-
-    Set m_Chart = Me.CopyChart(ActiveChart)
-    If m_Chart Is Nothing Then
-        HandleError "Failed to copy the chart."
-        Exit Sub
-    End If
-
-    Me.CalculateDerivative
-    Me.UnlinkDataFromSource
-
-    Application.ScreenUpdating = True
-    Exit Sub
-ErrHandler:
-    Application.ScreenUpdating = True
-    HandleError "An unexpected error occurred in CreateDerivativeChartFromActive."
 End Sub
 
 Public Function ExportAsImage(Optional ByVal imagePath As String = "", Optional ByVal imageFilterIndex As Long = 1) As Boolean
@@ -942,10 +1192,6 @@ Public Function ExportAsImage(Optional ByVal imagePath As String = "", Optional 
 ErrHandler:
     HandleError "Error while exporting chart to image: " & Err.Description
 End Function
-
-Private Sub HandleError(ByVal ErrMsg As String)
-    MsgBox "An error occurred:" & vbCrLf & ErrMsg, vbOKOnly + vbCritical, "Operation impossible"
-End Sub
 
 Public Function GetSelectedChart() As Chart
     ' @brief Returns the currently selected chart in the application.
@@ -1190,7 +1436,6 @@ ErrHandler:
     HandleError "An unexpected error occurred in CalculateDerivative."
     CalculateDerivative = False
 End Function
-
 
 Public Function FilterSeries(sMatch As String, Optional compareAbsolute As Boolean = False) As Boolean
     ' @brief Filters series in a chart based on a match condition.
@@ -1442,7 +1687,6 @@ Public Function SaveThemeFromChart(ByVal themeName As String) As Boolean
     ' @brief Extracts the current chart's formatting and saves it as a theme file.
     ' @param themeName The name to give the new theme (e.g., "MyCustomTheme").
     ' @return True if the theme was saved successfully, False otherwise.
-    ' @dependencies FalFile.bas
     On Error GoTo ErrHandler
 
     If m_Chart Is Nothing Then
@@ -1826,239 +2070,6 @@ Public Function FormatTextSubscripts() As Boolean
     FormatTextSubscripts = True
 End Function
 
-Public Function CreateChart(ByVal ChartName As String, ByVal wbk As Workbook, Optional ByVal chartType As XlChartType = xlXYScatterLinesNoMarkers, Optional ByVal rangeData As Range) As Chart
-    ' @brief Creates a new chart sheet, assigns it to the class, and formats it using the class's properties.
-    ' @param ChartName The name for the new chart sheet.
-    ' @param wbk The workbook in which to create the chart.
-    ' @param chartType (Optional) The type of chart to create. Defaults to xlXYScatterLinesNoMarkers.
-    ' @param rangeData (Optional) The data range to plot.
-    ' @return The created Chart object, or Nothing on failure.
-    On Error GoTo ifError
-
-    Dim tempName As String
-    Dim finalName As String
-    Dim counter As Long
-    Dim ch As Chart
-    Dim ws As Worksheet
-
-    ' Sanitize original name
-    tempName = Me.prvRemoveChars(ChartName, ":\/?*[];")
-    finalName = Me.prvResizeString(tempName, 31)
-    counter = 1
-
-    ' Loop to find a unique name across both charts and worksheets
-    Do
-        ' Check for chart with this name
-        Set ch = Nothing
-        On Error Resume Next
-        Set ch = wbk.Charts(finalName)
-        On Error GoTo 0
-
-        ' Check for worksheet with this name
-        Set ws = Nothing
-        On Error Resume Next
-        Set ws = wbk.Worksheets(finalName)
-        On Error GoTo 0
-
-        If ch Is Nothing And ws Is Nothing Then
-            ' Name is unique
-            Exit Do
-        Else
-            ' Name exists, generate a new one
-            counter = counter + 1
-            Dim suffix As String
-            suffix = " (" & counter & ")"
-            finalName = Me.prvResizeString(tempName, 31 - Len(suffix)) & suffix
-        End If
-    Loop
-
-    Dim newChartSheet As Chart
-    Set newChartSheet = wbk.Charts.Add
-    With newChartSheet
-        .Move After:=wbk.Worksheets(wbk.Worksheets.Count)
-        .name = finalName
-        .chartType = chartType
-    End With
-
-    ' Assign the new chart to the class instance
-    Set Me.Chart = newChartSheet
-
-    If Not rangeData Is Nothing Then
-        Me.SetSourceData rangeData
-    Else
-        ' If no data, clear any default series Excel might have added
-        Me.ClearSeries
-    End If
-
-    ' Apply the class's current formatting properties
-    Me.ApplyFormattingFromString
-
-    Set CreateChart = newChartSheet
-    Exit Function
-
-ifError:
-    Set CreateChart = Nothing
-    HandleError "Failed to create chart '" & ChartName & "'. " & Err.Description
-End Function
-
-Public Function CreateChartFromRange(ByVal data_src As Range, Optional ByVal ChartName As String = "", Optional ByVal nbSeriesByGroup As Integer = -1, Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal FormattingOptions As String = "") As Boolean
-    ' @brief Creates and formats a chart from a given data range.
-    ' @param data_src The range containing the data. The first column is assumed to be X-values, subsequent columns are Y-values. The first row is assumed to be series names.
-    ' @param ChartName (Optional) The name to be given to the new chart sheet. If omitted, it's derived from the source worksheet's name.
-    ' @param nbSeriesByGroup (Optional) The number of series to group together for coloring purposes.
-    ' @param ColorStyle (Optional) The name of the color palette to use for the series.
-    ' @param FormattingOptions (Optional) A semicolon-delimited string of key-value pairs to override default formatting.
-    ' @return True if the chart was created successfully, False otherwise.
-    On Error GoTo ifError
-    Application.ScreenUpdating = False
-
-    Dim tempChartName As String
-    If ChartName = "" Then
-        tempChartName = Me.prvRemoveChars(data_src.Parent.name, "_-. ")
-    Else
-        tempChartName = ChartName
-    End If
-
-    Dim tempFormattingOptions As String
-    tempFormattingOptions = "Title=" & tempChartName & ";XTitle=" & data_src.Cells(1, 1).value & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
-
-    If Me.CreateChart(tempChartName, data_src.Parent.Parent) Is Nothing Then GoTo ifError
-
-    Me.AddSeriesFromRange data_src
-    Me.DeleteMatchingSeries data_src.Cells(1, 1).value, False
-    Me.ColorSeries 1, nbSeriesByGroup, ColorStyle
-    Me.ApplyFormattingFromString tempFormattingOptions
-
-    Application.ScreenUpdating = True
-    CreateChartFromRange = True
-    Exit Function
-ifError:
-    Application.ScreenUpdating = True
-    CreateChartFromRange = False
-End Function
-
-Public Function CreateChartFromWorksheet(ByVal wks_src As Worksheet, Optional ByVal DataTopLeftCell As String = "A1", Optional ByVal ColorStyle As String = "DefaultStyle", Optional ByVal plotSeries As Boolean = True, Optional ByVal nbseries As Integer = -1, Optional ByVal sPlot As String = " - Plot", Optional ByVal FormattingOptions As String = "") As Boolean
-    ' @brief Automatically detects a data table in a worksheet and creates a chart from it.
-    ' @details This powerful function attempts to find the boundaries of a data table starting from `DataTopLeftCell`, then creates and formats a chart from it.
-    ' @param wks_src The source worksheet containing the data.
-    ' @param DataTopLeftCell (Optional) The top-left cell of the data table (e.g., "A1").
-    ' @param ColorStyle (Optional) The name of the color palette to use.
-    ' @param plotSeries (Optional) This parameter is currently unused.
-    ' @param nbseries (Optional) The number of series to group for coloring. If omitted, it's auto-detected.
-    ' @param sPlot (Optional) A suffix to add to the chart name.
-    ' @param FormattingOptions (Optional) A string for advanced formatting overrides.
-    ' @return True if successful, False otherwise.
-    On Error GoTo ifError
-    Application.ScreenUpdating = False
-
-    Dim aLabel() As String
-    Dim LastCol_Index As Long
-    Dim LastLineTbl() As Long
-    Dim Chart_Name As String
-    Dim firstLine As Long
-    Dim TopLeftCell As Range
-    Dim chartTitle As String
-    Dim NbLine As Long
-    Dim NbColumn As Long
-    Dim ColIndex As Long
-    Dim tmpName As String
-
-    Set TopLeftCell = wks_src.Range(DataTopLeftCell)
-    chartTitle = Me.prvRemoveSubstrings(wks_src.name, ".txt;.xlsx;.mdm;xlsm; ")
-    chartTitle = Me.prvResizeString(chartTitle, 31)
-
-    '--- Data Table Detection ---
-    Dim LastLine As Long
-    LastLine = FalWork.Get_Last_Row(wks_src, TopLeftCell.Column)
-    firstLine = Me.FindFirstRowFromBottom(wks_src, TopLeftCell.Column, LastLine)
-
-    LastCol_Index = FalWork.Get_Last_Column(wks_src, firstLine)
-    Dim LastCol_Name As String, firstcol_name As String
-    LastCol_Name = Me.prvColumnNumberToLetter(LastCol_Index)
-    firstcol_name = Me.prvColumnNumberToLetter(TopLeftCell.Column)
-
-    NbLine = LastLine - firstLine
-    NbColumn = LastCol_Index - (TopLeftCell.Column - 1)
-
-    ReDim LastLineTbl(LastCol_Index)
-    For ColIndex = TopLeftCell.Column To LastCol_Index
-        LastLineTbl(ColIndex) = FalWork.Get_Last_Row(wks_src, ColIndex)
-    Next
-
-    ReDim aLabel(LastCol_Index)
-    For ColIndex = TopLeftCell.Column To LastCol_Index
-        tmpName = wks_src.Cells(firstLine - 1, ColIndex).value
-        If tmpName = "" Or tmpName = False Then
-            wks_src.Cells(firstLine - 1, ColIndex).value = "Col " & ColIndex
-        End If
-        aLabel(ColIndex) = wks_src.Cells(firstLine - 1, ColIndex).value
-    Next
-
-    If nbseries < 1 Then
-        nbseries = FalArray.aXD_count_Occurrence(aLabel, Left(aLabel(2), InStr(aLabel(2), " (") - 1), False, False)
-    End If
-
-    '--- Plot All Series ---
-    Chart_Name = Me.prvResizeString(Me.prvRemoveChars(wks_src.name, "_-. "), 10) & " - " & sPlot & "(All)"
-    Dim tempFormattingOptions As String
-    tempFormattingOptions = "Title=" & chartTitle & ";XTitle=" & aLabel(1) & ";YTitle=(a.u);ChartType=" & xlXYScatterLinesNoMarkers & ";PlotBy=" & xlColumns & ";AutoLegend=0;" & FormattingOptions
-
-    If Me.CreateChart(Chart_Name, wks_src.Parent) Is Nothing Then GoTo ifError
-
-    Me.AddSeriesFromRange wks_src.Range(firstcol_name & (firstLine - 1) & ":" & LastCol_Name & LastLine)
-    Me.DeleteMatchingSeries wks_src.Range(firstcol_name & (firstLine - 1)).value, False
-    Me.ColorSeries 1, ((NbColumn / nbseries) - 1), ColorStyle
-    Me.ApplyFormattingFromString tempFormattingOptions
-
-    Application.ScreenUpdating = True
-    CreateChartFromWorksheet = True
-    Exit Function
-ifError:
-    Application.ScreenUpdating = True
-    CreateChartFromWorksheet = False
-End Function
-
-Public Function CreateChartFromArray(ByVal Arr2D As Variant, Optional ByVal ChartName As String = "Array Plot", Optional ByVal FormattingOptions As String = "") As Boolean
-    ' @brief Creates and formats a chart from a 2D VBA array.
-    ' @details The function writes the array to a temporary worksheet, creates a chart from that worksheet range, and then deletes the temporary sheet.
-    ' @param Arr2D A 2D array where the first column is X-values and subsequent columns are Y-values. The first row contains series names.
-    ' @param ChartName (Optional) The name for the new chart.
-    ' @param FormattingOptions (Optional) A string for advanced formatting overrides.
-    ' @return True if successful, False otherwise.
-    On Error GoTo ifError
-
-    Dim tempWb As Workbook
-    Dim tempWs As Worksheet
-    Dim tempRange As Range
-
-    ' Create a temporary workbook and worksheet
-    Set tempWb = Application.Workbooks.Add
-    Set tempWs = tempWb.Worksheets(1)
-
-    ' Write the array to the temporary worksheet
-    Set tempRange = tempWs.Range("A1").Resize(UBound(Arr2D, 1) - LBound(Arr2D, 1) + 1, UBound(Arr2D, 2) - LBound(Arr2D, 2) + 1)
-    tempRange.value = Arr2D
-
-    ' Create the chart from the temporary range
-    If Not Me.CreateChartFromRange(tempRange, ChartName, , , FormattingOptions) Then
-        GoTo cleanup
-    End If
-
-    CreateChartFromArray = True
-
-cleanup:
-    ' Clean up the temporary workbook
-    Application.DisplayAlerts = False
-    tempWb.Close SaveChanges:=False
-    Application.DisplayAlerts = True
-
-    If Not CreateChartFromArray Then CreateChartFromArray = False ' Ensure it's false on error
-    Exit Function
-ifError:
-    CreateChartFromArray = False
-    Resume cleanup
-End Function
-
 Public Function AddTrendline(ByVal seriesIndex As Integer, Optional ByVal trendlineType As XlTrendlineType = xlLinear, Optional ByVal order As Integer = 2, Optional ByVal forecastForward As Double = 0, Optional ByVal forecastBackward As Double = 0, Optional ByVal displayEquation As Boolean = False, Optional ByVal displayRSquared As Boolean = False) As Boolean
     ' @brief Adds a trendline to a specified series on the chart.
     ' @param seriesIndex The index number of the series to add the trendline to.
@@ -2142,7 +2153,9 @@ ErrHandler:
     HandleError "Failed to add error bars. " & Err.Description
 End Function
 
-Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartType As XlChartType = xlXYScatter, Optional ByVal chartName As String = "") As Boolean
+'--- Private Helper Functions ---
+
+Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartType As XlChartType = xlXYScatter, Optional ByVal chartName As String = "") As Chart
     ' @brief Helper to create and format a chart from a range.
     ' @details This now acts as a wrapper for the public CreateChart method.
     On Error GoTo ifError
@@ -2158,82 +2171,11 @@ Private Function CreateChartFromRange(ByVal data As Range, Optional ByVal chartT
 
     ' Call the new, powerful CreateChart method, which also handles formatting
     Set newChart = Me.CreateChart(tempName, data.Parent.Parent, chartType, data)
-    CreateChartFromRange = Not newChart Is Nothing
+    Set CreateChartFromRange = newChart
 
     Exit Function
 ifError:
-    CreateChartFromRange = False
-End Function
-
-Public Function CreateBarChart(ByVal data As Range, Optional ByVal chartName As String = "Bar Chart", Optional ByVal style As XlChartType = xlBarClustered) As Boolean
-    ' @brief Creates a new bar chart from a data range.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @param style (Optional) The specific type of bar chart to create. Defaults to xlBarClustered.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreateBarChart ActiveSheet.Range("A1:B5")
-    CreateBarChart = Me.CreateChartFromRange(data, style, chartName)
-End Function
-
-Public Function CreatePieChart(ByVal data As Range, Optional ByVal chartName As String = "Pie Chart", Optional ByVal style As XlChartType = xlPie) As Boolean
-    ' @brief Creates a new pie chart from a data range.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @param style (Optional) The specific type of pie chart to create. Defaults to xlPie.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreatePieChart ActiveSheet.Range("A1:B5")
-    CreatePieChart = Me.CreateChartFromRange(data, style, chartName)
-End Function
-
-Public Function CreateLineChart(ByVal data As Range, Optional ByVal chartName As String = "Line Chart", Optional ByVal style As XlChartType = xlLine) As Boolean
-    ' @brief Creates a new line chart from a data range.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @param style (Optional) The specific type of line chart to create. Defaults to xlLine.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreateLineChart ActiveSheet.Range("A1:B5")
-    CreateLineChart = Me.CreateChartFromRange(data, style, chartName)
-End Function
-
-Public Function CreateAreaChart(ByVal data As Range, Optional ByVal chartName As String = "Area Chart", Optional ByVal style As XlChartType = xlArea) As Boolean
-    ' @brief Creates a new area chart from a data range.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @param style (Optional) The specific type of area chart to create. Defaults to xlArea.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreateAreaChart ActiveSheet.Range("A1:B5")
-    CreateAreaChart = Me.CreateChartFromRange(data, style, chartName)
-End Function
-
-Public Function CreateSurfaceChart(ByVal data As Range, Optional ByVal chartName As String = "Surface Chart", Optional ByVal style As XlChartType = xlSurface) As Boolean
-    ' @brief Creates a new surface chart from a data range.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @param style (Optional) The specific type of surface chart to create. Defaults to xlSurface.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreateSurfaceChart ActiveSheet.Range("A1:C10")
-    CreateSurfaceChart = Me.CreateChartFromRange(data, style, chartName)
-End Function
-
-Public Function CreateScatterChart(ByVal data As Range, Optional ByVal chartName As String = "Scatter Chart") As Boolean
-    ' @brief Creates a new, formatted scatter chart from a data range using the default class scatter type.
-    ' @param data The range containing the data to plot.
-    ' @param chartName (Optional) The name for the new chart.
-    ' @return True if the chart was created successfully, False otherwise.
-    ' @example
-    ' Dim plot As New FalPlot
-    ' plot.CreateScatterChart ActiveSheet.Range("A1:B10"), "My Scatter Plot"
-    CreateScatterChart = Me.CreateChartFromRange(data, xlXYScatterLinesNoMarkers, chartName)
+    Set CreateChartFromRange = Nothing
 End Function
 
 Private Function prvRemoveChars(ByVal text As String, ByVal charsToRemove As String) As String
@@ -2274,8 +2216,6 @@ Private Function prvColumnNumberToLetter(ByVal colIndex As Long) As String
     Loop
     prvColumnNumberToLetter = s
 End Function
-
-'--- Private Helper Functions ---
 
 ' --- File Operations ---
 ' These functions replicate the functionality of the FalFile module,
