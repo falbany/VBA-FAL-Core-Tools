@@ -1284,8 +1284,30 @@ Public Function ApplyPredefinedTheme(ByVal themeName As String) As Boolean
     End If
 
     Dim themeSettings As String
+    Dim colorPaletteName As String
+
     themeSettings = Me.ThemePalette(themeName)
 
+    ' --- Extract and apply ColorPalette from the theme string ---
+    Dim startPos As Long, endPos As Long, colorPalettePair As String
+    startPos = InStr(1, themeSettings, "ColorPalette=", vbTextCompare)
+
+    If startPos > 0 Then
+        endPos = InStr(startPos, themeSettings, ";")
+        If endPos = 0 Then endPos = Len(themeSettings) + 1 ' Handle if it's the last item
+
+        colorPalettePair = Mid(themeSettings, startPos, endPos - startPos)
+        colorPaletteName = Mid(colorPalettePair, 14) ' Length of "ColorPalette=" is 13
+
+        ' Remove the color palette from the main settings string
+        themeSettings = Replace(themeSettings, colorPalettePair & ";", "")
+        themeSettings = Replace(themeSettings, colorPalettePair, "") ' If it was the last item
+
+        ' Apply the color series first
+        Me.ColorSeries Style:=colorPaletteName
+    End If
+
+    ' Apply the rest of the theme
     If Me.FormatChart(themeSettings) Then
         ApplyPredefinedTheme = True
     Else
@@ -2381,6 +2403,12 @@ Private Function ColorPalette(Optional ByVal Style As String = "DefaultStyle") A
                                  RGB(152, 78, 163), RGB(251, 154, 153), RGB(106, 61, 154), RGB(255, 127, 0), RGB(177, 89, 40), RGB(202, 178, 214), RGB(102, 194, 165), RGB(252, 141, 98))
         Case "Grayscale"
             ColorPalette = Array(RGB(0, 0, 0), RGB(32, 32, 32), RGB(64, 64, 64), RGB(96, 96, 96), RGB(128, 128, 128), RGB(160, 160, 160), RGB(192, 192, 192), RGB(224, 224, 224))
+        Case "Pastel"
+            ColorPalette = Array(RGB(179, 226, 205), RGB(253, 205, 172), RGB(203, 213, 232), RGB(244, 202, 228), RGB(230, 245, 201), RGB(255, 242, 174), RGB(241, 226, 204), RGB(204, 204, 204))
+        Case "High-Contrast"
+            ColorPalette = Array(RGB(255, 255, 0), RGB(0, 255, 255), RGB(255, 0, 255), RGB(0, 255, 0), RGB(255, 128, 0), RGB(0, 128, 255))
+        Case "Corporate-Blue"
+            ColorPalette = Array(RGB(8, 48, 107), RGB(4, 73, 128), RGB(0, 112, 192), RGB(0, 176, 240), RGB(146, 208, 80), RGB(128, 128, 128))
         Case Else ' DefaultStyle / Tableau
             ColorPalette = Array(RGB(31, 119, 180), RGB(255, 127, 14), RGB(44, 160, 44), RGB(214, 39, 40), RGB(148, 103, 189), RGB(140, 86, 75), RGB(227, 119, 194), RGB(127, 127, 127), _
                                  RGB(188, 189, 34), RGB(23, 190, 207), RGB(174, 199, 232), RGB(255, 187, 120), RGB(152, 223, 138), RGB(255, 152, 150), RGB(197, 176, 213), RGB(196, 156, 148))
@@ -2390,14 +2418,20 @@ End Function
 Private Function ThemePalette(ByVal themeName As String) As String
     ' @brief Returns a predefined theme string for use with the FormatChart function.
     ' @param themeName The name of the theme to return.
-    ' @availableThemes "IEEE-Publication", "Modern-Dashboard", "Default"
+    ' @availableThemes "IEEE-Publication", "Modern-Dashboard", "Pastel", "High-Contrast", "Corporate-Blue", "Default"
     Select Case themeName
         Case "IEEE-Publication"
-            ThemePalette = "FontName=Times New Roman;TitleFontSize=12;XAxisTitleFontSize=10;YAxisTitleFontSize=10;XAxisTicksFontSize=8;YAxisTicksFontSize=8;LegendFontSize=8;TitleFontBold=True;XAxisTitleFontBold=False;YAxisTitleFontBold=False;PlotAreaLineWeight=0.75;SeriesLineWeight=1;SeriesMarkerStyle=-4118;HasLegend=True;PlotAreaBackColor=16777215;X1ShowGridLines=False;Y1ShowGridLines=False"
+            ThemePalette = "ColorPalette=Grayscale;FontName=Times New Roman;TitleFontSize=12;XAxisTitleFontSize=10;YAxisTitleFontSize=10;XAxisTicksFontSize=8;YAxisTicksFontSize=8;LegendFontSize=8;TitleFontBold=True;XAxisTitleFontBold=False;YAxisTitleFontBold=False;PlotAreaLineWeight=0.75;SeriesLineWeight=1;SeriesMarkerStyle=-4118;HasLegend=True;PlotAreaBackColor=16777215;X1ShowGridLines=False;Y1ShowGridLines=False"
         Case "Modern-Dashboard"
-            ThemePalette = "FontName=Segoe UI;TitleFontSize=16;XAxisTitleFontSize=12;YAxisTitleFontSize=12;XAxisTicksFontSize=10;YAxisTicksFontSize=10;LegendFontSize=10;TitleFontBold=True;XAxisTitleFontBold=True;YAxisTitleFontBold=True;PlotAreaLineWeight=0;SeriesLineWeight=2;PlotAreaBackColor=16119285;MajorGridlinesColor=14474460;X1ShowGridLines=False;Y1ShowGridLines=True"
+            ThemePalette = "ColorPalette=Vibrant;FontName=Segoe UI;TitleFontSize=16;XAxisTitleFontSize=12;YAxisTitleFontSize=12;XAxisTicksFontSize=10;YAxisTicksFontSize=10;LegendFontSize=10;TitleFontBold=True;XAxisTitleFontBold=True;YAxisTitleFontBold=True;PlotAreaLineWeight=0;SeriesLineWeight=2;PlotAreaBackColor=16119285;MajorGridlinesColor=14474460;X1ShowGridLines=False;Y1ShowGridLines=True"
+        Case "Pastel"
+            ThemePalette = "ColorPalette=Pastel;FontName=Garamond;TitleFontSize=15;XAxisTitleFontSize=11;YAxisTitleFontSize=11;XAxisTicksFontSize=9;YAxisTicksFontSize=9;LegendFontSize=9;PlotAreaBackColor=16777210;MajorGridlinesColor=15790320;X1ShowGridLines=True;Y1ShowGridLines=True"
+        Case "High-Contrast"
+            ThemePalette = "ColorPalette=High-Contrast;FontName=Arial Black;TitleFontSize=16;PlotAreaBackColor=0;MajorGridlinesColor=16777215;SeriesLineWeight=2.5"
+        Case "Corporate-Blue"
+            ThemePalette = "ColorPalette=Corporate-Blue;FontName=Calibri;PlotAreaLineWeight=0;MajorGridlinesColor=15132390;Y1ShowGridLines=True;X1ShowGridLines=False"
         Case Else ' Default
-            ThemePalette = "FontName=Calibri;TitleFontSize=14;XAxisTitleFontSize=12;YAxisTitleFontSize=12;XAxisTicksFontSize=10;YAxisTicksFontSize=10;LegendFontSize=10;TitleFontBold=True;XAxisTitleFontBold=False;YAxisTitleFontBold=False;PlotAreaLineWeight=0.75;SeriesLineWeight=1.5;SeriesMarkerStyle=-4142;HasLegend=True;PlotAreaBackColor=-1;X1ShowGridLines=True;Y1ShowGridLines=True"
+            ThemePalette = "ColorPalette=DefaultStyle;FontName=Calibri;TitleFontSize=14;XAxisTitleFontSize=12;YAxisTitleFontSize=12;XAxisTicksFontSize=10;YAxisTicksFontSize=10;LegendFontSize=10;TitleFontBold=True;XAxisTitleFontBold=False;YAxisTitleFontBold=False;PlotAreaLineWeight=0.75;SeriesLineWeight=1.5;SeriesMarkerStyle=-4142;HasLegend=True;PlotAreaBackColor=-1;X1ShowGridLines=True;Y1ShowGridLines=True"
     End Select
 End Function
 
