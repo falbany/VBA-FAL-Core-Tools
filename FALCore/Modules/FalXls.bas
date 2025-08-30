@@ -1,9 +1,18 @@
 Attribute VB_Name = "FalXls"
 Option Explicit
 
-'---
-' @ModuleDescription: A module for Excel-specific functions, such as creating a summary worksheet.
-'---
+'**************************************************************************************************
+' Module: FalXls
+' Author: Florent ALBANY
+' Date: 2025-08-27
+' Version: 1.0
+'
+' Description:
+' This module provides a collection of utility functions for automating common tasks in Microsoft Excel.
+' It includes procedures for creating summary sheets, managing VBA components (import/export),
+' handling data (XML, PDF), and working with Excel objects like PivotTables and Named Ranges.
+' Its purpose is to centralize reusable code for general Excel operations.
+'**************************************************************************************************
 
 '---
 ' @Procedure: CreateSummarySheet
@@ -11,10 +20,11 @@ Option Explicit
 '               It includes hyperlinks to facilitate navigation between worksheets and a button to refresh the summary.
 '---
 Public Sub CreateSummarySheet()
-    Dim ws As Worksheet
+    Dim sh As Object ' Can be a Worksheet or a Chart
     Dim summarySheet As Worksheet
     Dim i As Long
     Dim btn As Button
+    Const summarySheetName As String = "Sheet Summary"
 
     ' Turn off screen updating to speed up the process
     Application.ScreenUpdating = False
@@ -22,43 +32,66 @@ Public Sub CreateSummarySheet()
     ' Delete the summary sheet if it already exists
     On Error Resume Next
     Application.DisplayAlerts = False
-    Worksheets("Summary").Delete
+    Worksheets(summarySheetName).Delete
     Application.DisplayAlerts = True
     On Error GoTo 0
 
     ' Add a new worksheet as the first sheet
     Set summarySheet = Worksheets.Add(Before:=Worksheets(1))
-    summarySheet.Name = "Summary"
+    summarySheet.Name = summarySheetName
 
     ' Set column widths
-    summarySheet.Columns("B:B").ColumnWidth = 30
+    summarySheet.Columns("B:C").ColumnWidth = 30
 
     ' Add headers
-    summarySheet.Cells(1, 2) = "Worksheet Name"
-    summarySheet.Cells(1, 3) = "Go to Sheet"
+    summarySheet.Cells(1, 2) = "Sheet Name"
+    summarySheet.Cells(1, 3) = "Sheet Type"
+    summarySheet.Cells(1, 4) = "Go to Sheet"
 
-    ' Loop through all worksheets and create a hyperlink for each
+    ' Loop through all sheets (worksheets and charts) and create a hyperlink for each
     i = 2
-    For Each ws In ThisWorkbook.Worksheets
-        If ws.Name <> "Summary" Then
-            summarySheet.Cells(i, 2) = ws.Name
-            summarySheet.Hyperlinks.Add Anchor:=summarySheet.Cells(i, 3), _
+    For Each sh In ThisWorkbook.Sheets
+        If sh.Name <> summarySheetName Then
+            summarySheet.Cells(i, 2) = sh.Name
+            summarySheet.Cells(i, 3) = TypeName(sh)
+            summarySheet.Hyperlinks.Add Anchor:=summarySheet.Cells(i, 4), _
                                         Address:="", _
-                                        SubAddress:="'" & ws.Name & "'!A1", _
+                                        SubAddress:="'" & sh.Name & "'!A1", _
                                         TextToDisplay:="Link"
             i = i + 1
         End If
-    Next ws
+    Next sh
 
     ' Add a button to refresh the summary
-    Set btn = summarySheet.Buttons.Add(summarySheet.Range("C" & i + 1).Left, _
-                                      summarySheet.Range("C" & i + 1).Top, _
+    Set btn = summarySheet.Buttons.Add(summarySheet.Range("D" & i + 1).Left, _
+                                      summarySheet.Range("D" & i + 1).Top, _
                                       100, _
                                       30)
     With btn
         .OnAction = "RefreshSummary"
         .Caption = "Refresh Summary"
         .Name = "RefreshButton"
+    End With
+
+    '--- Apply modern styling ---
+    ' Hide gridlines for a cleaner look
+    summarySheet.Activate
+    ActiveWindow.DisplayGridlines = False
+
+    ' Define the data range
+    Dim dataRange As Range
+    Set dataRange = summarySheet.Range("B1:D" & i - 1)
+
+    ' Add borders to the table
+    With dataRange.Borders
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .ColorIndex = 0
+    End With
+
+    ' Bold the header
+    With summarySheet.Range("B1:D1").Font
+        .Bold = True
     End With
 
     ' Turn screen updating back on
@@ -353,72 +386,6 @@ End Sub
 '---
 Public Sub RefreshSummary()
     CreateSummarySheet
-End Sub
-
-'---
-' @Procedure: CreateChartSummarySheet
-' @Description: Creates a worksheet that serves as a summary for all charts in the current workbook.
-'               It includes hyperlinks to facilitate navigation between charts and a button to refresh the summary.
-'---
-Public Sub CreateChartSummarySheet()
-    Dim cht As ChartObject
-    Dim summarySheet As Worksheet
-    Dim i As Long
-    Dim btn As Button
-
-    ' Turn off screen updating to speed up the process
-    Application.ScreenUpdating = False
-
-    ' Delete the summary sheet if it already exists
-    On Error Resume Next
-    Application.DisplayAlerts = False
-    Worksheets("Chart Summary").Delete
-    Application.DisplayAlerts = True
-    On Error GoTo 0
-
-    ' Add a new worksheet as the first sheet
-    Set summarySheet = Worksheets.Add(Before:=Worksheets(1))
-    summarySheet.Name = "Chart Summary"
-
-    ' Set column widths
-    summarySheet.Columns("B:B").ColumnWidth = 30
-
-    ' Add headers
-    summarySheet.Cells(1, 2) = "Chart Name"
-    summarySheet.Cells(1, 3) = "Go to Chart"
-
-    ' Loop through all chart objects and create a hyperlink for each
-    i = 2
-    For Each cht In ActiveSheet.ChartObjects
-        summarySheet.Cells(i, 2) = cht.Name
-        summarySheet.Hyperlinks.Add Anchor:=summarySheet.Cells(i, 3), _
-                                    Address:="", _
-                                    SubAddress:="'" & cht.Parent.Name & "'!" & cht.TopLeftCell.Address, _
-                                    TextToDisplay:="Link"
-        i = i + 1
-    Next cht
-
-    ' Add a button to refresh the summary
-    Set btn = summarySheet.Buttons.Add(summarySheet.Range("C" & i + 1).Left, _
-                                      summarySheet.Range("C" & i + 1).Top, _
-                                      100, _
-                                      30)
-    With btn
-        .OnAction = "RefreshChartSummary"
-        .Caption = "Refresh Summary"
-        .Name = "RefreshButton"
-    End With
-
-    ' Turn screen updating back on
-    Application.ScreenUpdating = True
-End Sub
-
-'---
-' @Procedure: RefreshChartSummary
-' @Description: Refreshes the chart summary worksheet by calling the CreateChartSummarySheet procedure.
-'---
-Public Sub RefreshChartSummary()
-    CreateChartSummarySheet
 End Sub
 
 '---

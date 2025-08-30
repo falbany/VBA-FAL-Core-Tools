@@ -20,6 +20,35 @@ FALCore is a library of VBA modules for Microsoft Excel. The goal is to provide 
 - All public functions and subs in the modules should be prefixed with `Fal`.
 - Module names should be prefixed with `Fal`.
 
+## Code Style and Conventions
+
+### Documentation and Comments
+
+- All public `Function`, `Sub`, and `Property` definitions should be preceded by a documentation block.
+- The documentation block should use `@` annotations.
+- Use `@brief` for a short, one-line description of the function's purpose.
+- Use `@param <name>` to describe each parameter.
+- Use `@return` to describe the function's return value.
+- Use `@example` to provide a clear example of how to use the code.
+- Use `@see` to reference related functions or modules.
+
+### Class Structure
+
+For better readability and maintainability, class modules (`.cls` files) should be organized into the following logical sections, in order:
+
+1.  Header and `Option Explicit`
+2.  Private Member Variables
+3.  Public Properties
+4.  Initialization (`Class_Initialize`)
+5.  Public `Create...` Methods (if any)
+6.  Other Public Methods
+7.  Private Helper Functions
+
+### Naming
+
+- Use descriptive names for functions and variables (e.g., `CreateChartFromWorksheet` is preferred over `PlotFromWks`).
+- Private helper functions should be prefixed with `prv`.
+
 ## Development Process
 
 1.  **Discuss Changes**: Before making any changes, please open an issue to discuss the proposed changes.

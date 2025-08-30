@@ -32,7 +32,7 @@ Public Sub Plot_SelectedRangeWithFormatting()
     formattingOpts = InputBox("Enter any additional formatting options (e.g., YTitle=Units;SeriesMarkerStyle=2):", "Formatting Options")
 
     Dim plot As New FalPlot
-    If plot.PlotFromRangeWithFormatting(selectedRange, chartTitle, , , formattingOpts) Then
+    If plot.PlotFromRange(selectedRange, chartTitle, , , formattingOpts) Then
         MsgBox "The chart '" & plot.Chart.Name & "' has been created and formatted successfully!", vbInformation, "Operation Successful"
     Else
         MsgBox "Failed to create the chart.", vbCritical, "Operation Failed"
@@ -53,7 +53,6 @@ Public Sub Create_SmithChart()
     End If
 
     Dim plot As New FalPlot
-    Set plot.Chart = ActiveChart
     plot.CreateSmithChart
 
     Exit Sub
@@ -91,8 +90,7 @@ Public Sub Create_YLog()
     End If
 
     Dim plot As New FalPlot
-    Set plot.Chart = ActiveChart
-    plot.CreateYLog
+    plot.CreateYLogChartFromActive
 
     Exit Sub
 ErrHandler:
@@ -109,8 +107,7 @@ Public Sub Create_Derivative()
     End If
 
     Dim plot As New FalPlot
-    Set plot.Chart = ActiveChart
-    plot.CreateDerivative
+    plot.CreateDerivativeChartFromActive
 
     Exit Sub
 ErrHandler:
