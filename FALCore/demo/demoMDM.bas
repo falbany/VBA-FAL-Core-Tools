@@ -49,18 +49,15 @@ Public Sub RunAdvancedMdmDemo()
     db1.AddHeader "Vd"
     db1.AddHeader "Id"
 
-    ' Add data rows as dictionaries
-    Dim row1 As New Dictionary
-    row1("Vd") = 0: row1("Id") = 0.001
-    db1.AddRow row1
+    ' Add data rows using the new, more convenient methods
+    db1.AddRowFromValues 0, 0.001
+    db1.AddRowFromValues 0.5, 0.05
 
-    Dim row2 As New Dictionary
-    row2("Vd") = 0.5: row2("Id") = 0.05
-    db1.AddRow row2
-
-    Dim row3 As New Dictionary
-    row3("Vd") = 1: row3("Id") = 0.1
-    db1.AddRow row3
+    ' Demonstrate adding from an array for the last row
+    Dim lastRow(0 To 1) As Variant
+    lastRow(0) = 1
+    lastRow(1) = 0.1
+    db1.AddRowFromArray lastRow
 
     Debug.Print "Population complete."
     Debug.Print ""
