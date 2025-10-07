@@ -2,90 +2,104 @@ Attribute VB_Name = "demoMDM"
 
 Option Explicit
 
-Public Sub RunMdmDemo()
-    '@brief Demonstrates the creation, manipulation, and export capabilities of the clsMDM class.
+Public Sub RunAdvancedMdmDemo()
+    '@brief Demonstrates the advanced creation, manipulation, and export capabilities of the refactored clsMDM class.
 
-    ' --- 1. Create and Populate an MDM Object ---
+    ' --- 1. Create and Populate an MDM Object with Structured Parameters ---
     Dim mdm As New clsMDM
-    Debug.Print "--- Step 1: Creating and populating a new clsMDM object ---"
+    Debug.Print "--- Step 1: Creating and populating a new clsMDM object with structured parameters ---"
 
-    ' Add header information
-    mdm.AddUserInput "Temp", "LIN 1 25 25 1"
-    mdm.AddIccapInput "Vd", "V COMMON 1 0 V 0"
-    mdm.AddIccapInput "Vg", "V COMMON 2 0 V 0"
-    mdm.AddIccapOutput "Id", "I 1 0 A M"
+    ' Add User Inputs and Values (these are simple key-value pairs)
+    mdm.AddUserInput "Temp", "25"
     mdm.AddIccapValue "L", "1e-5"
-    mdm.AddIccapValue "W", "2e-5"
 
-    ' Add first data block
+    ' Create and add a structured ICCAP Input Parameter
+    Dim vdInput As New clsMdmInputParameter
+    vdInput.Name = "Vd"
+    vdInput.Mode = "V"
+    vdInput.ModeOptions("PlusNode") = "D"
+    vdInput.ModeOptions("MinusNode") = "S"
+    vdInput.ModeOptions("Unit") = "V"
+    vdInput.ModeOptions("Compliance") = "0.1"
+    vdInput.SweepType = "LIN"
+    vdInput.SweepOptions("SweepOrder") = 1
+    vdInput.SweepOptions("Start") = 0
+    vdInput.SweepOptions("Stop") = 1
+    vdInput.SweepOptions("NumPoints") = 3
+    vdInput.SweepOptions("StepSize") = 0.5
+    mdm.AddIccapInput vdInput
+
+    ' Create and add a structured ICCAP Output Parameter
+    Dim idOutput As New clsMdmOutputParameter
+    idOutput.Name = "Id"
+    idOutput.Mode = "I"
+    idOutput.ModeOptions("ToNode") = "D"
+    idOutput.ModeOptions("FromNode") = "S"
+    idOutput.Unit = "A"
+    idOutput.Compliance = "DEFAULT"
+    idOutput.Type = "M"
+    mdm.AddIccapOutput idOutput
+
+    ' Add a data block using the new structured method
     Dim db1 As clsMdmDataBlock
     Set db1 = mdm.AddDataBlock()
-    db1.AddInputValue "Temp", 25
-    db1.AddInputValue "Vg", 1
+    db1.AddInputValue "Vg", "1.0"
 
-    Dim data1(1 To 4, 1 To 2) As Variant
-    data1(1, 1) = "Vd":   data1(1, 2) = "Id"
-    data1(2, 1) = 0:      data1(2, 2) = 0
-    data1(3, 1) = 0.5:    data1(3, 2) = 0.05
-    data1(4, 1) = 1:      data1(4, 2) = 0.1
-    db1.Data = data1
+    ' Add headers
+    db1.AddHeader "Vd"
+    db1.AddHeader "Id"
 
-    ' Add second data block
-    Dim db2 As clsMdmDataBlock
-    Set db2 = mdm.AddDataBlock()
-    db2.AddInputValue "Temp", 25
-    db2.AddInputValue "Vg", 2
+    ' Add data rows as dictionaries
+    Dim row1 As New Dictionary
+    row1("Vd") = 0: row1("Id") = 0.001
+    db1.AddRow row1
 
-    Dim data2(1 To 4, 1 To 2) As Variant
-    data2(1, 1) = "Vd":   data2(1, 2) = "Id"
-    data2(2, 1) = 0:      data2(2, 2) = 0
-    data2(3, 1) = 0.5:    data2(3, 2) = 0.1
-    data2(4, 1) = 1:      data2(4, 2) = 0.2
-    db2.Data = data2
+    Dim row2 As New Dictionary
+    row2("Vd") = 0.5: row2("Id") = 0.05
+    db1.AddRow row2
 
-    Debug.Print "Population complete. MDM object has " & mdm.DataBlocks.Count & " data blocks."
+    Dim row3 As New Dictionary
+    row3("Vd") = 1: row3("Id") = 0.1
+    db1.AddRow row3
+
+    Debug.Print "Population complete."
     Debug.Print ""
 
-    ' --- 2. Generate MDM String ---
-    Debug.Print "--- Step 2: Generating MDM string output ---"
+    ' --- 2. Generate and Parse MDM String ---
+    Debug.Print "--- Step 2: Generating and parsing MDM string ---"
     Dim mdmString As String
     mdmString = mdm.ToMdmString()
     Debug.Print "Generated MDM String:"
     Debug.Print mdmString
+
+    Dim parsedMdm As New clsMDM
+    parsedMdm.ParseMdmString mdmString
+    Debug.Print "Parsing successful."
     Debug.Print ""
 
-    ' --- 3. Parse the Generated String ---
-    Debug.Print "--- Step 3: Parsing the generated MDM string into a new object ---"
-    Dim parsedMdm As New clsMDM
-    If parsedMdm.ParseMdmString(mdmString) Then
-        Debug.Print "Parsing successful."
-        Debug.Print "Parsed MDM object has " & parsedMdm.IccapInputs.Count & " ICCAP inputs."
-        Debug.Print "Parsed MDM object has " & parsedMdm.DataBlocks.Count & " data blocks."
-    Else
-        Debug.Print "Parsing failed."
-        Exit Sub
-    End If
+    ' --- 3. Verify Structured Data ---
+    Debug.Print "--- Step 3: Verifying structured data from parsed object ---"
+    Dim parsedInput As clsMdmInputParameter
+    Set parsedInput = parsedMdm.IccapInputs("Vd")
+    Debug.Print "Parsed Input 'Vd' Sweep Type: " & parsedInput.SweepType
+    Debug.Print "Parsed Input 'Vd' Start Value: " & parsedInput.SweepOptions("Start")
+
+    Dim parsedOutput As clsMdmOutputParameter
+    Set parsedOutput = parsedMdm.IccapOutputs("Id")
+    Debug.Print "Parsed Output 'Id' ToNode: " & parsedOutput.ModeOptions("ToNode")
     Debug.Print ""
 
     ' --- 4. Export to 2D Array and Paste to Excel ---
-    Debug.Print "--- Step 4: Exporting data to a 2D Array and pasting to a new worksheet ---"
+    Debug.Print "--- Step 4: Exporting data to a 2D Array ---"
     Dim dataArray As Variant
     dataArray = parsedMdm.To2DArray()
 
     If Not IsEmpty(dataArray) Then
-        On Error Resume Next
         Dim wks As Worksheet
         Set wks = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
-        If Err.Number <> 0 Then
-            Set wks = ThisWorkbook.Worksheets.Add
-        End If
-        On Error GoTo 0
-        wks.Name = "MDM_Demo_Output"
-
-        ' Paste the data
+        wks.Name = "MDM_Advanced_Demo"
         wks.Range("A1").Resize(UBound(dataArray, 1), UBound(dataArray, 2)).value = dataArray
         wks.Columns.AutoFit
-
         Debug.Print "Data successfully exported to worksheet '" & wks.Name & "'."
         wks.Activate
     Else

@@ -4,7 +4,7 @@ BEGIN
 END
 Attribute VB_Name = "clsMDM"
 Attribute VB_GlobalNameSpace = False
-Attribute VB_Creatable = False
+Attribute VB_Creatable = True
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
@@ -55,18 +55,16 @@ Public Sub AddUserInput(ByVal key As String, ByVal value As String)
     prvUserInputs(key) = value
 End Sub
 
-Public Sub AddIccapInput(ByVal key As String, ByVal value As String)
-    '@brief Adds or updates an ICCAP input in the header.
-    '@param key The name of the ICCAP input.
-    '@param value The value of the ICCAP input.
-    prvIccapInputs(key) = value
+Public Sub AddIccapInput(ByVal param As clsMdmInputParameter)
+    '@brief Adds or updates an ICCAP input parameter in the header.
+    '@param param The structured input parameter object to add.
+    prvIccapInputs(param.Name) = param
 End Sub
 
-Public Sub AddIccapOutput(ByVal key As String, ByVal value As String)
-    '@brief Adds or updates an ICCAP output in the header.
-    '@param key The name of the ICCAP output.
-    '@param value The value of the ICCAP output.
-    prvIccapOutputs(key) = value
+Public Sub AddIccapOutput(ByVal param As clsMdmOutputParameter)
+    '@brief Adds or updates an ICCAP output parameter in the header.
+    '@param param The structured output parameter object to add.
+    prvIccapOutputs(param.Name) = param
 End Sub
 
 Public Sub AddIccapValue(ByVal key As String, ByVal value As String)
@@ -101,22 +99,14 @@ End Function
 Public Function ToMdmString() As String
     '@brief Generates a string representation of the MDM data in the official MDM file format.
     '@return A string formatted according to the MDM file specification.
-    '@example
-    ' Dim mdm As New clsMDM
-    ' ' ... populate mdm object ...
-    ' Dim mdmFileContent As String
-    ' mdmFileContent = mdm.ToMdmString()
-    ' FalFile.OverwriteTxt "C:\temp\mydata.mdm", mdmFileContent
     On Error GoTo ErrorHandler
 
-    Dim sb As StringBuilder
-    Set sb = New StringBuilder
-
-    ' --- Build Header ---
+    Dim sb As New StringBuilder
     sb.Append "BEGIN_HEADER" & vbCrLf
 
     Dim key As Variant
 
+    ' USER_INPUTS
     If prvUserInputs.Count > 0 Then
         sb.Append "USER_INPUTS" & vbCrLf
         For Each key In prvUserInputs.Keys
@@ -124,20 +114,44 @@ Public Function ToMdmString() As String
         Next key
     End If
 
+    ' ICCAP_INPUTS
     If prvIccapInputs.Count > 0 Then
         sb.Append "ICCAP_INPUTS" & vbCrLf
+        Dim inputParam As clsMdmInputParameter
         For Each key In prvIccapInputs.Keys
-            sb.Append key & " " & prvIccapInputs(key) & vbCrLf
+            Set inputParam = prvIccapInputs(key)
+            Dim lineBuilder As New StringBuilder
+            lineBuilder.Append inputParam.Name & " " & inputParam.Mode & " "
+            Dim opt As Variant
+            For Each opt In inputParam.ModeOptions.Keys
+                lineBuilder.Append inputParam.ModeOptions(opt) & " "
+            Next opt
+            lineBuilder.Append inputParam.SweepType & " "
+            For Each opt In inputParam.SweepOptions.Keys
+                lineBuilder.Append inputParam.SweepOptions(opt) & " "
+            Next opt
+            sb.Append Trim(lineBuilder.ToString) & vbCrLf
         Next key
     End If
 
+    ' ICCAP_OUTPUTS
     If prvIccapOutputs.Count > 0 Then
         sb.Append "ICCAP_OUTPUTS" & vbCrLf
+        Dim outputParam As clsMdmOutputParameter
         For Each key In prvIccapOutputs.Keys
-            sb.Append key & " " & prvIccapOutputs(key) & vbCrLf
+            Set outputParam = prvIccapOutputs(key)
+            Dim lineBuilder As New StringBuilder
+            lineBuilder.Append outputParam.Name & " " & outputParam.Mode & " "
+            Dim opt As Variant
+            For Each opt In outputParam.ModeOptions.Keys
+                lineBuilder.Append outputParam.ModeOptions(opt) & " "
+            Next opt
+            lineBuilder.Append outputParam.Unit & " " & outputParam.Compliance & " " & outputParam.Type
+            sb.Append Trim(lineBuilder.ToString) & vbCrLf
         Next key
     End If
 
+    ' ICCAP_VALUES
     If prvIccapValues.Count > 0 Then
         sb.Append "ICCAP_VALUES" & vbCrLf
         For Each key In prvIccapValues.Keys
@@ -153,8 +167,7 @@ Public Function ToMdmString() As String
         sb.Append "BEGIN_DB" & vbCrLf
 
         ' Data block input values
-        Dim blockInputs As StringBuilder
-        Set blockInputs = New StringBuilder
+        Dim blockInputs As New StringBuilder
         For Each key In dataBlock.InputValues.Keys
             blockInputs.Append key & " " & dataBlock.InputValues(key) & " "
         Next key
@@ -162,21 +175,23 @@ Public Function ToMdmString() As String
             sb.Append Trim(blockInputs.ToString) & vbCrLf
         End If
 
-        ' Data table
-        If Not IsEmpty(dataBlock.Data) Then
-            Dim i As Long, j As Long
-            Dim dataArray As Variant
-            dataArray = dataBlock.Data
+        ' Headers
+        Dim headerSb As New StringBuilder
+        Dim header As Variant
+        For Each header In dataBlock.Headers
+            headerSb.Append header & " "
+        Next
+        sb.Append Trim(headerSb.ToString) & vbCrLf
 
-            For i = LBound(dataArray, 1) To UBound(dataArray, 1)
-                Dim rowSb As StringBuilder
-                Set rowSb = New StringBuilder
-                For j = LBound(dataArray, 2) To UBound(dataArray, 2)
-                    rowSb.Append dataArray(i, j) & " "
-                Next j
-                sb.Append Trim(rowSb.ToString) & vbCrLf
-            Next i
-        End If
+        ' Data Rows
+        Dim rowDict As Dictionary
+        For Each rowDict In dataBlock.DataRows
+            Dim rowSb As New StringBuilder
+            For Each header In dataBlock.Headers
+                rowSb.Append rowDict(header) & " "
+            Next
+            sb.Append Trim(rowSb.ToString) & vbCrLf
+        Next
 
         sb.Append "END_DB" & vbCrLf & vbCrLf
     Next dataBlock
@@ -216,69 +231,51 @@ Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
     '@brief Converts the MDM object to a JSON string.
     '@param PrettyPrint (Optional) If True, the output JSON will be formatted with whitespace for readability.
     '@return A JSON string representation of the MDM object.
-    '@example
-    ' Dim mdm As New clsMDM
-    ' mdm.ReadMdmFile "C:\temp\mydata.mdm"
-    ' Dim jsonString As String
-    ' jsonString = mdm.ToJSON(PrettyPrint:=True)
-    ' Debug.Print jsonString
     On Error GoTo ErrorHandler
 
-    Dim mdmObject As Dictionary
-    Set mdmObject = New Dictionary
+    Dim mdmObject As New Dictionary
 
-    ' Add header sections
+    ' Convert header parameter objects to dictionaries for serialization
+    Dim inputsDict As New Dictionary
+    Dim key As Variant
+    For Each key In Me.IccapInputs.Keys
+        inputsDict(key) = prvParameterToDict(Me.IccapInputs(key))
+    Next
+
+    Dim outputsDict As New Dictionary
+    For Each key In Me.IccapOutputs.Keys
+        outputsDict(key) = prvParameterToDict(Me.IccapOutputs(key))
+    Next
+
     mdmObject("USER_INPUTS") = Me.UserInputs
-    mdmObject("ICCAP_INPUTS") = Me.IccapInputs
-    mdmObject("ICCAP_OUTPUTS") = Me.IccapOutputs
+    mdmObject("ICCAP_INPUTS") = inputsDict
+    mdmObject("ICCAP_OUTPUTS") = outputsDict
     mdmObject("ICCAP_VALUES") = Me.IccapValues
 
     ' Process data blocks
-    Dim dataBlockCollection As Collection
-    Set dataBlockCollection = New Collection
-
+    Dim dataBlockCollection As New Collection
     Dim dataBlock As clsMdmDataBlock
     For Each dataBlock In prvDataBlocks
-        Dim blockDict As Dictionary
-        Set blockDict = New Dictionary
-
+        Dim blockDict As New Dictionary
         blockDict("InputValues") = dataBlock.InputValues
 
-        ' Convert tabular data to a collection of dictionaries
-        If Not IsEmpty(dataBlock.Data) Then
-            Dim tableDataCollection As Collection
-            Set tableDataCollection = New Collection
+        ' Convert headers collection to a simple array for JSON
+        Dim headersArray() As String
+        ReDim headersArray(1 To dataBlock.Headers.Count)
+        Dim i As Long
+        For i = 1 To dataBlock.Headers.Count
+            headersArray(i) = dataBlock.Headers(i)
+        Next i
 
-            Dim dataArray As Variant
-            dataArray = dataBlock.Data
-
-            Dim headers() As String
-            Dim numCols As Long
-            numCols = UBound(dataArray, 2) - LBound(dataArray, 2) + 1
-            ReDim headers(1 To numCols)
-
-            Dim i As Long, j As Long
-            For j = 1 To numCols
-                headers(j) = CStr(dataArray(LBound(dataArray, 1), LBound(dataArray, 2) + j - 1))
-            Next j
-
-            For i = LBound(dataArray, 1) + 1 To UBound(dataArray, 1)
-                Dim rowDict As Dictionary
-                Set rowDict = New Dictionary
-                For j = 1 To numCols
-                    rowDict(headers(j)) = dataArray(i, LBound(dataArray, 2) + j - 1)
-                Next j
-                tableDataCollection.Add rowDict
-            Next i
-
-            blockDict("Data") = tableDataCollection
-        End If
+        blockDict("Headers") = headersArray
+        blockDict("DataRows") = dataBlock.DataRows
 
         dataBlockCollection.Add blockDict
     Next dataBlock
 
     mdmObject("DataBlocks") = dataBlockCollection
 
+    ' Use JsonConverter
     If PrettyPrint Then
         ToJSON = JsonConverter.ConvertToJson(mdmObject, Whitespace:=2)
     Else
@@ -291,16 +288,31 @@ ErrorHandler:
     ToJSON = ""
 End Function
 
+Private Function prvParameterToDict(ByVal param As Object) As Dictionary
+    Set prvParameterToDict = New Dictionary
+    If TypeOf param Is clsMdmInputParameter Then
+        Dim inputP As clsMdmInputParameter
+        Set inputP = param
+        prvParameterToDict("Name") = inputP.Name
+        prvParameterToDict("Mode") = inputP.Mode
+        prvParameterToDict("ModeOptions") = inputP.ModeOptions
+        prvParameterToDict("SweepType") = inputP.SweepType
+        prvParameterToDict("SweepOptions") = inputP.SweepOptions
+    ElseIf TypeOf param Is clsMdmOutputParameter Then
+        Dim outputP As clsMdmOutputParameter
+        Set outputP = param
+        prvParameterToDict("Name") = outputP.Name
+        prvParameterToDict("Mode") = outputP.Mode
+        prvParameterToDict("ModeOptions") = outputP.ModeOptions
+        prvParameterToDict("Unit") = outputP.Unit
+        prvParameterToDict("Compliance") = outputP.Compliance
+        prvParameterToDict("Type") = outputP.Type
+    End If
+End Function
+
 Public Function To2DArray() As Variant
     '@brief Converts the MDM data into a 2D variant array for easy export to Excel.
     '@return A 2D variant array containing the combined data from all data blocks.
-    '@example
-    ' Dim mdm As New clsMDM
-    ' mdm.ReadMdmFile "C:\temp\mydata.mdm"
-    ' Dim dataArray As Variant
-    ' dataArray = mdm.To2DArray()
-    ' ' Now you can paste dataArray to an Excel sheet
-    ' ThisWorkbook.Worksheets("Sheet1").Range("A1").Resize(UBound(dataArray, 1), UBound(dataArray, 2)).value = dataArray
     On Error GoTo ErrorHandler
 
     If prvDataBlocks.Count = 0 Then
@@ -308,37 +320,26 @@ Public Function To2DArray() As Variant
         Exit Function
     End If
 
-    Dim colHeaders As Dictionary
-    Set colHeaders = New Dictionary
+    Dim colHeaders As New Dictionary
     colHeaders.CompareMode = TextCompare
 
     Dim dataBlock As clsMdmDataBlock
     Dim totalDataRows As Long
     totalDataRows = 0
 
+    ' Gather all possible headers
     For Each dataBlock In prvDataBlocks
         Dim key As Variant
         For Each key In dataBlock.InputValues.Keys
-            If Not colHeaders.Exists(key) Then
-                colHeaders.Add key, colHeaders.Count + 1
-            End If
+            If Not colHeaders.Exists(key) Then colHeaders.Add key, colHeaders.Count + 1
         Next key
 
-        If Not IsEmpty(dataBlock.Data) Then
-            Dim dataArray As Variant
-            dataArray = dataBlock.Data
+        Dim header As Variant
+        For Each header In dataBlock.Headers
+            If Not colHeaders.Exists(header) Then colHeaders.Add header, colHeaders.Count + 1
+        Next header
 
-            Dim c As Long
-            For c = LBound(dataArray, 2) To UBound(dataArray, 2)
-                Dim headerName As String
-                headerName = CStr(dataArray(LBound(dataArray, 1), c))
-                If Not colHeaders.Exists(headerName) Then
-                    colHeaders.Add headerName, colHeaders.Count + 1
-                End If
-            Next c
-
-            totalDataRows = totalDataRows + (UBound(dataArray, 1) - LBound(dataArray, 1))
-        End If
+        totalDataRows = totalDataRows + dataBlock.DataRows.Count
     Next dataBlock
 
     If colHeaders.Count = 0 Then
@@ -349,35 +350,30 @@ Public Function To2DArray() As Variant
     Dim outputArray() As Variant
     ReDim outputArray(1 To totalDataRows + 1, 1 To colHeaders.Count)
 
+    ' Write headers to array
     Dim colKey As Variant
     For Each colKey In colHeaders.Keys
         outputArray(1, colHeaders(colKey)) = colKey
     Next colKey
 
+    ' Write data rows
     Dim currentRow As Long
     currentRow = 2
-
     For Each dataBlock In prvDataBlocks
-        If Not IsEmpty(dataBlock.Data) Then
-            Dim dataArray As Variant
-            dataArray = dataBlock.Data
-
-            Dim r As Long
-            For r = LBound(dataArray, 1) + 1 To UBound(dataArray, 1)
-                For Each key In dataBlock.InputValues.Keys
-                    outputArray(currentRow, colHeaders(key)) = dataBlock.InputValues(key)
-                Next key
-
-                Dim c As Long
-                For c = LBound(dataArray, 2) To UBound(dataArray, 2)
-                    Dim headerName As String
-                    headerName = CStr(dataArray(LBound(dataArray, 1), c))
-                    outputArray(currentRow, colHeaders(headerName)) = dataArray(r, c)
-                Next c
-
-                currentRow = currentRow + 1
-            Next r
-        End If
+        Dim rowDict As Dictionary
+        For Each rowDict In dataBlock.DataRows
+            ' Write block-level input values
+            For Each key In dataBlock.InputValues.Keys
+                outputArray(currentRow, colHeaders(key)) = dataBlock.InputValues(key)
+            Next key
+            ' Write row-level values
+            For Each key In rowDict.Keys
+                If colHeaders.Exists(key) Then
+                    outputArray(currentRow, colHeaders(key)) = rowDict(key)
+                End If
+            Next key
+            currentRow = currentRow + 1
+        Next rowDict
     Next dataBlock
 
     To2DArray = outputArray
@@ -393,12 +389,16 @@ Public Function ReadMdmFile(ByVal filePath As String) As Boolean
     '@return True if the file was read and parsed successfully, False otherwise.
     On Error GoTo ErrorHandler
 
-    If Not FalFile.FileExist(filePath) Then
+    If Dir(filePath) = "" Then
         ReadMdmFile = False
         Exit Function
     End If
 
-    prvMdmContent = FalFile.ReadFile(filePath)
+    Dim fileNumber As Integer
+    fileNumber = FreeFile
+    Open filePath For Input As #fileNumber
+    prvMdmContent = Input$(LOF(fileNumber), fileNumber)
+    Close #fileNumber
 
     If Len(prvMdmContent) > 0 Then
         If prvParseHeader() Then
@@ -466,109 +466,111 @@ ErrorHandler:
 End Function
 
 Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dataBlock As clsMdmDataBlock) As Boolean
-    '@brief Parses a single data block's content.
+    '@brief Parses a single data block's content into a structured format, correctly identifying block parameters and the data table.
     '@param blockContent The string content between BEGIN_DB and END_DB.
     '@param dataBlock The clsMdmDataBlock object to populate.
     '@return True if parsing is successful, False otherwise.
     On Error GoTo ErrorHandler
 
-    Dim lines() As String
-    lines = Split(blockContent, vbCrLf)
-
-    Dim i As Long
-    Dim line As String
-    Dim dataStartIndex As Long
-    dataStartIndex = -1
-
-    Dim allInputNames As Dictionary
-    Set allInputNames = New Dictionary
-
+    ' Find the innermost sweep name from the header info, which reliably identifies the first column of the data table.
+    Dim innermostSweepName As String
+    Dim inputParam As clsMdmInputParameter
     Dim key As Variant
     For Each key In prvIccapInputs.Keys
-        allInputNames(key) = 1
-    Next key
-    For Each key In prvUserInputs.Keys
-        allInputNames(key) = 1
-    Next key
-
-    ' Find the start of the data table by looking for a line starting with a known input name.
-    For i = LBound(lines) To UBound(lines)
-        line = Trim(lines(i))
-        If line <> "" Then
-            Dim firstWord As String
-            firstWord = Split(line)(0)
-            If allInputNames.Exists(firstWord) Then
-                dataStartIndex = i
+        Set inputParam = prvIccapInputs(key)
+        If inputParam.SweepOptions.Exists("SweepOrder") Then
+            If CStr(inputParam.SweepOptions("SweepOrder")) = "1" Then
+                innermostSweepName = inputParam.Name
                 Exit For
             End If
         End If
-    Next i
+    Next key
+    If innermostSweepName = "" Then Err.Raise 5, "prvParseSingleDataBlock", "Could not determine innermost sweep from header."
 
-    If dataStartIndex = -1 Then
-        If Trim(blockContent) = "" Then
-            prvParseSingleDataBlock = True
-            Exit Function
-        End If
-        prvParseSingleDataBlock = False
-        Exit Function
-    End If
+    Dim lines() As String
+    lines = Split(blockContent, vbCrLf)
 
-    ' Lines before dataStartIndex contain the input values for this block.
-    For i = LBound(lines) To dataStartIndex - 1
+    Dim i As Long, j As Long, k As Long
+    Dim line As String
+    Dim dataStartIndex As Long: dataStartIndex = -1
+
+    ' Find the start of the data table by looking for the innermost sweep name.
+    ' Lines before it are block-level parameters.
+    For i = LBound(lines) To UBound(lines)
         line = Trim(lines(i))
-        If line <> "" Then
-            Dim parts() As String
-            parts = Split(line)
-            Dim k As Long
-            For k = LBound(parts) To UBound(parts) Step 2
-                If k + 1 <= UBound(parts) Then
-                    dataBlock.InputValues.Add parts(k), parts(k + 1)
+        If line = "" Or Left(line, 1) = "!" Then GoTo NextLine ' Skip comments and empty lines
+
+        If Left(line, 1) = "#" Then line = Trim(Mid(line, 2)) ' Handle commented-out headers
+
+        Dim parts() As String
+        parts = Split(line)
+
+        If UBound(parts) < 0 Then GoTo NextLine
+
+        If UCase(parts(0)) = UCase(innermostSweepName) Then
+            dataStartIndex = i
+            Exit For
+        Else
+            ' This is a block parameter line (e.g., "Temp 25" or "ICCAP_VAR ve 0")
+            Dim currentIdx As Long
+            currentIdx = LBound(parts)
+            If UCase(parts(currentIdx)) = "ICCAP_VAR" Then
+                currentIdx = currentIdx + 1
+            End If
+
+            For k = currentIdx To UBound(parts) Step 2
+                If (k + 1) <= UBound(parts) Then
+                    dataBlock.AddInputValue parts(k), parts(k + 1)
                 End If
             Next k
         End If
+NextLine:
     Next i
 
-    ' Lines from dataStartIndex onwards are the data table.
-    Dim dataRows As New Collection
-    For i = dataStartIndex To UBound(lines)
-        line = Trim(lines(i))
-        If line <> "" Then
-            dataRows.Add line
+    If dataStartIndex = -1 Then
+        If Trim(blockContent) = "" Then prvParseSingleDataBlock = True ' It's a valid, empty block
+        Exit Function ' No data table found, but might have had block params
+    End If
+
+    ' The line at dataStartIndex is the header row
+    Dim headerLine As String
+    headerLine = Trim(lines(dataStartIndex))
+    If Left(headerLine, 1) = "#" Then headerLine = Trim(Mid(headerLine, 2))
+
+    Do While InStr(headerLine, "  ") > 0
+        headerLine = Replace(headerLine, "  ", " ")
+    Loop
+
+    Dim headerParts() As String
+    headerParts = Split(headerLine, " ")
+    For j = LBound(headerParts) To UBound(headerParts)
+        dataBlock.AddHeader headerParts(j)
+    Next j
+
+    ' Process data rows
+    For i = dataStartIndex + 1 To UBound(lines)
+        Dim dataLine As String
+        dataLine = Trim(lines(i))
+
+        If dataLine <> "" And Left(dataLine, 1) <> "!" Then
+            Do While InStr(dataLine, "  ") > 0
+                dataLine = Replace(dataLine, "  ", " ")
+            Loop
+
+            Dim dataParts() As String
+            dataParts = Split(dataLine, " ")
+
+            Dim rowDict As New Dictionary
+
+            For j = LBound(dataParts) To UBound(dataParts)
+                If (j + 1) <= dataBlock.Headers.Count Then
+                    rowDict.Add dataBlock.Headers(j + 1), dataParts(j)
+                End If
+            Next j
+
+            dataBlock.AddRow rowDict
         End If
     Next i
-
-    If dataRows.Count > 0 Then
-        Dim tempLine As String
-        tempLine = Trim(dataRows(1))
-        Do While InStr(tempLine, "  ") > 0
-            tempLine = Replace(tempLine, "  ", " ")
-        Loop
-        Dim numCols As Long
-        numCols = UBound(Split(tempLine)) + 1
-
-        Dim dataArray() As Variant
-        ReDim dataArray(1 To dataRows.Count, 1 To numCols)
-
-        Dim r As Long, c As Long
-        For r = 1 To dataRows.Count
-            tempLine = Trim(dataRows(r))
-            Do While InStr(tempLine, "  ") > 0
-                tempLine = Replace(tempLine, "  ", " ")
-            Loop
-            Dim rowParts() As String
-            rowParts = Split(tempLine)
-
-            For c = 1 To numCols
-                If c - 1 <= UBound(rowParts) Then
-                   dataArray(r, c) = rowParts(c - 1)
-                Else
-                   dataArray(r, c) = "" ' Handle ragged data
-                End If
-            Next c
-        Next r
-
-        dataBlock.Data = dataArray
-    End If
 
     prvParseSingleDataBlock = True
     Exit Function
@@ -578,21 +580,17 @@ ErrorHandler:
 End Function
 
 Private Function prvParseHeader() As Boolean
-    '@brief Parses the header section of the MDM file.
+    '@brief Parses the header section of the MDM file into structured objects.
     '@return True if the header was parsed successfully, False otherwise.
     On Error GoTo ErrorHandler
 
     Dim headerContent As String
-    Dim startPos As Long
-    Dim endPos As Long
+    Dim startPos As Long, endPos As Long
 
     startPos = InStr(1, prvMdmContent, "BEGIN_HEADER", vbTextCompare)
     endPos = InStr(1, prvMdmContent, "END_HEADER", vbTextCompare)
 
-    If startPos = 0 Or endPos = 0 Then
-        prvParseHeader = False
-        Exit Function
-    End If
+    If startPos = 0 Or endPos = 0 Then Exit Function
 
     headerContent = Mid(prvMdmContent, startPos + Len("BEGIN_HEADER"), endPos - startPos - Len("BEGIN_HEADER"))
 
@@ -605,42 +603,30 @@ Private Function prvParseHeader() As Boolean
         Dim line As String
         line = Trim(lines(i))
 
-        If line = "" Or Left(line, 1) = "!" Then ' Skip empty lines and comments
-            GoTo NextLine
-        End If
+        If line = "" Or Left(line, 1) = "!" Then GoTo NextLine
 
         Select Case UCase(line)
-            Case "USER_INPUTS"
-                currentSection = "USER_INPUTS"
-            Case "ICCAP_INPUTS"
-                currentSection = "ICCAP_INPUTS"
-            Case "ICCAP_OUTPUTS"
-                currentSection = "ICCAP_OUTPUTS"
-            Case "ICCAP_VALUES"
-                currentSection = "ICCAP_VALUES"
+            Case "USER_INPUTS", "ICCAP_INPUTS", "ICCAP_OUTPUTS", "ICCAP_VALUES"
+                currentSection = UCase(line)
             Case Else
                 If currentSection <> "" Then
                     Dim parts() As String
                     parts = Split(line)
 
-                    If UBound(parts) >= 0 Then
-                        Dim key As String
-                        key = parts(0)
-
-                        Dim value As String
-                        value = Trim(Mid(line, Len(key) + 1))
-
-                        Select Case currentSection
-                            Case "USER_INPUTS"
-                                prvUserInputs.Add key, value
-                            Case "ICCAP_INPUTS"
-                                prvIccapInputs.Add key, value
-                            Case "ICCAP_OUTPUTS"
-                                prvIccapOutputs.Add key, value
-                            Case "ICCAP_VALUES"
-                                prvIccapValues.Add key, value
-                        End Select
-                    End If
+                    Select Case currentSection
+                        Case "USER_INPUTS"
+                            prvUserInputs.Add parts(0), Trim(Mid(line, Len(parts(0)) + 1))
+                        Case "ICCAP_INPUTS"
+                            Dim inputParam As clsMdmInputParameter
+                            Set inputParam = prvParseInputParameter(line)
+                            If Not inputParam Is Nothing Then prvIccapInputs.Add inputParam.Name, inputParam
+                        Case "ICCAP_OUTPUTS"
+                            Dim outputParam As clsMdmOutputParameter
+                            Set outputParam = prvParseOutputParameter(line)
+                            If Not outputParam Is Nothing Then prvIccapOutputs.Add outputParam.Name, outputParam
+                        Case "ICCAP_VALUES"
+                            prvIccapValues.Add parts(0), Trim(Mid(line, Len(parts(0)) + 1))
+                    End Select
                 End If
         End Select
 NextLine:
@@ -651,4 +637,138 @@ NextLine:
 
 ErrorHandler:
     prvParseHeader = False
+End Function
+
+Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputParameter
+    On Error GoTo ErrorHandler
+    Dim param As New clsMdmInputParameter
+
+    Dim cleanLine As String
+    cleanLine = Trim(line)
+    Do While InStr(cleanLine, "  ") > 0
+        cleanLine = Replace(cleanLine, "  ", " ")
+    Loop
+
+    Dim parts() As String
+    parts = Split(cleanLine, " ")
+
+    If UBound(parts) < 2 Then Exit Function ' Must have at least name and mode
+
+    param.Name = parts(0)
+    param.Mode = parts(1)
+
+    ' Find sweep type to determine boundaries of mode_options and sweep_options
+    Dim sweepTypeIdx As Long
+    sweepTypeIdx = -1
+    Dim i As Long
+    For i = 2 To UBound(parts)
+        Select Case UCase(parts(i))
+            Case "LIN", "LOG", "SYNC", "LIST", "CON", "AC", "HB", "EXP", "PULSE", "PWL", "SFFM", "SIN", "TDR", "SEG"
+                sweepTypeIdx = i
+                Exit For
+        End Select
+    Next i
+
+    If sweepTypeIdx = -1 Then Exit Function ' No valid sweep type found
+
+    param.SweepType = parts(sweepTypeIdx)
+
+    ' Extract mode options
+    Dim modeOptionsParts() As String
+    If sweepTypeIdx > 2 Then
+        ReDim modeOptionsParts(0 To sweepTypeIdx - 3)
+        For i = 2 To sweepTypeIdx - 1
+            modeOptionsParts(i - 2) = parts(i)
+        Next i
+    End If
+
+    ' Extract sweep options
+    Dim sweepOptionsParts() As String
+    If UBound(parts) > sweepTypeIdx Then
+        ReDim sweepOptionsParts(0 To UBound(parts) - sweepTypeIdx - 1)
+        For i = sweepTypeIdx + 1 To UBound(parts)
+            sweepOptionsParts(i - sweepTypeIdx - 1) = parts(i)
+        Next i
+    End If
+
+    ' Parse mode options based on mode
+    i = 0
+    Select Case UCase(param.Mode)
+        Case "V", "U": param.ModeOptions("PlusNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("MinusNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Unit") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Compliance") = modeOptionsParts(i)
+        Case "I": param.ModeOptions("ToNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("FromNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Unit") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Compliance") = modeOptionsParts(i)
+        Case "P": param.ModeOptions("ParamName") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Unit") = modeOptionsParts(i)
+    End Select
+
+    ' Parse sweep options based on sweep type
+    i = 0
+    Select Case UCase(param.SweepType)
+        Case "LIN": param.SweepOptions("SweepOrder") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("Start") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("Stop") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("NumPoints") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("StepSize") = sweepOptionsParts(i)
+        Case "SYNC": param.SweepOptions("Ratio") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("Offset") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("MasterSweep") = sweepOptionsParts(i)
+        Case "CON": param.SweepOptions("Value") = sweepOptionsParts(i)
+    End Select
+
+    Set prvParseInputParameter = param
+    Exit Function
+ErrorHandler:
+    Set prvParseInputParameter = Nothing
+End Function
+
+Private Function prvParseOutputParameter(ByVal line As String) As clsMdmOutputParameter
+    On Error GoTo ErrorHandler
+    Dim param As New clsMdmOutputParameter
+
+    Dim cleanLine As String
+    cleanLine = Trim(line)
+    Do While InStr(cleanLine, "  ") > 0
+        cleanLine = Replace(cleanLine, "  ", " ")
+    Loop
+
+    Dim parts() As String
+    parts = Split(cleanLine, " ")
+
+    If UBound(parts) < 1 Then Exit Function
+
+    param.Name = parts(0)
+    param.Mode = parts(1)
+
+    Dim modeOptionsCount As Long
+    Select Case UCase(param.Mode)
+        Case "V", "N", "U": modeOptionsCount = 2
+        Case "I": modeOptionsCount = 2
+        Case "C", "G": modeOptionsCount = 2
+        Case "T": modeOptionsCount = 2
+        Case "S", "H", "Z", "K", "A", "Y": modeOptionsCount = 3
+        Case Else: modeOptionsCount = 0 ' For modes like U in the example
+    End Select
+
+    Dim currentIdx As Long
+    currentIdx = 2
+
+    If modeOptionsCount > 0 Then
+        Dim modeOptionsParts() As String
+        ReDim modeOptionsParts(0 To modeOptionsCount - 1)
+        Dim i As Long
+        For i = 0 To modeOptionsCount - 1
+            modeOptionsParts(i) = parts(currentIdx + i)
+        Next i
+        currentIdx = currentIdx + modeOptionsCount
+
+        i = 0
+        Select Case UCase(param.Mode)
+            Case "V", "N", "U": param.ModeOptions("PlusNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("MinusNode") = modeOptionsParts(i)
+            Case "I": param.ModeOptions("ToNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("FromNode") = modeOptionsParts(i)
+            Case "C", "G": param.ModeOptions("HighNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("LowNode") = modeOptionsParts(i)
+            Case "T": param.ModeOptions("Node") = modeOptionsParts(i): i = i + 1: param.ModeOptions("PulseParam") = modeOptionsParts(i)
+            Case "S", "H", "Z", "K", "A", "Y": param.ModeOptions("Port1") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Port2") = modeOptionsParts(i): i = i + 1: param.ModeOptions("ACGround") = modeOptionsParts(i)
+        End Select
+    End If
+
+    If currentIdx <= UBound(parts) Then param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
+    If currentIdx <= UBound(parts) Then param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
+    If currentIdx <= UBound(parts) Then param.Type = parts(currentIdx)
+
+    Set prvParseOutputParameter = param
+    Exit Function
+ErrorHandler:
+    Set prvParseOutputParameter = Nothing
 End Function
