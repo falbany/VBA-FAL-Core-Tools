@@ -10,15 +10,15 @@ Attribute VB_Exposed = False
 Option Explicit
 
 ' Private Member Variables
-Private prvInputValues As Object ' Dictionary
+Private prvInputValues As Dictionary
 Private prvData As Variant ' 2D Array
 
 ' Public Properties
-Public Property Get InputValues() As Object
+Public Property Get InputValues() As Dictionary
     Set InputValues = prvInputValues
 End Property
 
-Public Property Let InputValues(ByVal value As Object)
+Public Property Let InputValues(ByVal value As Dictionary)
     Set prvInputValues = value
 End Property
 
@@ -32,7 +32,7 @@ End Property
 
 ' Initialization
 Private Sub Class_Initialize()
-    Set prvInputValues = CreateObject("Scripting.Dictionary")
+    Set prvInputValues = New Dictionary
 End Sub
 
 ' Public Methods

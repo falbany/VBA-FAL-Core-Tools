@@ -11,26 +11,26 @@ Option Explicit
 
 ' Private Member Variables
 Private prvMdmContent As String
-Private prvUserInputs As Object
-Private prvIccapInputs As Object
-Private prvIccapOutputs As Object
-Private prvIccapValues As Object
+Private prvUserInputs As Dictionary
+Private prvIccapInputs As Dictionary
+Private prvIccapOutputs As Dictionary
+Private prvIccapValues As Dictionary
 Private prvDataBlocks As Collection
 
 ' Public Properties
-Public Property Get UserInputs() As Object
+Public Property Get UserInputs() As Dictionary
     Set UserInputs = prvUserInputs
 End Property
 
-Public Property Get IccapInputs() As Object
+Public Property Get IccapInputs() As Dictionary
     Set IccapInputs = prvIccapInputs
 End Property
 
-Public Property Get IccapOutputs() As Object
+Public Property Get IccapOutputs() As Dictionary
     Set IccapOutputs = prvIccapOutputs
 End Property
 
-Public Property Get IccapValues() As Object
+Public Property Get IccapValues() As Dictionary
     Set IccapValues = prvIccapValues
 End Property
 
@@ -40,10 +40,10 @@ End Property
 
 ' Initialization
 Private Sub Class_Initialize()
-    Set prvUserInputs = CreateObject("Scripting.Dictionary")
-    Set prvIccapInputs = CreateObject("Scripting.Dictionary")
-    Set prvIccapOutputs = CreateObject("Scripting.Dictionary")
-    Set prvIccapValues = CreateObject("Scripting.Dictionary")
+    Set prvUserInputs = New Dictionary
+    Set prvIccapInputs = New Dictionary
+    Set prvIccapOutputs = New Dictionary
+    Set prvIccapValues = New Dictionary
     Set prvDataBlocks = New Collection
 End Sub
 
@@ -109,55 +109,57 @@ Public Function ToMdmString() As String
     ' FalFile.OverwriteTxt "C:\temp\mydata.mdm", mdmFileContent
     On Error GoTo ErrorHandler
 
-    Dim result As String
+    Dim sb As StringBuilder
+    Set sb = New StringBuilder
 
     ' --- Build Header ---
-    result = result & "BEGIN_HEADER" & vbCrLf
+    sb.Append "BEGIN_HEADER" & vbCrLf
 
     Dim key As Variant
 
     If prvUserInputs.Count > 0 Then
-        result = result & "USER_INPUTS" & vbCrLf
+        sb.Append "USER_INPUTS" & vbCrLf
         For Each key In prvUserInputs.Keys
-            result = result & key & " " & prvUserInputs(key) & vbCrLf
+            sb.Append key & " " & prvUserInputs(key) & vbCrLf
         Next key
     End If
 
     If prvIccapInputs.Count > 0 Then
-        result = result & "ICCAP_INPUTS" & vbCrLf
+        sb.Append "ICCAP_INPUTS" & vbCrLf
         For Each key In prvIccapInputs.Keys
-            result = result & key & " " & prvIccapInputs(key) & vbCrLf
+            sb.Append key & " " & prvIccapInputs(key) & vbCrLf
         Next key
     End If
 
     If prvIccapOutputs.Count > 0 Then
-        result = result & "ICCAP_OUTPUTS" & vbCrLf
+        sb.Append "ICCAP_OUTPUTS" & vbCrLf
         For Each key In prvIccapOutputs.Keys
-            result = result & key & " " & prvIccapOutputs(key) & vbCrLf
+            sb.Append key & " " & prvIccapOutputs(key) & vbCrLf
         Next key
     End If
 
     If prvIccapValues.Count > 0 Then
-        result = result & "ICCAP_VALUES" & vbCrLf
+        sb.Append "ICCAP_VALUES" & vbCrLf
         For Each key In prvIccapValues.Keys
-            result = result & key & " " & prvIccapValues(key) & vbCrLf
+            sb.Append key & " " & prvIccapValues(key) & vbCrLf
         Next key
     End If
 
-    result = result & "END_HEADER" & vbCrLf & vbCrLf
+    sb.Append "END_HEADER" & vbCrLf & vbCrLf
 
     ' --- Build Data Blocks ---
     Dim dataBlock As clsMdmDataBlock
     For Each dataBlock In prvDataBlocks
-        result = result & "BEGIN_DB" & vbCrLf
+        sb.Append "BEGIN_DB" & vbCrLf
 
         ' Data block input values
-        Dim blockInputs As String
+        Dim blockInputs As StringBuilder
+        Set blockInputs = New StringBuilder
         For Each key In dataBlock.InputValues.Keys
-            blockInputs = blockInputs & key & " " & dataBlock.InputValues(key) & " "
+            blockInputs.Append key & " " & dataBlock.InputValues(key) & " "
         Next key
         If dataBlock.InputValues.Count > 0 Then
-            result = result & Trim(blockInputs) & vbCrLf
+            sb.Append Trim(blockInputs.ToString) & vbCrLf
         End If
 
         ' Data table
@@ -167,18 +169,19 @@ Public Function ToMdmString() As String
             dataArray = dataBlock.Data
 
             For i = LBound(dataArray, 1) To UBound(dataArray, 1)
-                Dim rowStr As String
+                Dim rowSb As StringBuilder
+                Set rowSb = New StringBuilder
                 For j = LBound(dataArray, 2) To UBound(dataArray, 2)
-                    rowStr = rowStr & dataArray(i, j) & " "
+                    rowSb.Append dataArray(i, j) & " "
                 Next j
-                result = result & Trim(rowStr) & vbCrLf
+                sb.Append Trim(rowSb.ToString) & vbCrLf
             Next i
         End If
 
-        result = result & "END_DB" & vbCrLf & vbCrLf
+        sb.Append "END_DB" & vbCrLf & vbCrLf
     Next dataBlock
 
-    ToMdmString = result
+    ToMdmString = sb.ToString
     Exit Function
 
 ErrorHandler:
@@ -209,6 +212,85 @@ ErrorHandler:
     ParseMdmString = False
 End Function
 
+Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
+    '@brief Converts the MDM object to a JSON string.
+    '@param PrettyPrint (Optional) If True, the output JSON will be formatted with whitespace for readability.
+    '@return A JSON string representation of the MDM object.
+    '@example
+    ' Dim mdm As New clsMDM
+    ' mdm.ReadMdmFile "C:\temp\mydata.mdm"
+    ' Dim jsonString As String
+    ' jsonString = mdm.ToJSON(PrettyPrint:=True)
+    ' Debug.Print jsonString
+    On Error GoTo ErrorHandler
+
+    Dim mdmObject As Dictionary
+    Set mdmObject = New Dictionary
+
+    ' Add header sections
+    mdmObject("USER_INPUTS") = Me.UserInputs
+    mdmObject("ICCAP_INPUTS") = Me.IccapInputs
+    mdmObject("ICCAP_OUTPUTS") = Me.IccapOutputs
+    mdmObject("ICCAP_VALUES") = Me.IccapValues
+
+    ' Process data blocks
+    Dim dataBlockCollection As Collection
+    Set dataBlockCollection = New Collection
+
+    Dim dataBlock As clsMdmDataBlock
+    For Each dataBlock In prvDataBlocks
+        Dim blockDict As Dictionary
+        Set blockDict = New Dictionary
+
+        blockDict("InputValues") = dataBlock.InputValues
+
+        ' Convert tabular data to a collection of dictionaries
+        If Not IsEmpty(dataBlock.Data) Then
+            Dim tableDataCollection As Collection
+            Set tableDataCollection = New Collection
+
+            Dim dataArray As Variant
+            dataArray = dataBlock.Data
+
+            Dim headers() As String
+            Dim numCols As Long
+            numCols = UBound(dataArray, 2) - LBound(dataArray, 2) + 1
+            ReDim headers(1 To numCols)
+
+            Dim i As Long, j As Long
+            For j = 1 To numCols
+                headers(j) = CStr(dataArray(LBound(dataArray, 1), LBound(dataArray, 2) + j - 1))
+            Next j
+
+            For i = LBound(dataArray, 1) + 1 To UBound(dataArray, 1)
+                Dim rowDict As Dictionary
+                Set rowDict = New Dictionary
+                For j = 1 To numCols
+                    rowDict(headers(j)) = dataArray(i, LBound(dataArray, 2) + j - 1)
+                Next j
+                tableDataCollection.Add rowDict
+            Next i
+
+            blockDict("Data") = tableDataCollection
+        End If
+
+        dataBlockCollection.Add blockDict
+    Next dataBlock
+
+    mdmObject("DataBlocks") = dataBlockCollection
+
+    If PrettyPrint Then
+        ToJSON = JsonConverter.ConvertToJson(mdmObject, Whitespace:=2)
+    Else
+        ToJSON = JsonConverter.ConvertToJson(mdmObject)
+    End If
+
+    Exit Function
+
+ErrorHandler:
+    ToJSON = ""
+End Function
+
 Public Function To2DArray() As Variant
     '@brief Converts the MDM data into a 2D variant array for easy export to Excel.
     '@return A 2D variant array containing the combined data from all data blocks.
@@ -226,9 +308,9 @@ Public Function To2DArray() As Variant
         Exit Function
     End If
 
-    Dim colHeaders As Object
-    Set colHeaders = CreateObject("Scripting.Dictionary")
-    colHeaders.CompareMode = vbTextCompare
+    Dim colHeaders As Dictionary
+    Set colHeaders = New Dictionary
+    colHeaders.CompareMode = TextCompare
 
     Dim dataBlock As clsMdmDataBlock
     Dim totalDataRows As Long
@@ -398,8 +480,8 @@ Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dat
     Dim dataStartIndex As Long
     dataStartIndex = -1
 
-    Dim allInputNames As Object
-    Set allInputNames = CreateObject("Scripting.Dictionary")
+    Dim allInputNames As Dictionary
+    Set allInputNames = New Dictionary
 
     Dim key As Variant
     For Each key In prvIccapInputs.Keys

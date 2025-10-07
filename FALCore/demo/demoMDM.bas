@@ -91,6 +91,14 @@ Public Sub RunMdmDemo()
     Else
         Debug.Print "Failed to export data to 2D array."
     End If
+    Debug.Print ""
+
+    ' --- 5. Export to JSON ---
+    Debug.Print "--- Step 5: Exporting data to a JSON string ---"
+    Dim jsonString As String
+    jsonString = parsedMdm.ToJSON(PrettyPrint:=True)
+    Debug.Print "Generated JSON String:"
+    Debug.Print jsonString
 
     Debug.Print "--- Demo Complete ---"
 
