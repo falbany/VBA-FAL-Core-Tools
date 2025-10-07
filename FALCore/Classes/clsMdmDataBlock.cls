@@ -12,7 +12,7 @@ Option Explicit
 ' Private Member Variables
 Private prvInputValues As Dictionary
 Private prvHeaders As Collection
-Private prvDataRows As Collection
+Private prvDataRows As Dictionary
 
 ' Public Properties
 Public Property Get InputValues() As Dictionary
@@ -23,7 +23,7 @@ Public Property Get Headers() As Collection
     Set Headers = prvHeaders
 End Property
 
-Public Property Get DataRows() As Collection
+Public Property Get DataRows() As Dictionary
     Set DataRows = prvDataRows
 End Property
 
@@ -31,7 +31,7 @@ End Property
 Private Sub Class_Initialize()
     Set prvInputValues = New Dictionary
     Set prvHeaders = New Collection
-    Set prvDataRows = New Collection
+    Set prvDataRows = New Dictionary
 End Sub
 
 ' Public Methods
@@ -55,7 +55,7 @@ End Sub
 Public Sub AddRow(ByVal rowData As Dictionary)
     '@brief Adds a data row to the block.
     '@param rowData A dictionary representing a single row (header -> value).
-    prvDataRows.Add rowData
+    prvDataRows.Add prvDataRows.Count, rowData ' Use Count as the next index
 End Sub
 
 Public Sub AddRowFromArray(ByVal values As Variant)
@@ -142,4 +142,43 @@ Public Sub AddRowsFrom2DArray(ByVal dataArray As Variant)
 
 ErrorHandler:
     Debug.Print "Error in AddRowsFrom2DArray: " & Err.Description
+End Sub
+
+Public Sub AddValue(ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant)
+    '@brief Adds or updates a single value in the data table at a specific row and column (header).
+    '@param Header The name of the column header.
+    '@param RowIndex The 0-based index of the row to modify.
+    '@param Value The value to set for the cell.
+    '@example db.AddValue "Vd", 0, 0.1
+    On Error GoTo ErrorHandler
+
+    ' Check if the header exists
+    Dim headerExists As Boolean
+    Dim h As Variant
+    For Each h In prvHeaders
+        If CStr(h) = Header Then
+            headerExists = True
+            Exit For
+        End If
+    Next h
+    If Not headerExists Then
+        Err.Raise 5, "AddValue", "Header '" & Header & "' does not exist. Please add headers first."
+    End If
+
+    ' Get the row dictionary, or create it if it doesn't exist
+    Dim rowDict As Dictionary
+    If Not prvDataRows.Exists(RowIndex) Then
+        Set rowDict = New Dictionary
+        prvDataRows.Add RowIndex, rowDict
+    Else
+        Set rowDict = prvDataRows(RowIndex)
+    End If
+
+    ' Add or update the value for the specified header
+    rowDict(Header) = Value
+
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error in AddValue: " & Err.Description
 End Sub

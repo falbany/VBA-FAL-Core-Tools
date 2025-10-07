@@ -184,8 +184,10 @@ Public Function ToMdmString() As String
         sb.Append Trim(headerSb.ToString) & vbCrLf
 
         ' Data Rows
+        Dim i As Long
         Dim rowDict As Dictionary
-        For Each rowDict In dataBlock.DataRows
+        For i = 0 To dataBlock.DataRows.Count - 1
+            Set rowDict = dataBlock.DataRows(i)
             Dim rowSb As New StringBuilder
             For Each header In dataBlock.Headers
                 rowSb.Append rowDict(header) & " "
@@ -268,7 +270,13 @@ Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
         Next i
 
         blockDict("Headers") = headersArray
-        blockDict("DataRows") = dataBlock.DataRows
+
+        ' Convert the dictionary of rows to a collection for proper JSON array serialization
+        Dim rowsCollection As New Collection
+        For i = 0 To dataBlock.DataRows.Count - 1
+            rowsCollection.Add dataBlock.DataRows(i)
+        Next i
+        blockDict("DataRows") = rowsCollection
 
         dataBlockCollection.Add blockDict
     Next dataBlock
@@ -360,8 +368,10 @@ Public Function To2DArray() As Variant
     Dim currentRow As Long
     currentRow = 2
     For Each dataBlock In prvDataBlocks
+        Dim i As Long
         Dim rowDict As Dictionary
-        For Each rowDict In dataBlock.DataRows
+        For i = 0 To dataBlock.DataRows.Count - 1
+            Set rowDict = dataBlock.DataRows(i)
             ' Write block-level input values
             For Each key In dataBlock.InputValues.Keys
                 outputArray(currentRow, colHeaders(key)) = dataBlock.InputValues(key)
@@ -373,7 +383,7 @@ Public Function To2DArray() As Variant
                 End If
             Next key
             currentRow = currentRow + 1
-        Next rowDict
+        Next i
     Next dataBlock
 
     To2DArray = outputArray

@@ -49,15 +49,15 @@ Public Sub RunAdvancedMdmDemo()
     db1.AddHeader "Vd"
     db1.AddHeader "Id"
 
-    ' Add data rows using the new, more convenient methods
-    db1.AddRowFromValues 0, 0.001
-    db1.AddRowFromValues 0.5, 0.05
+    ' Add data rows using the new, cell-by-cell AddValue method
+    db1.AddValue "Vd", 0, 0
+    db1.AddValue "Id", 0, 0.001
 
-    ' Demonstrate adding from an array for the last row
-    Dim lastRow(0 To 1) As Variant
-    lastRow(0) = 1
-    lastRow(1) = 0.1
-    db1.AddRowFromArray lastRow
+    db1.AddValue "Vd", 1, 0.5
+    db1.AddValue "Id", 1, 0.05
+
+    db1.AddValue "Vd", 2, 1
+    db1.AddValue "Id", 2, 0.1
 
     Debug.Print "Population complete."
     Debug.Print ""
