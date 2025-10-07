@@ -45,11 +45,8 @@ Public Sub RunAdvancedMdmDemo()
     Set db1 = mdm.AddDataBlock()
     db1.AddInputValue "Vg", "1.0"
 
-    ' Add headers
-    db1.AddHeader "Vd"
-    db1.AddHeader "Id"
-
-    ' Add data rows using the new, cell-by-cell AddValue method
+    ' Add data rows using the new, cell-by-cell AddValue method.
+    ' The headers "Vd" and "Id" will be added automatically by the first calls.
     db1.AddValue "Vd", 0, 0
     db1.AddValue "Id", 0, 0.001
 

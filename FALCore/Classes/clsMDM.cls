@@ -166,7 +166,6 @@ Public Function ToMdmString() As String
     For Each dataBlock In prvDataBlocks
         sb.Append "BEGIN_DB" & vbCrLf
 
-        ' Data block input values
         Dim blockInputs As New StringBuilder
         For Each key In dataBlock.InputValues.Keys
             blockInputs.Append key & " " & dataBlock.InputValues(key) & " "
@@ -175,22 +174,23 @@ Public Function ToMdmString() As String
             sb.Append Trim(blockInputs.ToString) & vbCrLf
         End If
 
-        ' Headers
         Dim headerSb As New StringBuilder
         Dim header As Variant
-        For Each header In dataBlock.Headers
+        For Each header In dataBlock.HeadersInOrder
             headerSb.Append header & " "
         Next
         sb.Append Trim(headerSb.ToString) & vbCrLf
 
-        ' Data Rows
         Dim i As Long
-        Dim rowDict As Dictionary
-        For i = 0 To dataBlock.DataRows.Count - 1
-            Set rowDict = dataBlock.DataRows(i)
+        For i = 1 To dataBlock.RowCount
             Dim rowSb As New StringBuilder
-            For Each header In dataBlock.Headers
-                rowSb.Append rowDict(header) & " "
+            For Each header In dataBlock.HeadersInOrder
+                Dim val As Variant
+                On Error Resume Next
+                val = dataBlock.Data(header)(i)
+                If Err.Number <> 0 Then val = ""
+                On Error GoTo ErrorHandler
+                rowSb.Append val & " "
             Next
             sb.Append Trim(rowSb.ToString) & vbCrLf
         Next
@@ -231,13 +231,11 @@ End Function
 
 Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
     '@brief Converts the MDM object to a JSON string.
-    '@param PrettyPrint (Optional) If True, the output JSON will be formatted with whitespace for readability.
     '@return A JSON string representation of the MDM object.
     On Error GoTo ErrorHandler
 
     Dim mdmObject As New Dictionary
 
-    ' Convert header parameter objects to dictionaries for serialization
     Dim inputsDict As New Dictionary
     Dim key As Variant
     For Each key In Me.IccapInputs.Keys
@@ -254,36 +252,18 @@ Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
     mdmObject("ICCAP_OUTPUTS") = outputsDict
     mdmObject("ICCAP_VALUES") = Me.IccapValues
 
-    ' Process data blocks
     Dim dataBlockCollection As New Collection
     Dim dataBlock As clsMdmDataBlock
     For Each dataBlock In prvDataBlocks
         Dim blockDict As New Dictionary
         blockDict("InputValues") = dataBlock.InputValues
-
-        ' Convert headers collection to a simple array for JSON
-        Dim headersArray() As String
-        ReDim headersArray(1 To dataBlock.Headers.Count)
-        Dim i As Long
-        For i = 1 To dataBlock.Headers.Count
-            headersArray(i) = dataBlock.Headers(i)
-        Next i
-
-        blockDict("Headers") = headersArray
-
-        ' Convert the dictionary of rows to a collection for proper JSON array serialization
-        Dim rowsCollection As New Collection
-        For i = 0 To dataBlock.DataRows.Count - 1
-            rowsCollection.Add dataBlock.DataRows(i)
-        Next i
-        blockDict("DataRows") = rowsCollection
-
+        blockDict("HeadersInOrder") = dataBlock.HeadersInOrder
+        blockDict("Data") = dataBlock.Data
         dataBlockCollection.Add blockDict
     Next dataBlock
 
     mdmObject("DataBlocks") = dataBlockCollection
 
-    ' Use JsonConverter
     If PrettyPrint Then
         ToJSON = JsonConverter.ConvertToJson(mdmObject, Whitespace:=2)
     Else
@@ -332,10 +312,8 @@ Public Function To2DArray() As Variant
     colHeaders.CompareMode = TextCompare
 
     Dim dataBlock As clsMdmDataBlock
-    Dim totalDataRows As Long
-    totalDataRows = 0
+    Dim totalDataRows As Long: totalDataRows = 0
 
-    ' Gather all possible headers
     For Each dataBlock In prvDataBlocks
         Dim key As Variant
         For Each key In dataBlock.InputValues.Keys
@@ -343,11 +321,11 @@ Public Function To2DArray() As Variant
         Next key
 
         Dim header As Variant
-        For Each header In dataBlock.Headers
+        For Each header In dataBlock.HeadersInOrder
             If Not colHeaders.Exists(header) Then colHeaders.Add header, colHeaders.Count + 1
         Next header
 
-        totalDataRows = totalDataRows + dataBlock.DataRows.Count
+        totalDataRows = totalDataRows + dataBlock.RowCount
     Next dataBlock
 
     If colHeaders.Count = 0 Then
@@ -358,30 +336,28 @@ Public Function To2DArray() As Variant
     Dim outputArray() As Variant
     ReDim outputArray(1 To totalDataRows + 1, 1 To colHeaders.Count)
 
-    ' Write headers to array
     Dim colKey As Variant
     For Each colKey In colHeaders.Keys
         outputArray(1, colHeaders(colKey)) = colKey
     Next colKey
 
-    ' Write data rows
-    Dim currentRow As Long
-    currentRow = 2
+    Dim currentRow As Long: currentRow = 2
     For Each dataBlock In prvDataBlocks
         Dim i As Long
-        Dim rowDict As Dictionary
-        For i = 0 To dataBlock.DataRows.Count - 1
-            Set rowDict = dataBlock.DataRows(i)
-            ' Write block-level input values
-            For Each key In dataBlock.InputValues.Keys
-                outputArray(currentRow, colHeaders(key)) = dataBlock.InputValues(key)
-            Next key
-            ' Write row-level values
-            For Each key In rowDict.Keys
-                If colHeaders.Exists(key) Then
-                    outputArray(currentRow, colHeaders(key)) = rowDict(key)
-                End If
-            Next key
+        For i = 1 To dataBlock.RowCount
+            For Each colKey In dataBlock.InputValues.Keys
+                outputArray(currentRow, colHeaders(colKey)) = dataBlock.InputValues(colKey)
+            Next colKey
+
+            For Each colKey In dataBlock.HeadersInOrder
+                Dim val As Variant
+                On Error Resume Next
+                val = dataBlock.Data(colKey)(i)
+                If Err.Number <> 0 Then val = ""
+                On Error GoTo ErrorHandler
+                outputArray(currentRow, colHeaders(colKey)) = val
+            Next colKey
+
             currentRow = currentRow + 1
         Next i
     Next dataBlock
@@ -476,13 +452,13 @@ ErrorHandler:
 End Function
 
 Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dataBlock As clsMdmDataBlock) As Boolean
-    '@brief Parses a single data block's content into a structured format, correctly identifying block parameters and the data table.
+    '@brief Parses a single data block's content into a column-oriented data structure.
     '@param blockContent The string content between BEGIN_DB and END_DB.
     '@param dataBlock The clsMdmDataBlock object to populate.
     '@return True if parsing is successful, False otherwise.
     On Error GoTo ErrorHandler
 
-    ' Find the innermost sweep name from the header info, which reliably identifies the first column of the data table.
+    ' Find the innermost sweep name to reliably identify the header row
     Dim innermostSweepName As String
     Dim inputParam As clsMdmInputParameter
     Dim key As Variant
@@ -499,50 +475,43 @@ Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dat
 
     Dim lines() As String
     lines = Split(blockContent, vbCrLf)
-
     Dim i As Long, j As Long, k As Long
     Dim line As String
     Dim dataStartIndex As Long: dataStartIndex = -1
 
-    ' Find the start of the data table by looking for the innermost sweep name.
-    ' Lines before it are block-level parameters.
+    ' Find the start of the data table and parse block-level parameters
     For i = LBound(lines) To UBound(lines)
         line = Trim(lines(i))
-        If line = "" Or Left(line, 1) = "!" Then GoTo NextLine ' Skip comments and empty lines
+        If line = "" Or Left(line, 1) = "!" Then GoTo NextLine
 
-        If Left(line, 1) = "#" Then line = Trim(Mid(line, 2)) ' Handle commented-out headers
+        Dim cleanLine As String
+        cleanLine = Trim(line)
+        If Left(cleanLine, 1) = "#" Then cleanLine = Trim(Mid(cleanLine, 2))
 
         Dim parts() As String
-        parts = Split(line)
-
+        parts = Split(cleanLine)
         If UBound(parts) < 0 Then GoTo NextLine
 
         If UCase(parts(0)) = UCase(innermostSweepName) Then
             dataStartIndex = i
             Exit For
         Else
-            ' This is a block parameter line (e.g., "Temp 25" or "ICCAP_VAR ve 0")
             Dim currentIdx As Long
             currentIdx = LBound(parts)
-            If UCase(parts(currentIdx)) = "ICCAP_VAR" Then
-                currentIdx = currentIdx + 1
-            End If
-
+            If UCase(parts(currentIdx)) = "ICCAP_VAR" Then currentIdx = currentIdx + 1
             For k = currentIdx To UBound(parts) Step 2
-                If (k + 1) <= UBound(parts) Then
-                    dataBlock.AddInputValue parts(k), parts(k + 1)
-                End If
+                If (k + 1) <= UBound(parts) Then dataBlock.AddInputValue parts(k), parts(k + 1)
             Next k
         End If
 NextLine:
     Next i
 
     If dataStartIndex = -1 Then
-        If Trim(blockContent) = "" Then prvParseSingleDataBlock = True ' It's a valid, empty block
-        Exit Function ' No data table found, but might have had block params
+        prvParseSingleDataBlock = True ' Valid block, just no data table
+        Exit Function
     End If
 
-    ' The line at dataStartIndex is the header row
+    ' --- Parse Headers and initialize data columns ---
     Dim headerLine As String
     headerLine = Trim(lines(dataStartIndex))
     If Left(headerLine, 1) = "#" Then headerLine = Trim(Mid(headerLine, 2))
@@ -554,10 +523,13 @@ NextLine:
     Dim headerParts() As String
     headerParts = Split(headerLine, " ")
     For j = LBound(headerParts) To UBound(headerParts)
-        dataBlock.AddHeader headerParts(j)
+        ' Use AddValue to create the header and its associated data collection
+        dataBlock.AddValue headerParts(j), 0, Empty
+        ' Remove the temporary 'Empty' value that was added
+        dataBlock.Data(headerParts(j)).Remove 1
     Next j
 
-    ' Process data rows
+    ' --- Process Data Rows and populate columns ---
     For i = dataStartIndex + 1 To UBound(lines)
         Dim dataLine As String
         dataLine = Trim(lines(i))
@@ -570,15 +542,13 @@ NextLine:
             Dim dataParts() As String
             dataParts = Split(dataLine, " ")
 
-            Dim rowDict As New Dictionary
-
             For j = LBound(dataParts) To UBound(dataParts)
-                If (j + 1) <= dataBlock.Headers.Count Then
-                    rowDict.Add dataBlock.Headers(j + 1), dataParts(j)
+                If (j + 1) <= dataBlock.HeadersInOrder.Count Then
+                    Dim currentHeader As String
+                    currentHeader = dataBlock.HeadersInOrder(j + 1)
+                    dataBlock.Data(currentHeader).Add dataParts(j)
                 End If
             Next j
-
-            dataBlock.AddRow rowDict
         End If
     Next i
 

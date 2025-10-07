@@ -9,53 +9,104 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 
-' Private Member Variables
+' --- Private Member Variables ---
 Private prvInputValues As Dictionary
-Private prvHeaders As Collection
-Private prvDataRows As Dictionary
+Private prvData As Dictionary
+Private prvHeadersInOrder As Collection
 
-' Public Properties
+' --- Public Properties ---
 Public Property Get InputValues() As Dictionary
     Set InputValues = prvInputValues
 End Property
 
-Public Property Get Headers() As Collection
-    Set Headers = prvHeaders
+Public Property Get Data() As Dictionary
+    Set Data = prvData
 End Property
 
-Public Property Get DataRows() As Dictionary
-    Set DataRows = prvDataRows
+Public Property Get HeadersInOrder() As Collection
+    Set HeadersInOrder = prvHeadersInOrder
 End Property
 
-' Initialization
+Public Property Get RowCount() As Long
+    '@brief Returns the total number of rows in the data block.
+    Dim max As Long
+    max = 0
+    Dim h As Variant
+    If prvHeadersInOrder.Count > 0 Then
+        For Each h In prvHeadersInOrder
+            If prvData(h).Count > max Then
+                max = prvData(h).Count
+            End If
+        Next h
+    End If
+    RowCount = max
+End Property
+
+' --- Initialization ---
 Private Sub Class_Initialize()
     Set prvInputValues = New Dictionary
-    Set prvHeaders = New Collection
-    Set prvDataRows = New Dictionary
+    Set prvData = New Dictionary
+    Set prvHeadersInOrder = New Collection
 End Sub
 
-' Public Methods
+' --- Public Methods ---
 Public Sub AddInputValue(ByVal key As String, ByVal value As Variant)
     '@brief Adds a key-value pair to the input values dictionary.
     '@param key The name of the input parameter.
     '@param value The value of the input parameter.
-    If Not prvInputValues.Exists(key) Then
-        prvInputValues.Add key, value
-    Else
-        prvInputValues(key) = value
+    prvInputValues(key) = value
+End Sub
+
+Public Sub AddValue(ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant)
+    '@brief Adds or updates a single value in the data table at a specific row and column (header).
+    '@param Header The name of the column header. If the header is new, it will be added.
+    '@param RowIndex The 0-based index of the row to modify.
+    '@param Value The value to set for the cell.
+    '@example db.AddValue "Vd", 0, 0.1
+    On Error GoTo ErrorHandler
+
+    ' --- 1. Ensure Header Exists ---
+    If Not prvData.Exists(Header) Then
+        prvHeadersInOrder.Add Header
+        prvData.Add Header, New Collection
     End If
-End Sub
 
-Public Sub AddHeader(ByVal headerName As String)
-    '@brief Adds a column header, preserving its order.
-    '@param headerName The name of the header.
-    prvHeaders.Add headerName
-End Sub
+    ' --- 2. Get the target column ---
+    Dim column As Collection
+    Set column = prvData(Header)
 
-Public Sub AddRow(ByVal rowData As Dictionary)
-    '@brief Adds a data row to the block.
-    '@param rowData A dictionary representing a single row (header -> value).
-    prvDataRows.Add prvDataRows.Count, rowData ' Use Count as the next index
+    ' --- 3. Pad column if RowIndex is beyond current size ---
+    Dim i As Long
+    For i = column.Count To RowIndex - 1
+        column.Add Empty ' Pad with Empty
+    Next i
+
+    ' --- 4. Insert or Replace Value ---
+    If RowIndex < column.Count Then
+        ' Replace existing item. This is the awkward part of VBA collections.
+        column.Remove RowIndex + 1
+        column.Add Value, After:=RowIndex ' After is 0-based index of item *before* insertion point
+    Else
+        ' This is a new item at the end
+        column.Add Value
+    End If
+
+    ' --- 5. Ensure all other columns are padded to match the new max length ---
+    Dim maxRows As Long
+    maxRows = Me.RowCount
+
+    Dim h As Variant
+    For Each h In prvHeadersInOrder
+        Dim otherColumn As Collection
+        Set otherColumn = prvData(h)
+        For i = otherColumn.Count To maxRows - 1
+            otherColumn.Add Empty
+        Next i
+    Next h
+
+    Exit Sub
+ErrorHandler:
+    Debug.Print "Error in AddValue: " & Err.Description
 End Sub
 
 Public Sub AddRowFromArray(ByVal values As Variant)
@@ -63,17 +114,21 @@ Public Sub AddRowFromArray(ByVal values As Variant)
     '@param values A 1D array where each element corresponds to a header in order.
     On Error GoTo ErrorHandler
 
-    If UBound(values) - LBound(values) + 1 <> prvHeaders.Count Then
+    If Me.HeadersInOrder.Count = 0 Then
+        Err.Raise 5, "AddRowFromArray", "Headers must be defined before adding rows. Use AddValue to add the first row."
+    End If
+    If UBound(values) - LBound(values) + 1 <> Me.HeadersInOrder.Count Then
         Err.Raise 5, "AddRowFromArray", "The number of values in the array must match the number of headers."
     End If
 
-    Dim rowDict As New Dictionary
+    Dim newRowIndex As Long
+    newRowIndex = Me.RowCount
+
     Dim i As Long
-    For i = 1 To prvHeaders.Count
-        rowDict.Add prvHeaders(i), values(LBound(values) + i - 1)
+    For i = 1 To Me.HeadersInOrder.Count
+        Me.AddValue Me.HeadersInOrder(i), newRowIndex, values(LBound(values) + i - 1)
     Next i
 
-    Me.AddRow rowDict
     Exit Sub
 
 ErrorHandler:
@@ -108,77 +163,20 @@ Public Sub AddRowsFrom2DArray(ByVal dataArray As Variant)
         Err.Raise 5, "AddRowsFrom2DArray", "Input must be an array."
     End If
 
-    ' Check array dimensions
-    Dim numDims As Integer
-    On Error Resume Next
-    numDims = UBound(dataArray, 2)
-    If Err.Number <> 0 Then
-        numDims = 1 ' It's a 1D array
-        Err.Clear
-    Else
-        numDims = 2 ' It's a 2D array
-    End If
-    On Error GoTo ErrorHandler
+    Dim i As Long, j As Long
+    For i = LBound(dataArray, 1) To UBound(dataArray, 1)
+        Dim rowValues() As Variant
+        ReDim rowValues(LBound(dataArray, 2) To UBound(dataArray, 2))
 
-    If numDims = 1 Then
-        ' Handle 1D array as a single row
-        Me.AddRowFromArray dataArray
-    Else
-        ' Handle 2D array
-        Dim i As Long, j As Long
-        For i = LBound(dataArray, 1) To UBound(dataArray, 1)
-            Dim rowValues() As Variant
-            ReDim rowValues(LBound(dataArray, 2) To UBound(dataArray, 2))
+        For j = LBound(dataArray, 2) To UBound(dataArray, 2)
+            rowValues(j) = dataArray(i, j)
+        Next j
 
-            For j = LBound(dataArray, 2) To UBound(dataArray, 2)
-                rowValues(j) = dataArray(i, j)
-            Next j
-
-            Me.AddRowFromArray rowValues
-        Next i
-    End If
+        Me.AddRowFromArray rowValues
+    Next i
 
     Exit Sub
 
 ErrorHandler:
     Debug.Print "Error in AddRowsFrom2DArray: " & Err.Description
-End Sub
-
-Public Sub AddValue(ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant)
-    '@brief Adds or updates a single value in the data table at a specific row and column (header).
-    '@param Header The name of the column header.
-    '@param RowIndex The 0-based index of the row to modify.
-    '@param Value The value to set for the cell.
-    '@example db.AddValue "Vd", 0, 0.1
-    On Error GoTo ErrorHandler
-
-    ' Check if the header exists
-    Dim headerExists As Boolean
-    Dim h As Variant
-    For Each h In prvHeaders
-        If CStr(h) = Header Then
-            headerExists = True
-            Exit For
-        End If
-    Next h
-    If Not headerExists Then
-        Err.Raise 5, "AddValue", "Header '" & Header & "' does not exist. Please add headers first."
-    End If
-
-    ' Get the row dictionary, or create it if it doesn't exist
-    Dim rowDict As Dictionary
-    If Not prvDataRows.Exists(RowIndex) Then
-        Set rowDict = New Dictionary
-        prvDataRows.Add RowIndex, rowDict
-    Else
-        Set rowDict = prvDataRows(RowIndex)
-    End If
-
-    ' Add or update the value for the specified header
-    rowDict(Header) = Value
-
-    Exit Sub
-
-ErrorHandler:
-    Debug.Print "Error in AddValue: " & Err.Description
 End Sub
