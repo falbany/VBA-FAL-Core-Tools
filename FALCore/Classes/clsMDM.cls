@@ -185,6 +185,30 @@ ErrorHandler:
     ToMdmString = ""
 End Function
 
+Public Function ParseMdmString(ByVal mdmContent As String) As Boolean
+    '@brief Parses MDM data from a string.
+    '@param mdmContent The string containing the MDM data.
+    '@return True if the string was parsed successfully, False otherwise.
+    On Error GoTo ErrorHandler
+
+    prvMdmContent = mdmContent
+
+    If Len(prvMdmContent) > 0 Then
+        If prvParseHeader() Then
+            ParseMdmString = prvParseDataBlocks()
+        Else
+            ParseMdmString = False
+        End If
+    Else
+        ParseMdmString = False
+    End If
+
+    Exit Function
+
+ErrorHandler:
+    ParseMdmString = False
+End Function
+
 Public Function To2DArray() As Variant
     '@brief Converts the MDM data into a 2D variant array for easy export to Excel.
     '@return A 2D variant array containing the combined data from all data blocks.
