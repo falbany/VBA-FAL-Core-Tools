@@ -5,56 +5,42 @@ Option Explicit
 Public Sub RunAdvancedMdmDemo()
     '@brief Demonstrates the advanced creation, manipulation, and export capabilities of the refactored clsMDM class.
 
-    ' --- 1. Create and Populate an MDM Object with Structured Parameters ---
+    ' --- 1. Create and Populate an MDM Object with Complex Numbers ---
     Dim mdm As New clsMDM
-    Debug.Print "--- Step 1: Creating and populating a new clsMDM object with structured parameters ---"
+    Debug.Print "--- Step 1: Creating and populating a new clsMDM object with complex numbers ---"
 
-    ' Add User Inputs and Values (these are simple key-value pairs)
-    mdm.AddUserInput "Temp", "25"
-    mdm.AddIccapValue "L", "1e-5"
+    ' Add a structured ICCAP Input Parameter
+    Dim freqInput As New clsMdmInputParameter
+    freqInput.Name = "Freq"
+    freqInput.SweepType = "LOG"
+    freqInput.SweepOptions("Start") = "1e3"
+    freqInput.SweepOptions("Stop") = "1e6"
+    freqInput.SweepOptions("NumPoints") = 3
+    mdm.AddIccapInput freqInput
 
-    ' Create and add a structured ICCAP Input Parameter
-    Dim vdInput As New clsMdmInputParameter
-    vdInput.Name = "Vd"
-    vdInput.Mode = "V"
-    vdInput.ModeOptions("PlusNode") = "D"
-    vdInput.ModeOptions("MinusNode") = "S"
-    vdInput.ModeOptions("Unit") = "V"
-    vdInput.ModeOptions("Compliance") = "0.1"
-    vdInput.SweepType = "LIN"
-    vdInput.SweepOptions("SweepOrder") = 1
-    vdInput.SweepOptions("Start") = 0
-    vdInput.SweepOptions("Stop") = 1
-    vdInput.SweepOptions("NumPoints") = 3
-    vdInput.SweepOptions("StepSize") = 0.5
-    mdm.AddIccapInput vdInput
+    ' Add a structured ICCAP Output Parameter for a complex number
+    Dim zOutput As New clsMdmOutputParameter
+    zOutput.Name = "Z"
+    zOutput.Type = "C" ' C for Complex
+    zOutput.Unit = "Ohm"
+    mdm.AddIccapOutput zOutput
 
-    ' Create and add a structured ICCAP Output Parameter
-    Dim idOutput As New clsMdmOutputParameter
-    idOutput.Name = "Id"
-    idOutput.Mode = "I"
-    idOutput.ModeOptions("ToNode") = "D"
-    idOutput.ModeOptions("FromNode") = "S"
-    idOutput.Unit = "A"
-    idOutput.Compliance = "DEFAULT"
-    idOutput.Type = "M"
-    mdm.AddIccapOutput idOutput
-
-    ' Add a data block using the new structured method
+    ' Add a data block
     Dim db1 As clsMdmDataBlock
     Set db1 = mdm.AddDataBlock()
-    db1.AddInputValue "Vg", "1.0"
 
-    ' Add data rows using the new, cell-by-cell AddValue method.
-    ' The headers "Vd" and "Id" will be added automatically by the first calls.
-    db1.AddValue "Vd", 0, 0
-    db1.AddValue "Id", 0, 0.001
+    ' Add data, including complex number columns R:Z and I:Z
+    db1.AddValue "Freq", 0, "1000"
+    db1.AddValue "R:Z", 0, "100"
+    db1.AddValue "I:Z", 0, "-50"
 
-    db1.AddValue "Vd", 1, 0.5
-    db1.AddValue "Id", 1, 0.05
+    db1.AddValue "Freq", 1, "10000"
+    db1.AddValue "R:Z", 1, "95"
+    db1.AddValue "I:Z", 1, "-150"
 
-    db1.AddValue "Vd", 2, 1
-    db1.AddValue "Id", 2, 0.1
+    db1.AddValue "Freq", 2, "1000000"
+    db1.AddValue "R:Z", 2, "20"
+    db1.AddValue "I:Z", 2, "-300"
 
     Debug.Print "Population complete."
     Debug.Print ""
@@ -68,44 +54,47 @@ Public Sub RunAdvancedMdmDemo()
 
     Dim parsedMdm As New clsMDM
     parsedMdm.ParseMdmString mdmString
-    Debug.Print "Parsing successful."
+    Debug.Print "Parsing successful. Note that complex numbers are now represented by a clsComplexNumber object."
     Debug.Print ""
 
-    ' --- 3. Verify Structured Data ---
-    Debug.Print "--- Step 3: Verifying structured data from parsed object ---"
-    Dim parsedInput As clsMdmInputParameter
-    Set parsedInput = parsedMdm.IccapInputs("Vd")
-    Debug.Print "Parsed Input 'Vd' Sweep Type: " & parsedInput.SweepType
-    Debug.Print "Parsed Input 'Vd' Start Value: " & parsedInput.SweepOptions("Start")
+    ' --- 3. Convert Data Types ---
+    Debug.Print "--- Step 3: Converting string data to numeric types ---"
+    ' Before conversion, the data is stored as strings (as it is in the file)
+    Debug.Print "Type of Freq value before conversion: " & TypeName(parsedMdm.DataBlocks(0).Data("Freq")(0))
 
-    Dim parsedOutput As clsMdmOutputParameter
-    Set parsedOutput = parsedMdm.IccapOutputs("Id")
-    Debug.Print "Parsed Output 'Id' ToNode: " & parsedOutput.ModeOptions("ToNode")
+    parsedMdm.ConvertDataTypes
+
+    ' After conversion, strings representing numbers are converted to actual numeric types
+    Debug.Print "Type of Freq value after conversion: " & TypeName(parsedMdm.DataBlocks(0).Data("Freq")(0))
+    Debug.Print "Complex number Z at row 0: " & parsedMdm.DataBlocks(0).Data("Z")(0).ToString()
     Debug.Print ""
 
-    ' --- 4. Export to 2D Array and Paste to Excel ---
-    Debug.Print "--- Step 4: Exporting data to a 2D Array ---"
-    Dim dataArray As Variant
-    dataArray = parsedMdm.To2DArray()
+    ' --- 4. Export Directly to a New Worksheet ---
+    Debug.Print "--- Step 4: Exporting data directly to a new Excel worksheet ---"
 
-    If Not IsEmpty(dataArray) Then
-        Dim wks As Worksheet
-        Set wks = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
-        wks.Name = "MDM_Advanced_Demo"
-        wks.Range("A1").Resize(UBound(dataArray, 1), UBound(dataArray, 2)).value = dataArray
-        wks.Columns.AutoFit
-        Debug.Print "Data successfully exported to worksheet '" & wks.Name & "'."
-        wks.Activate
-    Else
-        Debug.Print "Failed to export data to 2D array."
-    End If
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Worksheets("MDM_Advanced_Demo").Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+
+    Dim wks As Worksheet
+    Set wks = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
+    wks.Name = "MDM_Advanced_Demo"
+
+    ' Use the new, simplified export method
+    parsedMdm.ExportToWorksheet wks, "A1"
+
+    wks.Columns.AutoFit
+    Debug.Print "Data successfully exported to worksheet '" & wks.Name & "'."
+    wks.Activate
     Debug.Print ""
 
     ' --- 5. Export to JSON ---
     Debug.Print "--- Step 5: Exporting data to a JSON string ---"
     Dim jsonString As String
     jsonString = parsedMdm.ToJSON(PrettyPrint:=True)
-    Debug.Print "Generated JSON String:"
+    Debug.Print "Generated JSON String (note the complex number objects):"
     Debug.Print jsonString
 
     Debug.Print "--- Demo Complete ---"

@@ -106,15 +106,11 @@ Public Function ToMdmString() As String
 
     Dim key As Variant
 
-    ' USER_INPUTS
+    ' USER_INPUTS, ICCAP_INPUTS, ICCAP_OUTPUTS, ICCAP_VALUES
     If prvUserInputs.Count > 0 Then
         sb.Append "USER_INPUTS" & vbCrLf
-        For Each key In prvUserInputs.Keys
-            sb.Append key & " " & prvUserInputs(key) & vbCrLf
-        Next key
+        For Each key In prvUserInputs.Keys: sb.Append key & " " & prvUserInputs(key) & vbCrLf: Next key
     End If
-
-    ' ICCAP_INPUTS
     If prvIccapInputs.Count > 0 Then
         sb.Append "ICCAP_INPUTS" & vbCrLf
         Dim inputParam As clsMdmInputParameter
@@ -122,19 +118,12 @@ Public Function ToMdmString() As String
             Set inputParam = prvIccapInputs(key)
             Dim lineBuilder As New StringBuilder
             lineBuilder.Append inputParam.Name & " " & inputParam.Mode & " "
-            Dim opt As Variant
-            For Each opt In inputParam.ModeOptions.Keys
-                lineBuilder.Append inputParam.ModeOptions(opt) & " "
-            Next opt
+            For Each key In inputParam.ModeOptions.Keys: lineBuilder.Append inputParam.ModeOptions(key) & " ": Next key
             lineBuilder.Append inputParam.SweepType & " "
-            For Each opt In inputParam.SweepOptions.Keys
-                lineBuilder.Append inputParam.SweepOptions(opt) & " "
-            Next opt
+            For Each key In inputParam.SweepOptions.Keys: lineBuilder.Append inputParam.SweepOptions(key) & " ": Next key
             sb.Append Trim(lineBuilder.ToString) & vbCrLf
         Next key
     End If
-
-    ' ICCAP_OUTPUTS
     If prvIccapOutputs.Count > 0 Then
         sb.Append "ICCAP_OUTPUTS" & vbCrLf
         Dim outputParam As clsMdmOutputParameter
@@ -142,21 +131,14 @@ Public Function ToMdmString() As String
             Set outputParam = prvIccapOutputs(key)
             Dim lineBuilder As New StringBuilder
             lineBuilder.Append outputParam.Name & " " & outputParam.Mode & " "
-            Dim opt As Variant
-            For Each opt In outputParam.ModeOptions.Keys
-                lineBuilder.Append outputParam.ModeOptions(opt) & " "
-            Next opt
+            For Each key In outputParam.ModeOptions.Keys: lineBuilder.Append outputParam.ModeOptions(key) & " ": Next key
             lineBuilder.Append outputParam.Unit & " " & outputParam.Compliance & " " & outputParam.Type
             sb.Append Trim(lineBuilder.ToString) & vbCrLf
         Next key
     End If
-
-    ' ICCAP_VALUES
     If prvIccapValues.Count > 0 Then
         sb.Append "ICCAP_VALUES" & vbCrLf
-        For Each key In prvIccapValues.Keys
-            sb.Append key & " " & prvIccapValues(key) & vbCrLf
-        Next key
+        For Each key In prvIccapValues.Keys: sb.Append key & " " & prvIccapValues(key) & vbCrLf: Next key
     End If
 
     sb.Append "END_HEADER" & vbCrLf & vbCrLf
@@ -170,17 +152,21 @@ Public Function ToMdmString() As String
         For Each key In dataBlock.InputValues.Keys
             blockInputs.Append key & " " & dataBlock.InputValues(key) & " "
         Next key
-        If dataBlock.InputValues.Count > 0 Then
-            sb.Append Trim(blockInputs.ToString) & vbCrLf
-        End If
+        If dataBlock.InputValues.Count > 0 Then sb.Append Trim(blockInputs.ToString) & vbCrLf
 
+        ' Build header row, expanding complex numbers
         Dim headerSb As New StringBuilder
         Dim header As Variant
         For Each header In dataBlock.HeadersInOrder
-            headerSb.Append header & " "
+            If TypeOf dataBlock.Data(header)(0) Is clsComplexNumber Then
+                headerSb.Append "R:" & header & " " & "I:" & header & " "
+            Else
+                headerSb.Append header & " "
+            End If
         Next
         sb.Append Trim(headerSb.ToString) & vbCrLf
 
+        ' Build data rows
         Dim i As Long
         For i = 0 To dataBlock.RowCount - 1
             Dim rowSb As New StringBuilder
@@ -188,9 +174,14 @@ Public Function ToMdmString() As String
                 Dim val As Variant
                 On Error Resume Next
                 val = dataBlock.Data(header)(i)
-                If Err.Number <> 0 Then val = "" ' Handle missing values gracefully
+                If Err.Number <> 0 Then val = ""
                 On Error GoTo ErrorHandler
-                rowSb.Append val & " "
+
+                If TypeOf val Is clsComplexNumber Then
+                    rowSb.Append val.Real & " " & val.Imaginary & " "
+                Else
+                    rowSb.Append val & " "
+                End If
             Next
             sb.Append Trim(rowSb.ToString) & vbCrLf
         Next
@@ -257,7 +248,6 @@ Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
     For Each dataBlock In prvDataBlocks
         Dim blockDict As New Dictionary
         blockDict("InputValues") = dataBlock.InputValues
-        blockDict("HeadersInOrder") = dataBlock.HeadersInOrder
 
         ' Reconstruct rows for clean JSON output
         Dim rowsCollection As New Collection
@@ -267,9 +257,15 @@ Public Function ToJSON(Optional ByVal PrettyPrint As Boolean = False) As String
             Dim header As Variant
             For Each header In dataBlock.HeadersInOrder
                 On Error Resume Next
-                rowDict(header) = dataBlock.Data(header)(i)
-                If Err.Number <> 0 Then rowDict(header) = "" ' Handle missing values
+                Dim val As Variant: val = dataBlock.Data(header)(i)
+                If Err.Number <> 0 Then val = ""
                 On Error GoTo ErrorHandler
+
+                If TypeOf val Is clsComplexNumber Then
+                    rowDict(header) = prvParameterToDict(val)
+                Else
+                    rowDict(header) = val
+                End If
             Next header
             rowsCollection.Add rowDict
         Next i
@@ -311,6 +307,11 @@ Private Function prvParameterToDict(ByVal param As Object) As Dictionary
         prvParameterToDict("Unit") = outputP.Unit
         prvParameterToDict("Compliance") = outputP.Compliance
         prvParameterToDict("Type") = outputP.Type
+    ElseIf TypeOf param Is clsComplexNumber Then
+        Dim complexP As clsComplexNumber
+        Set complexP = param
+        prvParameterToDict("Real") = complexP.Real
+        prvParameterToDict("Imaginary") = complexP.Imaginary
     End If
 End Function
 
@@ -324,8 +325,9 @@ Public Function To2DArray() As Variant
         Exit Function
     End If
 
-    Dim colHeaders As New Dictionary
-    colHeaders.CompareMode = TextCompare
+    Dim colHeaders As New Collection
+    Dim colHeaderDict As New Dictionary
+    colHeaderDict.CompareMode = TextCompare
 
     Dim dataBlock As clsMdmDataBlock
     Dim totalDataRows As Long: totalDataRows = 0
@@ -333,12 +335,29 @@ Public Function To2DArray() As Variant
     For Each dataBlock In prvDataBlocks
         Dim key As Variant
         For Each key In dataBlock.InputValues.Keys
-            If Not colHeaders.Exists(key) Then colHeaders.Add key, colHeaders.Count + 1
+            If Not colHeaderDict.Exists(key) Then
+                colHeaders.Add key
+                colHeaderDict.Add key, 1
+            End If
         Next key
 
         Dim header As Variant
         For Each header In dataBlock.HeadersInOrder
-            If Not colHeaders.Exists(header) Then colHeaders.Add header, colHeaders.Count + 1
+            If dataBlock.Data(header).Count > 0 And TypeOf dataBlock.Data(header)(0) Is clsComplexNumber Then
+                If Not colHeaderDict.Exists("R:" & header) Then
+                    colHeaders.Add "R:" & header
+                    colHeaderDict.Add "R:" & header, 1
+                End If
+                If Not colHeaderDict.Exists("I:" & header) Then
+                    colHeaders.Add "I:" & header
+                    colHeaderDict.Add "I:" & header, 1
+                End If
+            Else
+                If Not colHeaderDict.Exists(header) Then
+                    colHeaders.Add header
+                    colHeaderDict.Add header, 1
+                End If
+            End If
         Next header
 
         totalDataRows = totalDataRows + dataBlock.RowCount
@@ -352,28 +371,46 @@ Public Function To2DArray() As Variant
     Dim outputArray() As Variant
     ReDim outputArray(1 To totalDataRows + 1, 1 To colHeaders.Count)
 
-    Dim colKey As Variant
-    For Each colKey In colHeaders.Keys
-        outputArray(1, colHeaders(colKey)) = colKey
-    Next colKey
+    Dim i As Long
+    For i = 1 To colHeaders.Count
+        outputArray(1, i) = colHeaders(i)
+    Next i
 
     Dim currentRow As Long: currentRow = 2
     For Each dataBlock In prvDataBlocks
-        Dim i As Long
         For i = 0 To dataBlock.RowCount - 1
-            For Each colKey In dataBlock.InputValues.Keys
-                outputArray(currentRow, colHeaders(colKey)) = dataBlock.InputValues(colKey)
-            Next colKey
+            Dim colIdx As Long
+            For colIdx = 1 To colHeaders.Count
+                Dim colName As String: colName = colHeaders(colIdx)
+                Dim val As Variant: val = ""
 
-            For Each colKey In dataBlock.HeadersInOrder
-                Dim val As Variant
-                On Error Resume Next
-                val = dataBlock.Data(colKey)(i)
-                If Err.Number <> 0 Then val = "" ' Handle empty cells
-                On Error GoTo ErrorHandler
-                outputArray(currentRow, colHeaders(colKey)) = val
-            Next colKey
-
+                If dataBlock.InputValues.Exists(colName) Then
+                    val = dataBlock.InputValues(colName)
+                ElseIf dataBlock.Data.Exists(colName) Then
+                    On Error Resume Next
+                    val = dataBlock.Data(colName)(i)
+                    On Error GoTo ErrorHandler
+                ElseIf UCase(Left(colName, 2)) = "R:" Then
+                    Dim baseName As String: baseName = Mid(colName, 3)
+                    If dataBlock.Data.Exists(baseName) Then
+                        Dim cNum As clsComplexNumber
+                        On Error Resume Next
+                        Set cNum = dataBlock.Data(baseName)(i)
+                        If Err.Number = 0 And Not cNum Is Nothing Then val = cNum.Real
+                        On Error GoTo ErrorHandler
+                    End If
+                ElseIf UCase(Left(colName, 2)) = "I:" Then
+                    baseName = Mid(colName, 3)
+                    If dataBlock.Data.Exists(baseName) Then
+                        Set cNum = Nothing
+                        On Error Resume Next
+                        Set cNum = dataBlock.Data(baseName)(i)
+                        If Err.Number = 0 And Not cNum Is Nothing Then val = cNum.Imaginary
+                        On Error GoTo ErrorHandler
+                    End If
+                End If
+                outputArray(currentRow, colIdx) = val
+            Next colIdx
             currentRow = currentRow + 1
         Next i
     Next dataBlock
@@ -384,6 +421,63 @@ Public Function To2DArray() As Variant
 ErrorHandler:
     To2DArray = Empty
 End Function
+
+Public Sub ConvertDataTypes()
+    '@brief Attempts to convert string data in the data blocks to numeric types.
+    '@details Iterates through all data points and converts them to Double if they are numeric.
+    On Error GoTo ErrorHandler
+
+    Dim dataBlock As clsMdmDataBlock
+    For Each dataBlock In prvDataBlocks
+        Dim header As Variant
+        For Each header In dataBlock.HeadersInOrder
+            ' Skip if the column is already complex numbers
+            If dataBlock.Data(header).Count > 0 Then
+                If TypeOf dataBlock.Data(header)(0) Is clsComplexNumber Then GoTo NextHeader
+            End If
+
+            Dim i As Long
+            For i = 0 To dataBlock.Data(header).Count - 1
+                Dim val As Variant
+                val = dataBlock.Data(header)(i)
+                If IsNumeric(val) Then
+                    dataBlock.Data(header)(i) = CDbl(val)
+                End If
+            Next i
+NextHeader:
+        Next header
+    Next dataBlock
+
+    Exit Sub
+ErrorHandler:
+    Debug.Print "Error in ConvertDataTypes: " & Err.Description
+End Sub
+
+Public Sub ExportToWorksheet(ByVal wks As Worksheet, Optional ByVal startCellAddress As String = "A1")
+    '@brief Exports the entire MDM data set to a specified worksheet.
+    '@param wks The worksheet object to export the data to.
+    '@param startCellAddress (Optional) The starting cell for the data export (e.g., "A1").
+    On Error GoTo ErrorHandler
+
+    Dim dataArray As Variant
+    dataArray = Me.To2DArray()
+
+    If IsEmpty(dataArray) Then
+        Debug.Print "No data to export."
+        Exit Sub
+    End If
+
+    Dim startCell As Range
+    Set startCell = wks.Range(startCellAddress)
+
+    ' Resize the target range and write the array in one operation for efficiency
+    startCell.Resize(UBound(dataArray, 1), UBound(dataArray, 2)).value = dataArray
+
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error in ExportToWorksheet: " & Err.Description
+End Sub
 
 Public Function ReadMdmFile(ByVal filePath As String) As Boolean
     '@brief Reads the content of an MDM file and parses its header and data blocks.
@@ -468,7 +562,7 @@ ErrorHandler:
 End Function
 
 Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dataBlock As clsMdmDataBlock) As Boolean
-    '@brief Parses a single data block's content into a Dictionary of Dictionaries structure.
+    '@brief Parses a single data block's content into a column-oriented data structure, handling complex numbers.
     '@param blockContent The string content between BEGIN_DB and END_DB.
     '@param dataBlock The clsMdmDataBlock object to populate.
     '@return True if parsing is successful, False otherwise.
@@ -523,18 +617,39 @@ NextLine:
         Exit Function
     End If
 
-    ' Parse Headers and initialize the Data dictionary
+    ' --- Parse Headers and initialize data columns, handling complex pairs ---
     Dim headerLine As String: headerLine = Trim(lines(dataStartIndex))
     If Left(headerLine, 1) = "#" Then headerLine = Trim(Mid(headerLine, 2))
     Do While InStr(headerLine, "  ") > 0: headerLine = Replace(headerLine, "  ", " "): Loop
 
     Dim headerParts() As String: headerParts = Split(headerLine, " ")
-    For j = LBound(headerParts) To UBound(headerParts)
-        dataBlock.HeadersInOrder.Add headerParts(j)
-        dataBlock.Data.Add headerParts(j), New Dictionary
-    Next j
 
-    ' Process Data Rows and populate the column dictionaries
+    j = LBound(headerParts)
+    Do While j <= UBound(headerParts)
+        Dim currentHeader As String: currentHeader = headerParts(j)
+        If UCase(Left(currentHeader, 2)) = "R:" And (j + 1) <= UBound(headerParts) Then
+            Dim nextHeader As String: nextHeader = headerParts(j + 1)
+            If UCase(Left(nextHeader, 2)) = "I:" And Mid(currentHeader, 3) = Mid(nextHeader, 3) Then
+                ' This is a complex number pair
+                Dim baseName As String: baseName = Mid(currentHeader, 3)
+                dataBlock.HeadersInOrder.Add baseName
+                dataBlock.Data.Add baseName, New Dictionary
+                j = j + 2 ' Skip the next part
+            Else
+                ' Standalone R: or other header
+                dataBlock.HeadersInOrder.Add currentHeader
+                dataBlock.Data.Add currentHeader, New Dictionary
+                j = j + 1
+            End If
+        Else
+            ' Standard header
+            dataBlock.HeadersInOrder.Add currentHeader
+            dataBlock.Data.Add currentHeader, New Dictionary
+            j = j + 1
+        End If
+    Loop
+
+    ' --- Process Data Rows and populate the column dictionaries ---
     Dim rowIndex As Long: rowIndex = 0
     For i = dataStartIndex + 1 To UBound(lines)
         Dim dataLine As String: dataLine = Trim(lines(i))
@@ -544,11 +659,35 @@ NextLine:
 
             Dim dataParts() As String: dataParts = Split(dataLine, " ")
 
-            For j = LBound(dataParts) To UBound(dataParts)
-                If (j + 1) <= dataBlock.HeadersInOrder.Count Then
-                    dataBlock.Data(dataBlock.HeadersInOrder(j + 1))(rowIndex) = dataParts(j)
+            Dim dataIdx As Long: dataIdx = LBound(dataParts)
+
+            Dim header As Variant
+            For Each header In dataBlock.HeadersInOrder
+                If dataIdx > UBound(dataParts) Then Exit For
+
+                ' Check if the original header was complex to know how many parts to consume
+                Dim isComplex As Boolean: isComplex = False
+                If prvIccapOutputs.Exists(header) Then
+                    Dim outputParam As clsMdmOutputParameter
+                    Set outputParam = prvIccapOutputs(header)
+                    Select Case UCase(outputParam.Mode)
+                        Case "S", "H", "Z", "Y", "K", "A"
+                            isComplex = True
+                    End Select
                 End If
-            Next j
+
+                If isComplex And (dataIdx + 1) <= UBound(dataParts) Then
+                    Dim complexNum As New clsComplexNumber
+                    complexNum.Real = CDbl(dataParts(dataIdx))
+                    complexNum.Imaginary = CDbl(dataParts(dataIdx + 1))
+                    dataBlock.Data(header)(rowIndex) = complexNum
+                    dataIdx = dataIdx + 2
+                Else
+                    dataBlock.Data(header)(rowIndex) = dataParts(dataIdx)
+                    dataIdx = dataIdx + 1
+                End If
+            Next header
+
             rowIndex = rowIndex + 1
         End If
     Next i
