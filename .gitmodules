@@ -1,0 +1,15 @@
+[submodule "modules/VBA-Better-Array"]
+	path = modules/VBA-Better-Array
+	url = https://github.com/Senipah/VBA-Better-Array.git
+[submodule "modules/VBA-JSON"]
+	path = modules/VBA-JSON
+	url = https://github.com/VBA-tools/VBA-JSON.git
+[submodule "modules/VBA-Dictionary"]
+	path = modules/VBA-Dictionary
+	url = https://github.com/VBA-tools/VBA-Dictionary.git
+[submodule "modules/VBA-Log"]
+	path = modules/VBA-Log
+	url = https://github.com/VBA-tools/VBA-Log.git
+[submodule "modules/VBA-StringBuilder"]
+	path = modules/VBA-StringBuilder
+	url = https://github.com/retailcoder/VBA-StringBuilder.git
