@@ -16,8 +16,21 @@ Private prvIccapInputs As Dictionary
 Private prvIccapOutputs As Dictionary
 Private prvIccapValues As Dictionary
 Private prvDataBlocks As Collection
+Private prvValidationErrors As Dictionary
+Private prvIsValid As Boolean
 
 ' Public Properties
+Public Property Get IsValid() As Boolean
+    '@brief Returns True if the last validation check passed, False otherwise.
+    IsValid = prvIsValid
+End Property
+
+Public Property Get ValidationErrors() As Dictionary
+    '@brief Returns a dictionary of validation errors found during the last check.
+    '@details The dictionary key is a description of the error, and the item is a detailed message.
+    Set ValidationErrors = prvValidationErrors
+End Property
+
 Public Property Get UserInputs() As Dictionary
     Set UserInputs = prvUserInputs
 End Property
@@ -45,6 +58,8 @@ Private Sub Class_Initialize()
     Set prvIccapOutputs = New Dictionary
     Set prvIccapValues = New Dictionary
     Set prvDataBlocks = New Collection
+    Set prvValidationErrors = New Dictionary
+    prvIsValid = True ' Default to true until validation is run
 End Sub
 
 ' Public Create Methods
@@ -96,6 +111,34 @@ Public Function AddDataBlock(Optional ByVal dataBlock As clsMdmDataBlock = Nothi
 End Function
 
 ' Other Public Methods
+Public Function Validate() As Boolean
+    '@brief Runs a series of validation checks against the MDM object's structure and data.
+    '@details Populates the IsValid and ValidationErrors properties.
+    '@return True if the object is valid, False otherwise.
+    On Error GoTo ErrorHandler
+
+    ' Reset validation state
+    Set prvValidationErrors = New Dictionary
+    prvIsValid = True
+
+    ' --- Perform all validation checks ---
+    prvValidateRowCountConsistency
+    prvValidateHeaderToParameterMapping
+    prvValidateSweepParameters
+
+    ' Update final status
+    If Me.ValidationErrors.Count > 0 Then
+        prvIsValid = False
+    End If
+
+    Validate = prvIsValid
+    Exit Function
+
+ErrorHandler:
+    prvIsValid = False
+    Validate = False
+End Function
+
 Public Function ToMdmString() As String
     '@brief Generates a string representation of the MDM data in the official MDM file format.
     '@return A string formatted according to the MDM file specification.
@@ -513,6 +556,149 @@ ErrorHandler:
 End Function
 
 ' Private Helper Functions
+Private Sub prvValidateSweepParameters()
+    '@brief Validates that the data for swept variables matches the sweep definitions.
+    '@details Checks NumPoints, Start, and Stop values against the actual data.
+    On Error GoTo ErrorHandler
+
+    Dim key As Variant
+    Dim inputParam As clsMdmInputParameter
+
+    For Each key In prvIccapInputs.Keys
+        Set inputParam = prvIccapInputs(key)
+
+        ' Check only parameters that are defined as sweeps (e.g., LIN, LOG)
+        If inputParam.SweepType <> "CON" And inputParam.SweepType <> "SYNC" Then
+            Dim paramName As String: paramName = inputParam.Name
+
+            ' Find the data block that contains this sweep as its innermost sweep
+            Dim targetBlock As clsMdmDataBlock
+            Dim blockIndex As Long: blockIndex = 0
+            Dim innerMostSweepForBlock As String
+
+            Dim tempBlock As clsMdmDataBlock
+            For Each tempBlock In prvDataBlocks
+                blockIndex = blockIndex + 1
+                ' This logic assumes we can identify the innermost sweep for a block.
+                ' For now, we'll just check if the column exists in the block. A more robust
+                ' implementation might need a way to link blocks to specific sweep orders.
+                If tempBlock.Data.Exists(paramName) Then
+                    Set targetBlock = tempBlock
+                    Exit For
+                End If
+            Next tempBlock
+
+            If Not targetBlock Is Nothing Then
+                ' 1. Validate number of points
+                If inputParam.SweepOptions.Exists("NumPoints") Then
+                    Dim expectedPoints As Long: expectedPoints = CLng(inputParam.SweepOptions("NumPoints"))
+                    Dim actualPoints As Long: actualPoints = targetBlock.Data(paramName).Count
+
+                    If actualPoints <> expectedPoints Then
+                        prvValidationErrors("Sweep.NumPoints." & paramName) = "Sweep '" & paramName & "' in Block " & blockIndex & " has " & actualPoints & " data points, but header defines " & expectedPoints & "."
+                    End If
+                End If
+
+                ' 2. Validate Start and Stop values (with tolerance for float comparison)
+                Dim firstVal As Double, lastVal As Double
+                Dim expectedStart As Double, expectedStop As Double
+                Const TOLERANCE As Double = 0.00001
+
+                If targetBlock.Data(paramName).Count > 0 Then
+                    If inputParam.SweepOptions.Exists("Start") And IsNumeric(inputParam.SweepOptions("Start")) Then
+                        expectedStart = CDbl(inputParam.SweepOptions("Start"))
+                        firstVal = CDbl(targetBlock.Data(paramName)(0))
+                        If Abs(firstVal - expectedStart) > TOLERANCE Then
+                            prvValidationErrors("Sweep.Start." & paramName) = "Sweep '" & paramName & "' in Block " & blockIndex & " starts at " & firstVal & ", but header defines " & expectedStart & "."
+                        End If
+                    End If
+
+                    If inputParam.SweepOptions.Exists("Stop") And IsNumeric(inputParam.SweepOptions("Stop")) Then
+                        expectedStop = CDbl(inputParam.SweepOptions("Stop"))
+                        lastVal = CDbl(targetBlock.Data(paramName)(targetBlock.Data(paramName).Count - 1))
+                        If Abs(lastVal - expectedStop) > TOLERANCE Then
+                            prvValidationErrors("Sweep.Stop." & paramName) = "Sweep '" & paramName & "' in Block " & blockIndex & " stops at " & lastVal & ", but header defines " & expectedStop & "."
+                        End If
+                    End If
+                End If
+            Else
+                ' Error: Sweep defined in header but no corresponding data found
+                prvValidationErrors("Sweep.MissingData." & paramName) = "Sweep parameter '" & paramName & "' is defined in the header, but no corresponding data column was found in any data block."
+            End If
+        End If
+    Next key
+
+    Exit Sub
+ErrorHandler:
+    prvValidationErrors("Validation.SweepParameters") = "An unexpected error occurred during sweep parameter validation: " & Err.Description
+End Sub
+
+Private Sub prvValidateRowCountConsistency()
+    '@brief Checks that all data columns within each data block have the same number of rows.
+    '@details Adds errors to the ValidationErrors dictionary if inconsistencies are found.
+    On Error GoTo ErrorHandler
+
+    Dim blockIndex As Long: blockIndex = 0
+    Dim dataBlock As clsMdmDataBlock
+    For Each dataBlock In prvDataBlocks
+        blockIndex = blockIndex + 1
+        If dataBlock.HeadersInOrder.Count = 0 Then GoTo NextBlock
+
+        Dim expectedRows As Long
+        expectedRows = dataBlock.RowCount
+
+        Dim header As Variant
+        For Each header In dataBlock.HeadersInOrder
+            Dim currentRows As Long
+            currentRows = dataBlock.Data(header).Count
+            If currentRows <> expectedRows Then
+                Dim errorKey As String
+                errorKey = "Row Count Mismatch in Block " & blockIndex
+
+                Dim errorMessage As String
+                errorMessage = "In Data Block " & blockIndex & ", column '" & header & "' has " & currentRows & " rows, but the block's reference row count is " & expectedRows & "."
+
+                prvValidationErrors(errorKey & " - " & header) = errorMessage
+            End If
+        Next header
+NextBlock:
+    Next dataBlock
+
+    Exit Sub
+ErrorHandler:
+    prvValidationErrors("Validation.RowCountConsistency") = "An unexpected error occurred during row count consistency validation: " & Err.Description
+End Sub
+
+Private Sub prvValidateHeaderToParameterMapping()
+    '@brief Checks that every data column header corresponds to a defined ICCAP_OUTPUT or ICCAP_INPUT parameter.
+    '@details Adds errors to the ValidationErrors dictionary if a mapping is not found.
+    On Error GoTo ErrorHandler
+
+    Dim blockIndex As Long: blockIndex = 0
+    Dim dataBlock As clsMdmDataBlock
+    For Each dataBlock In prvDataBlocks
+        blockIndex = blockIndex + 1
+
+        Dim header As Variant
+        For Each header In dataBlock.HeadersInOrder
+            ' A header is valid if it's in either the INPUTS or OUTPUTS collection
+            If Not prvIccapInputs.Exists(header) And Not prvIccapOutputs.Exists(header) Then
+                 Dim errorKey As String
+                 errorKey = "Undefined Header in Block " & blockIndex
+
+                 Dim errorMessage As String
+                 errorMessage = "In Data Block " & blockIndex & ", the data header '" & header & "' is not defined as an ICCAP_INPUT or ICCAP_OUTPUT in the main header."
+
+                 prvValidationErrors(errorKey & " - " & header) = errorMessage
+            End If
+        Next header
+    Next dataBlock
+
+    Exit Sub
+ErrorHandler:
+    prvValidationErrors("Validation.HeaderMapping") = "An unexpected error occurred during header to parameter mapping validation: " & Err.Description
+End Sub
+
 Private Function prvParseDataBlocks() As Boolean
     '@brief Parses all data blocks (BEGIN_DB/END_DB) in the MDM file.
     '@return True if parsing is successful, False otherwise.

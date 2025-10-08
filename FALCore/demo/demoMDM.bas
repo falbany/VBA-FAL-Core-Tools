@@ -96,6 +96,63 @@ Public Sub RunAdvancedMdmDemo()
     jsonString = parsedMdm.ToJSON(PrettyPrint:=True)
     Debug.Print "Generated JSON String (note the complex number objects):"
     Debug.Print jsonString
+    Debug.Print ""
+
+    ' --- 6. Validate Data Integrity ---
+    Debug.Print "--- Step 6: Demonstrating the Validation Framework ---"
+
+    ' a) Validate the existing, valid MDM object
+    Debug.Print "Validating the parsed MDM object..."
+    If parsedMdm.Validate() Then
+        Debug.Print "Result: VALID. No errors found."
+    Else
+        Debug.Print "Result: INVALID. This was not expected."
+    End If
+    Debug.Print ""
+
+    ' b) Create an intentionally invalid MDM object to demonstrate error detection
+    Debug.Print "Creating an invalid MDM object to test validation..."
+    Dim invalidMdm As New clsMDM
+
+    ' Add a sweep definition that won't match the data
+    Dim vIn As New clsMdmInputParameter
+    vIn.Name = "Vd"
+    vIn.SweepType = "LIN"
+    vIn.SweepOptions("NumPoints") = 5 ' Mismatch: We will only add 2 points
+    vIn.SweepOptions("Start") = 0
+    vIn.SweepOptions("Stop") = 1
+    invalidMdm.AddIccapInput vIn
+
+    ' Add a valid output parameter
+    Dim iOut As New clsMdmOutputParameter
+    iOut.Name = "Id"
+    iOut.Type = "M"
+    invalidMdm.AddIccapOutput iOut
+
+    ' Add a data block with errors
+    Dim invalidDb As clsMdmDataBlock
+    Set invalidDb = invalidMdm.AddDataBlock()
+
+    ' Error 1: Row count mismatch. 'Vd' will have 2 rows, 'Id' will have 1.
+    invalidDb.AddValue "Vd", 0, 0
+    invalidDb.AddValue "Vd", 1, 1
+
+    invalidDb.AddValue "Id", 0, 0.1
+
+    ' Error 2: Undefined header. 'I_leak' is not in ICCAP_OUTPUTS.
+    invalidDb.AddValue "I_leak", 0, 0.001
+
+    Debug.Print "Validating the invalid MDM object..."
+    If Not invalidMdm.Validate() Then
+        Debug.Print "Result: INVALID. Errors were correctly detected:"
+        Dim errKey As Variant
+        For Each errKey In invalidMdm.ValidationErrors.Keys
+            Debug.Print "  - ERROR: " & invalidMdm.ValidationErrors(errKey)
+        Next errKey
+    Else
+        Debug.Print "Result: VALID. Validation failed to detect errors."
+    End If
+    Debug.Print ""
 
     Debug.Print "--- Demo Complete ---"
 
