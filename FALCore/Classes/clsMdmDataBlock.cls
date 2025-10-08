@@ -60,14 +60,15 @@ Private Sub Class_Initialize()
 End Sub
 
 ' --- Public Methods ---
-Public Sub AddInputValue(ByVal key As String, ByVal value As Variant)
+Public Function AddInputValue(ByVal key As String, ByVal value As Variant) As clsMdmDataBlock
     '@brief Adds a key-value pair to the input values dictionary.
     '@param key The name of the input parameter.
     '@param value The value of the input parameter.
     prvInputValues(key) = value
-End Sub
+    Set AddInputValue = Me
+End Function
 
-Public Sub AddValue(ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant)
+Public Function AddValue(ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant) As clsMdmDataBlock
     '@brief Adds or updates a single value in the data table at a specific row and column (header).
     '@param Header The name of the column header. If the header is new, it will be added.
     '@param RowIndex The 0-based index of the row to modify.
@@ -95,10 +96,11 @@ Public Sub AddValue(ByVal Header As String, ByVal RowIndex As Long, ByVal Value 
     Set columnDict = prvData(Header)
     columnDict(RowIndex) = Value ' Add or update the value for the given row index
 
-    Exit Sub
+    Set AddValue = Me
+    Exit Function
 
 ErrorHandler:
     Debug.Print "Error in AddValue: " & Err.Description
-End Sub
+End Function
 
 ' Note: Other data entry methods (AddRow, etc.) will be re-implemented in subsequent steps.

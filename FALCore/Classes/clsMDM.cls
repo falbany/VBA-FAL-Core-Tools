@@ -63,31 +63,35 @@ Private Sub Class_Initialize()
 End Sub
 
 ' Public Create Methods
-Public Sub AddUserInput(ByVal key As String, ByVal value As String)
+Public Function AddUserInput(ByVal key As String, ByVal value As String) As clsMDM
     '@brief Adds or updates a user input in the header.
     '@param key The name of the user input.
     '@param value The value of the user input.
     prvUserInputs(key) = value
-End Sub
+    Set AddUserInput = Me
+End Function
 
-Public Sub AddIccapInput(ByVal param As clsMdmInputParameter)
+Public Function AddIccapInput(ByVal param As clsMdmInputParameter) As clsMDM
     '@brief Adds or updates an ICCAP input parameter in the header.
     '@param param The structured input parameter object to add.
     prvIccapInputs(param.Name) = param
-End Sub
+    Set AddIccapInput = Me
+End Function
 
-Public Sub AddIccapOutput(ByVal param As clsMdmOutputParameter)
+Public Function AddIccapOutput(ByVal param As clsMdmOutputParameter) As clsMDM
     '@brief Adds or updates an ICCAP output parameter in the header.
     '@param param The structured output parameter object to add.
     prvIccapOutputs(param.Name) = param
-End Sub
+    Set AddIccapOutput = Me
+End Function
 
-Public Sub AddIccapValue(ByVal key As String, ByVal value As String)
+Public Function AddIccapValue(ByVal key As String, ByVal value As String) As clsMDM
     '@brief Adds or updates an ICCAP value in the header.
     '@param key The name of the ICCAP value.
     '@param value The value of the ICCAP value.
     prvIccapValues(key) = value
-End Sub
+    Set AddIccapValue = Me
+End Function
 
 Public Function AddDataBlock(Optional ByVal dataBlock As clsMdmDataBlock = Nothing) As clsMdmDataBlock
     '@brief Adds a new data block to the MDM object. If no data block is provided, a new one is created.
@@ -111,6 +115,86 @@ Public Function AddDataBlock(Optional ByVal dataBlock As clsMdmDataBlock = Nothi
 End Function
 
 ' Other Public Methods
+Public Function GetValue(ByVal blockIndex As Long, ByVal header As String, ByVal rowIndex As Long) As Variant
+    '@brief Retrieves a single value from a specified data block.
+    '@param blockIndex The 0-based index of the data block.
+    '@param header The name of the data column (header).
+    '@param rowIndex The 0-based index of the row.
+    '@return The value at the specified location, or CVErr(xlErrNA) if not found.
+    On Error GoTo ErrorHandler
+
+    If blockIndex < 0 Or blockIndex >= prvDataBlocks.Count Then
+        GetValue = CVErr(xlErrNA)
+        Exit Function
+    End If
+
+    Dim dataBlock As clsMdmDataBlock
+    Set dataBlock = prvDataBlocks(blockIndex + 1) ' Collection is 1-based
+
+    If Not dataBlock.Data.Exists(header) Then
+        GetValue = CVErr(xlErrNA)
+        Exit Function
+    End If
+
+    Dim columnData As Dictionary
+    Set columnData = dataBlock.Data(header)
+
+    If Not columnData.Exists(rowIndex) Then
+        GetValue = CVErr(xlErrNA)
+        Exit Function
+    End If
+
+    GetValue = columnData(rowIndex)
+    Exit Function
+
+ErrorHandler:
+    GetValue = CVErr(xlErrNA)
+End Function
+
+Public Function GetColumn(ByVal blockIndex As Long, ByVal header As String) As Variant
+    '@brief Retrieves an entire data column from a specified data block as a 1D array.
+    '@param blockIndex The 0-based index of the data block.
+    '@param header The name of the data column (header).
+    '@return A 1D variant array containing the column data, or CVErr(xlErrNA) if not found.
+    On Error GoTo ErrorHandler
+
+    If blockIndex < 0 Or blockIndex >= prvDataBlocks.Count Then
+        GetColumn = CVErr(xlErrNA)
+        Exit Function
+    End If
+
+    Dim dataBlock As clsMdmDataBlock
+    Set dataBlock = prvDataBlocks(blockIndex + 1) ' Collection is 1-based
+
+    If Not dataBlock.Data.Exists(header) Then
+        GetColumn = CVErr(xlErrNA)
+        Exit Function
+    End If
+
+    Dim columnData As Dictionary
+    Set columnData = dataBlock.Data(header)
+
+    If columnData.Count = 0 Then
+        GetColumn = Array() ' Return empty array if column exists but has no data
+        Exit Function
+    End If
+
+    ' Assuming row indices are contiguous from 0 to N-1
+    Dim result() As Variant
+    ReDim result(0 To columnData.Count - 1)
+
+    Dim i As Long
+    For i = 0 To columnData.Count - 1
+        result(i) = columnData(i)
+    Next i
+
+    GetColumn = result
+    Exit Function
+
+ErrorHandler:
+    GetColumn = CVErr(xlErrNA)
+End Function
+
 Public Function Validate() As Boolean
     '@brief Runs a series of validation checks against the MDM object's structure and data.
     '@details Populates the IsValid and ValidationErrors properties.
