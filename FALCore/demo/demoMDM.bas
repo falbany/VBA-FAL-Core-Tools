@@ -157,3 +157,80 @@ Public Sub RunAdvancedMdmDemo()
     Debug.Print "--- Demo Complete ---"
 
 End Sub
+
+Public Sub RunFluentInterfaceDemo()
+    '@brief Demonstrates the new fluent interface and simplified data accessors.
+
+    ' --- 1. Create and Populate an MDM Object using Method Chaining ---
+    Debug.Print "--- Step 1: Creating a new clsMDM object using the fluent interface ---"
+
+    ' Create parameter definitions
+    Dim vIn As New clsMdmInputParameter
+    vIn.Name = "Vd"
+    vIn.SweepType = "LIN"
+    vIn.SweepOptions("NumPoints") = 3
+    vIn.SweepOptions("Start") = 0
+    vIn.SweepOptions("Stop") = 1
+
+    Dim iOut As New clsMdmOutputParameter
+    iOut.Name = "Id"
+    iOut.Type = "M"
+
+    ' Use method chaining to build the object and its data block in a more concise way
+    Dim mdm As New clsMDM
+    mdm.AddUserInput "Device", "MOSFET_A1" _
+       .AddIccapInput vIn _
+       .AddIccapOutput iOut
+
+    mdm.AddDataBlock() _
+       .AddInputValue "Temp", "25" _
+       .AddValue "Vd", 0, 0 _
+       .AddValue "Id", 0, 0.01 _
+       .AddValue "Vd", 1, 0.5 _
+       .AddValue "Id", 1, 0.52 _
+       .AddValue "Vd", 2, 1 _
+       .AddValue "Id", 2, 1.05
+
+    Debug.Print "MDM object created successfully using method chaining."
+    Debug.Print "Generated MDM String:"
+    Debug.Print mdm.ToMdmString()
+    Debug.Print ""
+
+    ' --- 2. Demonstrate Simplified Data Accessors ---
+    Debug.Print "--- Step 2: Using simplified accessors to retrieve data ---"
+
+    ' a) Get a single value
+    Dim singleValue As Variant
+    singleValue = mdm.GetValue(blockIndex:=0, header:="Id", rowIndex:=1)
+    Debug.Print "Retrieved single value for Id at rowIndex 1: " & singleValue
+    Debug.Print ""
+
+    ' b) Get an entire column
+    Dim columnData As Variant
+    columnData = mdm.GetColumn(blockIndex:=0, header:="Vd")
+
+    Debug.Print "Retrieved the entire 'Vd' column:"
+    If IsArray(columnData) Then
+        Dim i As Long
+        For i = LBound(columnData) To UBound(columnData)
+            Debug.Print "  Vd(" & i & ") = " & columnData(i)
+        Next i
+    Else
+        Debug.Print "  Failed to retrieve column data as an array."
+    End If
+    Debug.Print ""
+
+    ' c) Demonstrate error handling for accessors
+    Dim badValue As Variant
+    badValue = mdm.GetValue(blockIndex:=0, header:="Vd", rowIndex:=99) ' Invalid row
+    Debug.Print "Attempting to get value at invalid row index 99..."
+    If IsError(badValue) Then
+        Debug.Print "  Correctly returned an error: " & CStr(badValue)
+    Else
+        Debug.Print "  Did not return an error as expected."
+    End If
+    Debug.Print ""
+
+    Debug.Print "--- Fluent Interface Demo Complete ---"
+
+End Sub
