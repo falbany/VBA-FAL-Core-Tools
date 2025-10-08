@@ -16,7 +16,7 @@ Private prvIccapInputs As Dictionary
 Private prvIccapOutputs As Dictionary
 Private prvIccapValues As Dictionary
 Private prvDataBlocks As Collection
-Private prvValidationErrors As Dictionary
+Private prvValidationErrors As Collection
 Private prvIsValid As Boolean
 
 ' Public Properties
@@ -25,9 +25,8 @@ Public Property Get IsValid() As Boolean
     IsValid = prvIsValid
 End Property
 
-Public Property Get ValidationErrors() As Dictionary
-    '@brief Returns a dictionary of validation errors found during the last check.
-    '@details The dictionary key is a description of the error, and the item is a detailed message.
+Public Property Get ValidationErrors() As Collection
+    '@brief Returns a collection of validation errors (clsMdmValidationError objects) found during the last check.
     Set ValidationErrors = prvValidationErrors
 End Property
 
@@ -58,7 +57,7 @@ Private Sub Class_Initialize()
     Set prvIccapOutputs = New Dictionary
     Set prvIccapValues = New Dictionary
     Set prvDataBlocks = New Collection
-    Set prvValidationErrors = New Dictionary
+    Set prvValidationErrors = New Collection
     prvIsValid = True ' Default to true until validation is run
 End Sub
 
@@ -202,7 +201,7 @@ Public Function Validate() As Boolean
     On Error GoTo ErrorHandler
 
     ' Reset validation state
-    Set prvValidationErrors = New Dictionary
+    Set prvValidationErrors = New Collection
     prvIsValid = True
 
     ' --- Perform all validation checks ---
@@ -244,24 +243,24 @@ Public Function ToMdmString() As String
         For Each key In prvIccapInputs.Keys
             Set inputParam = prvIccapInputs(key)
             Dim lineBuilder As New StringBuilder
-            lineBuilder.Append inputParam.Name & " " & inputParam.Mode & " "
+            lineBuilder.Append inputParam.Name & " " & prvInputModeToString(inputParam.Mode) & " "
 
             ' --- Append Mode Options ---
-            Select Case UCase(inputParam.Mode)
-                Case "V", "U"
+            Select Case inputParam.Mode
+                Case mdmModeV, mdmModeU
                     lineBuilder.Append inputParam.PlusNode & " "
                     lineBuilder.Append inputParam.MinusNode & " "
                     lineBuilder.Append inputParam.Unit & " "
                     lineBuilder.Append inputParam.Compliance & " "
-                Case "I"
+                Case mdmModeI
                     lineBuilder.Append inputParam.ToNode & " "
                     lineBuilder.Append inputParam.FromNode & " "
                     lineBuilder.Append inputParam.Unit & " "
                     lineBuilder.Append inputParam.Compliance & " "
-                Case "P"
+                Case mdmModeP
                     lineBuilder.Append inputParam.ParamName & " "
                     lineBuilder.Append inputParam.Unit & " "
-                Case "W"
+                Case mdmModeW
                     lineBuilder.Append inputParam.PlusNode & " "
                     lineBuilder.Append inputParam.MinusNode & " "
                     lineBuilder.Append inputParam.PowerUnit & " "
@@ -269,32 +268,32 @@ Public Function ToMdmString() As String
                     lineBuilder.Append inputParam.Fund & " "
                     lineBuilder.Append inputParam.Unit & " "
                     lineBuilder.Append inputParam.Compliance & " "
-                Case "F", "T"
+                Case mdmModeF, mdmModeT
                     ' No options
             End Select
 
-            lineBuilder.Append inputParam.SweepType & " "
+            lineBuilder.Append prvSweepTypeToString(inputParam.SweepType) & " "
 
             ' --- Append Sweep Options ---
-            Select Case UCase(inputParam.SweepType)
-                Case "LIN"
+            Select Case inputParam.SweepType
+                Case mdmSweepLIN
                     lineBuilder.Append inputParam.SweepOrder & " "
                     lineBuilder.Append inputParam.Start & " "
                     lineBuilder.Append inputParam.Stop & " "
                     lineBuilder.Append inputParam.NumPoints & " "
                     lineBuilder.Append inputParam.StepSize & " "
-                Case "LOG"
+                Case mdmSweepLOG
                     lineBuilder.Append inputParam.SweepOrder & " "
                     lineBuilder.Append inputParam.Start & " "
                     lineBuilder.Append inputParam.Stop & " "
                     lineBuilder.Append inputParam.NumPoints & " "
                     lineBuilder.Append inputParam.SweepScale & " "
                     lineBuilder.Append inputParam.TotalNumPoints & " "
-                Case "SYNC"
+                Case mdmSweepSYNC
                     lineBuilder.Append inputParam.Ratio & " "
                     lineBuilder.Append inputParam.Offset & " "
                     lineBuilder.Append inputParam.MasterSweep & " "
-                Case "LIST"
+                Case mdmSweepLIST
                     lineBuilder.Append inputParam.SweepOrder & " "
                     If IsArray(inputParam.ListValues) Then
                         lineBuilder.Append (UBound(inputParam.ListValues) - LBound(inputParam.ListValues) + 1) & " "
@@ -303,23 +302,23 @@ Public Function ToMdmString() As String
                             lineBuilder.Append val & " "
                         Next val
                     End If
-                Case "CON"
+                Case mdmSweepCON
                     lineBuilder.Append inputParam.Value & " "
-                Case "AC"
+                Case mdmSweepAC
                     lineBuilder.Append inputParam.Magnitude & " "
                     lineBuilder.Append inputParam.Phase & " "
-                Case "HB"
+                Case mdmSweepHB
                     lineBuilder.Append inputParam.SweepOrder & " "
                     lineBuilder.Append inputParam.Value & " "
                     lineBuilder.Append inputParam.Order & " "
-                Case "EXP"
+                Case mdmSweepEXP
                     lineBuilder.Append inputParam.InitialValue & " "
                     lineBuilder.Append inputParam.PulsedValue & " "
                     lineBuilder.Append inputParam.RiseDelay & " "
                     lineBuilder.Append inputParam.RiseConst & " "
                     lineBuilder.Append inputParam.FallDelay & " "
                     lineBuilder.Append inputParam.FallConst & " "
-                Case "PULSE"
+                Case mdmSweepPULSE
                     lineBuilder.Append inputParam.InitialValue & " "
                     lineBuilder.Append inputParam.PulsedValue & " "
                     lineBuilder.Append inputParam.DelayTime & " "
@@ -327,7 +326,7 @@ Public Function ToMdmString() As String
                     lineBuilder.Append inputParam.FallTime & " "
                     lineBuilder.Append inputParam.PulseWidth & " "
                     lineBuilder.Append inputParam.Period & " "
-                Case "PWL"
+                Case mdmSweepPWL
                     If Not inputParam.TimeValuePairs Is Nothing Then
                         If inputParam.TimeValuePairs.Count > 0 Then
                             lineBuilder.Append inputParam.TimeValuePairs.Count & " "
@@ -339,20 +338,20 @@ Public Function ToMdmString() As String
                     End If
                     lineBuilder.Append inputParam.StartTime & " "
                     lineBuilder.Append inputParam.RepeatTimes & " "
-                Case "SFFM"
+                Case mdmSweepSFFM
                     lineBuilder.Append inputParam.Offset & " "
                     lineBuilder.Append inputParam.Amplitude & " "
                     lineBuilder.Append inputParam.CarrierFrequency & " "
                     lineBuilder.Append inputParam.ModulIndex & " "
                     lineBuilder.Append inputParam.SignalFrequency & " "
-                Case "SIN"
+                Case mdmSweepSIN
                     lineBuilder.Append inputParam.Offset & " "
                     lineBuilder.Append inputParam.Amplitude & " "
                     lineBuilder.Append inputParam.Frequency & " "
                     lineBuilder.Append inputParam.DelayTime & " "
                     lineBuilder.Append inputParam.DampFactor & " "
                     lineBuilder.Append inputParam.Phase & " "
-                Case "TDR"
+                Case mdmSweepTDR
                     lineBuilder.Append inputParam.InitialValue & " "
                     lineBuilder.Append inputParam.PulsedValue & " "
                     lineBuilder.Append inputParam.DelayTime & " "
@@ -361,7 +360,7 @@ Public Function ToMdmString() As String
                     lineBuilder.Append inputParam.PulseWidth & " "
                     lineBuilder.Append inputParam.Period & " "
                     lineBuilder.Append inputParam.Resistance & " "
-                Case "SEG"
+                Case mdmSweepSEG
                     lineBuilder.Append inputParam.SweepOrder & " "
                     lineBuilder.Append inputParam.NumSegments & " "
                     lineBuilder.Append inputParam.NumPoints & " "
@@ -382,7 +381,7 @@ Public Function ToMdmString() As String
         For Each key In prvIccapOutputs.Keys
             Set outputParam = prvIccapOutputs(key)
             Dim lineBuilder As New StringBuilder
-            lineBuilder.Append outputParam.Name & " " & outputParam.Mode & " "
+            lineBuilder.Append outputParam.Name & " " & prvOutputTypeToString(outputParam.Mode) & " "
             For Each key In outputParam.ModeOptions.Keys: lineBuilder.Append outputParam.ModeOptions(key) & " ": Next key
             lineBuilder.Append outputParam.Unit & " " & outputParam.Compliance & " " & outputParam.Type
             sb.Append Trim(lineBuilder.ToString) & vbCrLf
@@ -777,34 +776,30 @@ Private Sub prvValidateSweepParameters()
         Set inputParam = prvIccapInputs(key)
 
         ' Check only parameters that are defined as sweeps (e.g., LIN, LOG)
-        If inputParam.SweepType <> "CON" And inputParam.SweepType <> "SYNC" Then
+        If inputParam.SweepType <> mdmSweepCON And inputParam.SweepType <> mdmSweepSYNC Then
             Dim paramName As String: paramName = inputParam.Name
 
-            ' Find the data block that contains this sweep as its innermost sweep
+            ' Find the data block that contains this sweep
             Dim targetBlock As clsMdmDataBlock
             Dim blockIndex As Long: blockIndex = 0
-            Dim innerMostSweepForBlock As String
 
             Dim tempBlock As clsMdmDataBlock
             For Each tempBlock In prvDataBlocks
-                blockIndex = blockIndex + 1
-                ' This logic assumes we can identify the innermost sweep for a block.
-                ' For now, we'll just check if the column exists in the block. A more robust
-                ' implementation might need a way to link blocks to specific sweep orders.
                 If tempBlock.Data.Exists(paramName) Then
                     Set targetBlock = tempBlock
                     Exit For
                 End If
+                blockIndex = blockIndex + 1
             Next tempBlock
 
             If Not targetBlock Is Nothing Then
                 ' 1. Validate number of points
-                If inputParam.SweepOptions.Exists("NumPoints") Then
-                    Dim expectedPoints As Long: expectedPoints = CLng(inputParam.SweepOptions("NumPoints"))
+                If inputParam.NumPoints > 0 Then
+                    Dim expectedPoints As Long: expectedPoints = inputParam.NumPoints
                     Dim actualPoints As Long: actualPoints = targetBlock.Data(paramName).Count
 
                     If actualPoints <> expectedPoints Then
-                        prvValidationErrors("Sweep.NumPoints." & paramName) = "Sweep '" & paramName & "' in Block " & blockIndex & " has " & actualPoints & " data points, but header defines " & expectedPoints & "."
+                        prvAddValidationError errTypeSweepNumPointsMismatch, "Sweep '" & paramName & "' in Block " & blockIndex & " has " & actualPoints & " data points, but header defines " & expectedPoints & ".", blockIndex, paramName
                     End If
                 End If
 
@@ -814,99 +809,200 @@ Private Sub prvValidateSweepParameters()
                 Const TOLERANCE As Double = 0.00001
 
                 If targetBlock.Data(paramName).Count > 0 Then
-                    If inputParam.SweepOptions.Exists("Start") And IsNumeric(inputParam.SweepOptions("Start")) Then
-                        expectedStart = CDbl(inputParam.SweepOptions("Start"))
+                    If Not IsEmpty(inputParam.Start) Then
+                        expectedStart = inputParam.Start
                         firstVal = CDbl(targetBlock.Data(paramName)(0))
                         If Abs(firstVal - expectedStart) > TOLERANCE Then
-                            prvValidationErrors("Sweep.Start." & paramName) = "Sweep '" & paramName & "' in Block " & blockIndex & " starts at " & firstVal & ", but header defines " & expectedStart & "."
+                             prvAddValidationError errTypeSweepStartMismatch, "Sweep '" & paramName & "' in Block " & blockIndex & " starts at " & firstVal & ", but header defines " & expectedStart & ".", blockIndex, paramName
                         End If
                     End If
 
-                    If inputParam.SweepOptions.Exists("Stop") And IsNumeric(inputParam.SweepOptions("Stop")) Then
-                        expectedStop = CDbl(inputParam.SweepOptions("Stop"))
+                    If Not IsEmpty(inputParam.Stop) Then
+                        expectedStop = inputParam.Stop
                         lastVal = CDbl(targetBlock.Data(paramName)(targetBlock.Data(paramName).Count - 1))
                         If Abs(lastVal - expectedStop) > TOLERANCE Then
-                            prvValidationErrors("Sweep.Stop." & paramName) = "Sweep '" & paramName & "' in Block " & blockIndex & " stops at " & lastVal & ", but header defines " & expectedStop & "."
+                            prvAddValidationError errTypeSweepStopMismatch, "Sweep '" & paramName & "' in Block " & blockIndex & " stops at " & lastVal & ", but header defines " & expectedStop & ".", blockIndex, paramName
                         End If
                     End If
                 End If
             Else
                 ' Error: Sweep defined in header but no corresponding data found
-                prvValidationErrors("Sweep.MissingData." & paramName) = "Sweep parameter '" & paramName & "' is defined in the header, but no corresponding data column was found in any data block."
+                prvAddValidationError errTypeMissingSweepData, "Sweep parameter '" & paramName & "' is defined in the header, but no corresponding data column was found in any data block.", -1, paramName
             End If
         End If
     Next key
 
     Exit Sub
 ErrorHandler:
-    prvValidationErrors("Validation.SweepParameters") = "An unexpected error occurred during sweep parameter validation: " & Err.Description
+    prvAddValidationError errTypeGeneric, "An unexpected error occurred during sweep parameter validation: " & Err.Description
 End Sub
 
 Private Sub prvValidateRowCountConsistency()
     '@brief Checks that all data columns within each data block have the same number of rows.
-    '@details Adds errors to the ValidationErrors dictionary if inconsistencies are found.
+    '@details Adds errors to the ValidationErrors collection if inconsistencies are found.
     On Error GoTo ErrorHandler
 
     Dim blockIndex As Long: blockIndex = 0
     Dim dataBlock As clsMdmDataBlock
     For Each dataBlock In prvDataBlocks
+        If dataBlock.HeadersInOrder.Count > 0 Then
+            Dim expectedRows As Long
+            expectedRows = dataBlock.RowCount
+
+            Dim header As Variant
+            For Each header In dataBlock.HeadersInOrder
+                Dim currentRows As Long
+                currentRows = dataBlock.Data(header).Count
+                If currentRows <> expectedRows Then
+                    prvAddValidationError errTypeRowCountMismatch, "In Data Block " & blockIndex & ", column '" & header & "' has " & currentRows & " rows, but the block's reference row count is " & expectedRows & ".", blockIndex, CStr(header)
+                End If
+            Next header
+        End If
         blockIndex = blockIndex + 1
-        If dataBlock.HeadersInOrder.Count = 0 Then GoTo NextBlock
-
-        Dim expectedRows As Long
-        expectedRows = dataBlock.RowCount
-
-        Dim header As Variant
-        For Each header In dataBlock.HeadersInOrder
-            Dim currentRows As Long
-            currentRows = dataBlock.Data(header).Count
-            If currentRows <> expectedRows Then
-                Dim errorKey As String
-                errorKey = "Row Count Mismatch in Block " & blockIndex
-
-                Dim errorMessage As String
-                errorMessage = "In Data Block " & blockIndex & ", column '" & header & "' has " & currentRows & " rows, but the block's reference row count is " & expectedRows & "."
-
-                prvValidationErrors(errorKey & " - " & header) = errorMessage
-            End If
-        Next header
-NextBlock:
     Next dataBlock
 
     Exit Sub
 ErrorHandler:
-    prvValidationErrors("Validation.RowCountConsistency") = "An unexpected error occurred during row count consistency validation: " & Err.Description
+    prvAddValidationError errTypeGeneric, "An unexpected error occurred during row count consistency validation: " & Err.Description
 End Sub
 
 Private Sub prvValidateHeaderToParameterMapping()
     '@brief Checks that every data column header corresponds to a defined ICCAP_OUTPUT or ICCAP_INPUT parameter.
-    '@details Adds errors to the ValidationErrors dictionary if a mapping is not found.
+    '@details Adds errors to the ValidationErrors collection if a mapping is not found.
     On Error GoTo ErrorHandler
 
     Dim blockIndex As Long: blockIndex = 0
     Dim dataBlock As clsMdmDataBlock
     For Each dataBlock In prvDataBlocks
-        blockIndex = blockIndex + 1
-
         Dim header As Variant
         For Each header In dataBlock.HeadersInOrder
             ' A header is valid if it's in either the INPUTS or OUTPUTS collection
             If Not prvIccapInputs.Exists(header) And Not prvIccapOutputs.Exists(header) Then
-                 Dim errorKey As String
-                 errorKey = "Undefined Header in Block " & blockIndex
-
-                 Dim errorMessage As String
-                 errorMessage = "In Data Block " & blockIndex & ", the data header '" & header & "' is not defined as an ICCAP_INPUT or ICCAP_OUTPUT in the main header."
-
-                 prvValidationErrors(errorKey & " - " & header) = errorMessage
+                 prvAddValidationError errTypeUndefinedHeader, "In Data Block " & blockIndex & ", the data header '" & header & "' is not defined as an ICCAP_INPUT or ICCAP_OUTPUT in the main header.", blockIndex, CStr(header)
             End If
         Next header
+        blockIndex = blockIndex + 1
     Next dataBlock
 
     Exit Sub
 ErrorHandler:
-    prvValidationErrors("Validation.HeaderMapping") = "An unexpected error occurred during header to parameter mapping validation: " & Err.Description
+    prvAddValidationError errTypeGeneric, "An unexpected error occurred during header to parameter mapping validation: " & Err.Description
 End Sub
+
+Private Sub prvAddValidationError(ByVal errType As MdmValidationErrorType, ByVal msg As String, Optional ByVal blockIdx As Long = -1, Optional ByVal item As String = "")
+    '@brief Creates a new validation error object and adds it to the collection.
+    Dim err As New clsMdmValidationError
+    err.ErrorType = errType
+    err.Message = msg
+    err.BlockIndex = blockIdx
+    err.OffendingItem = item
+    prvValidationErrors.Add err
+End Sub
+
+' --- Enum Conversion Helpers ---
+Private Function prvStringToInputMode(ByVal s As String) As MdmInputMode
+    Select Case UCase(s)
+        Case "V": prvStringToInputMode = mdmModeV
+        Case "I": prvStringToInputMode = mdmModeI
+        Case "F": prvStringToInputMode = mdmModeF
+        Case "T": prvStringToInputMode = mdmModeT
+        Case "P": prvStringToInputMode = mdmModeP
+        Case "U": prvStringToInputMode = mdmModeU
+        Case "W": prvStringToInputMode = mdmModeW
+        Case Else: prvStringToInputMode = mdmModeUnknown
+    End Select
+End Function
+
+Private Function prvInputModeToString(ByVal e As MdmInputMode) As String
+    Select Case e
+        Case mdmModeV: prvInputModeToString = "V"
+        Case mdmModeI: prvInputModeToString = "I"
+        Case mdmModeF: prvInputModeToString = "F"
+        Case mdmModeT: prvInputModeToString = "T"
+        Case mdmModeP: prvInputModeToString = "P"
+        Case mdmModeU: prvInputModeToString = "U"
+        Case mdmModeW: prvInputModeToString = "W"
+        Case Else: prvInputModeToString = ""
+    End Select
+End Function
+
+Private Function prvStringToOutputType(ByVal s As String) As MdmOutputType
+    Select Case UCase(s)
+        Case "V": prvStringToOutputType = mdmTypeV
+        Case "I": prvStringToOutputType = mdmTypeI
+        Case "C": prvStringToOutputType = mdmTypeC
+        Case "G": prvStringToOutputType = mdmTypeG
+        Case "T": prvStringToOutputType = mdmTypeT
+        Case "S": prvStringToOutputType = mdmTypeS
+        Case "H": prvStringToOutputType = mdmTypeH
+        Case "Z": prvStringToOutputType = mdmTypeZ
+        Case "Y": prvStringToOutputType = mdmTypeY
+        Case "K": prvStringToOutputType = mdmTypeK
+        Case "A": prvStringToOutputType = mdmTypeA
+        Case "N": prvStringToOutputType = mdmTypeN
+        Case "U": prvStringToOutputType = mdmTypeU
+        Case Else: prvStringToOutputType = mdmTypeUnknown
+    End Select
+End Function
+
+Private Function prvOutputTypeToString(ByVal e As MdmOutputType) As String
+    Select Case e
+        Case mdmTypeV: prvOutputTypeToString = "V"
+        Case mdmTypeI: prvOutputTypeToString = "I"
+        Case mdmTypeC: prvOutputTypeToString = "C"
+        Case mdmTypeG: prvOutputTypeToString = "G"
+        Case mdmTypeT: prvOutputTypeToString = "T"
+        Case mdmTypeS: prvOutputTypeToString = "S"
+        Case mdmTypeH: prvOutputTypeToString = "H"
+        Case mdmTypeZ: prvOutputTypeToString = "Z"
+        Case mdmTypeY: prvOutputTypeToString = "Y"
+        Case mdmTypeK: prvOutputTypeToString = "K"
+        Case mdmTypeA: prvOutputTypeToString = "A"
+        Case mdmTypeN: prvOutputTypeToString = "N"
+        Case mdmTypeU: prvOutputTypeToString = "U"
+        Case Else: prvOutputTypeToString = ""
+    End Select
+End Function
+
+Private Function prvStringToSweepType(ByVal s As String) As MdmSweepType
+    Select Case UCase(s)
+        Case "LIN": prvStringToSweepType = mdmSweepLIN
+        Case "LOG": prvStringToSweepType = mdmSweepLOG
+        Case "SYNC": prvStringToSweepType = mdmSweepSYNC
+        Case "LIST": prvStringToSweepType = mdmSweepLIST
+        Case "CON": prvStringToSweepType = mdmSweepCON
+        Case "AC": prvStringToSweepType = mdmSweepAC
+        Case "HB": prvStringToSweepType = mdmSweepHB
+        Case "EXP": prvStringToSweepType = mdmSweepEXP
+        Case "PULSE": prvStringToSweepType = mdmSweepPULSE
+        Case "PWL": prvStringToSweepType = mdmSweepPWL
+        Case "SFFM": prvStringToSweepType = mdmSweepSFFM
+        Case "SIN": prvStringToSweepType = mdmSweepSIN
+        Case "TDR": prvStringToSweepType = mdmSweepTDR
+        Case "SEG": prvStringToSweepType = mdmSweepSEG
+        Case Else: prvStringToSweepType = mdmSweepUnknown
+    End Select
+End Function
+
+Private Function prvSweepTypeToString(ByVal e As MdmSweepType) As String
+    Select Case e
+        Case mdmSweepLIN: prvSweepTypeToString = "LIN"
+        Case mdmSweepLOG: prvSweepTypeToString = "LOG"
+        Case mdmSweepSYNC: prvSweepTypeToString = "SYNC"
+        Case mdmSweepLIST: prvSweepTypeToString = "LIST"
+        Case mdmSweepCON: prvSweepTypeToString = "CON"
+        Case mdmSweepAC: prvSweepTypeToString = "AC"
+        Case mdmSweepHB: prvSweepTypeToString = "HB"
+        Case mdmSweepEXP: prvSweepTypeToString = "EXP"
+        Case mdmSweepPULSE: prvSweepTypeToString = "PULSE"
+        Case mdmSweepPWL: prvSweepTypeToString = "PWL"
+        Case mdmSweepSFFM: prvSweepTypeToString = "SFFM"
+        Case mdmSweepSIN: prvSweepTypeToString = "SIN"
+        Case mdmSweepTDR: prvSweepTypeToString = "TDR"
+        Case mdmSweepSEG: prvSweepTypeToString = "SEG"
+        Case Else: prvSweepTypeToString = ""
+    End Select
+End Function
 
 Private Function prvParseDataBlocks() As Boolean
     '@brief Parses all data blocks (BEGIN_DB/END_DB) in the MDM file.
@@ -956,35 +1052,38 @@ ErrorHandler:
     prvParseDataBlocks = False
 End Function
 
-Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dataBlock As clsMdmDataBlock) As Boolean
-    '@brief Parses a single data block's content into a column-oriented data structure, handling complex numbers.
-    '@param blockContent The string content between BEGIN_DB and END_DB.
-    '@param dataBlock The clsMdmDataBlock object to populate.
-    '@return True if parsing is successful, False otherwise.
+Private Function prvGetInnermostSweepName() As String
+    '@brief Finds the name of the innermost sweep variable (SweepOrder=1) from the header definitions.
     On Error GoTo ErrorHandler
 
-    Dim innermostSweepName As String
-    Dim inputParam As clsMdmInputParameter
     Dim key As Variant
+    Dim inputParam As clsMdmInputParameter
     For Each key In prvIccapInputs.Keys
         Set inputParam = prvIccapInputs(key)
-        If inputParam.SweepOptions.Exists("SweepOrder") Then
-            If CStr(inputParam.SweepOptions("SweepOrder")) = "1" Then
-                innermostSweepName = inputParam.Name
-                Exit For
-            End If
+        ' SweepOrder is a direct property now
+        If inputParam.SweepOrder = 1 Then
+            prvGetInnermostSweepName = inputParam.Name
+            Exit Function
         End If
     Next key
-    If innermostSweepName = "" Then Err.Raise 5, "prvParseSingleDataBlock", "Could not determine innermost sweep from header."
 
-    Dim lines() As String, parts() As String
-    lines = Split(blockContent, vbCrLf)
-    Dim i As Long, j As Long, k As Long
+    ' If no sweep order is explicitly 1, we might need a fallback, but for now, this is an error.
+    Err.Raise 5, "prvGetInnermostSweepName", "Could not determine innermost sweep from header."
+
+    Exit Function
+ErrorHandler:
+    prvGetInnermostSweepName = ""
+End Function
+
+Private Sub prvParseDataBlockInputs(ByRef lines() As String, ByVal dataStartIndex As Long, ByRef dataBlock As clsMdmDataBlock)
+    '@brief Parses the block-specific input variables (e.g., ICCAP_VAR lines) that appear before the main data table.
+    On Error GoTo ErrorHandler
+
+    Dim i As Long, k As Long
     Dim line As String, cleanLine As String
-    Dim dataStartIndex As Long: dataStartIndex = -1
+    Dim parts() As String
 
-    ' Find the start of the data table and parse block-level parameters
-    For i = LBound(lines) To UBound(lines)
+    For i = LBound(lines) To dataStartIndex - 1
         line = Trim(lines(i))
         If line = "" Or Left(line, 1) = "!" Then GoTo NextLine
 
@@ -994,32 +1093,31 @@ Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dat
         parts = Split(cleanLine)
         If UBound(parts) < 0 Then GoTo NextLine
 
-        If UCase(parts(0)) = UCase(innermostSweepName) Then
-            dataStartIndex = i
-            Exit For
-        Else
-            Dim currentIdx As Long: currentIdx = LBound(parts)
-            If UCase(parts(currentIdx)) = "ICCAP_VAR" Then currentIdx = currentIdx + 1
-            For k = currentIdx To UBound(parts) Step 2
-                If (k + 1) <= UBound(parts) Then dataBlock.AddInputValue parts(k), parts(k + 1)
-            Next k
-        End If
+        Dim currentIdx As Long: currentIdx = LBound(parts)
+        If UCase(parts(currentIdx)) = "ICCAP_VAR" Then currentIdx = currentIdx + 1
+        For k = currentIdx To UBound(parts) Step 2
+            If (k + 1) <= UBound(parts) Then dataBlock.AddInputValue parts(k), parts(k + 1)
+        Next k
 NextLine:
     Next i
 
-    If dataStartIndex = -1 Then
-        prvParseSingleDataBlock = True ' Valid block, just no data table
-        Exit Function
-    End If
+    Exit Sub
+ErrorHandler:
+    ' Handle or log error if necessary
+End Sub
 
-    ' --- Parse Headers and initialize data columns, handling complex pairs ---
-    Dim headerLine As String: headerLine = Trim(lines(dataStartIndex))
-    If Left(headerLine, 1) = "#" Then headerLine = Trim(Mid(headerLine, 2))
-    Do While InStr(headerLine, "  ") > 0: headerLine = Replace(headerLine, "  ", " "): Loop
+Private Sub prvParseDataBlockHeaders(ByVal headerLine As String, ByRef dataBlock As clsMdmDataBlock)
+    '@brief Parses the data table header line, handling complex number pairs (e.g., R:Z, I:Z).
+    On Error GoTo ErrorHandler
 
-    Dim headerParts() As String: headerParts = Split(headerLine, " ")
+    Dim cleanHeaderLine As String
+    cleanHeaderLine = Trim(headerLine)
+    If Left(cleanHeaderLine, 1) = "#" Then cleanHeaderLine = Trim(Mid(cleanHeaderLine, 2))
+    Do While InStr(cleanHeaderLine, "  ") > 0: cleanHeaderLine = Replace(cleanHeaderLine, "  ", " "): Loop
 
-    j = LBound(headerParts)
+    Dim headerParts() As String: headerParts = Split(cleanHeaderLine, " ")
+
+    Dim j As Long: j = LBound(headerParts)
     Do While j <= UBound(headerParts)
         Dim currentHeader As String: currentHeader = headerParts(j)
         If UCase(Left(currentHeader, 2)) = "R:" And (j + 1) <= UBound(headerParts) Then
@@ -1044,8 +1142,17 @@ NextLine:
         End If
     Loop
 
-    ' --- Process Data Rows and populate the column dictionaries ---
+    Exit Sub
+ErrorHandler:
+    ' Handle or log error if necessary
+End Sub
+
+Private Sub prvParseDataBlockRows(ByRef lines() As String, ByVal dataStartIndex As Long, ByRef dataBlock As clsMdmDataBlock)
+    '@brief Parses the data rows of a block and populates the column-oriented data structure.
+    On Error GoTo ErrorHandler
+
     Dim rowIndex As Long: rowIndex = 0
+    Dim i As Long
     For i = dataStartIndex + 1 To UBound(lines)
         Dim dataLine As String: dataLine = Trim(lines(i))
 
@@ -1053,7 +1160,6 @@ NextLine:
             Do While InStr(dataLine, "  ") > 0: dataLine = Replace(dataLine, "  ", " "): Loop
 
             Dim dataParts() As String: dataParts = Split(dataLine, " ")
-
             Dim dataIdx As Long: dataIdx = LBound(dataParts)
 
             Dim header As Variant
@@ -1065,8 +1171,8 @@ NextLine:
                 If prvIccapOutputs.Exists(header) Then
                     Dim outputParam As clsMdmOutputParameter
                     Set outputParam = prvIccapOutputs(header)
-                    Select Case UCase(outputParam.Mode)
-                        Case "S", "H", "Z", "Y", "K", "A"
+                    Select Case outputParam.Mode
+                        Case mdmTypeS, mdmTypeH, mdmTypeZ, mdmTypeY, mdmTypeK, mdmTypeA
                             isComplex = True
                     End Select
                 End If
@@ -1086,6 +1192,54 @@ NextLine:
             rowIndex = rowIndex + 1
         End If
     Next i
+
+    Exit Sub
+ErrorHandler:
+    ' Handle or log error if necessary
+End Sub
+
+Private Function prvParseSingleDataBlock(ByVal blockContent As String, ByRef dataBlock As clsMdmDataBlock) As Boolean
+    '@brief Parses a single data block's content by coordinating helper functions.
+    On Error GoTo ErrorHandler
+
+    ' 1. Find the name of the innermost sweep, which identifies the header row
+    Dim innermostSweepName As String
+    innermostSweepName = prvGetInnermostSweepName()
+    If innermostSweepName = "" Then GoTo ErrorHandler ' Error is raised inside the helper
+
+    ' 2. Find the start of the data table (the header line)
+    Dim lines() As String: lines = Split(blockContent, vbCrLf)
+    Dim dataStartIndex As Long: dataStartIndex = -1
+    Dim i As Long
+    For i = LBound(lines) To UBound(lines)
+        Dim cleanLine As String: cleanLine = Trim(lines(i))
+        If cleanLine <> "" And Left(cleanLine, 1) <> "!" Then
+            If Left(cleanLine, 1) = "#" Then cleanLine = Trim(Mid(cleanLine, 2))
+
+            Dim firstWord As String
+            On Error Resume Next ' Handle lines with no spaces
+            firstWord = Split(cleanLine)(0)
+            On Error GoTo ErrorHandler
+
+            If UCase(firstWord) = UCase(innermostSweepName) Then
+                dataStartIndex = i
+                Exit For
+            End If
+        End If
+    Next i
+
+    ' If no data table, it could be a block with only input values, which is valid.
+    ' We parse all lines as input values in this case.
+    If dataStartIndex = -1 Then
+        prvParseDataBlockInputs lines, UBound(lines) + 1, dataBlock
+        prvParseSingleDataBlock = True
+        Exit Function
+    End If
+
+    ' 3. Parse the different parts of the block
+    prvParseDataBlockInputs lines, dataStartIndex, dataBlock
+    prvParseDataBlockHeaders lines(dataStartIndex), dataBlock
+    prvParseDataBlockRows lines, dataStartIndex, dataBlock
 
     prvParseSingleDataBlock = True
     Exit Function
@@ -1170,41 +1324,40 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
     If UBound(parts) < 2 Then Exit Function ' Must have at least name and mode
 
     param.Name = parts(0)
-    param.Mode = parts(1)
+    param.Mode = prvStringToInputMode(parts(1))
 
     ' Find sweep type to determine boundaries of mode_options and sweep_options
     Dim sweepTypeIdx As Long
     sweepTypeIdx = -1
     Dim i As Long
     For i = 2 To UBound(parts)
-        Select Case UCase(parts(i))
-            Case "LIN", "LOG", "SYNC", "LIST", "CON", "AC", "HB", "EXP", "PULSE", "PWL", "SFFM", "SIN", "TDR", "SEG"
-                sweepTypeIdx = i
-                Exit For
-        End Select
+        If prvStringToSweepType(parts(i)) <> mdmSweepUnknown Then
+            sweepTypeIdx = i
+            Exit For
+        End If
     Next i
 
     If sweepTypeIdx = -1 Then Exit Function ' No valid sweep type found
-    param.SweepType = parts(sweepTypeIdx)
+    param.SweepType = prvStringToSweepType(parts(sweepTypeIdx))
 
     ' --- Parse Mode Options ---
     Dim currentIdx As Long
     currentIdx = 2
-    Select Case UCase(param.Mode)
-        Case "V", "U"
+    Select Case param.Mode
+        Case mdmModeV, mdmModeU
             param.PlusNode = parts(currentIdx): currentIdx = currentIdx + 1
             param.MinusNode = parts(currentIdx): currentIdx = currentIdx + 1
             param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
             param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
-        Case "I"
+        Case mdmModeI
             param.ToNode = parts(currentIdx): currentIdx = currentIdx + 1
             param.FromNode = parts(currentIdx): currentIdx = currentIdx + 1
             param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
             param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
-        Case "P"
+        Case mdmModeP
             param.ParamName = parts(currentIdx): currentIdx = currentIdx + 1
             param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
-        Case "W"
+        Case mdmModeW
             param.PlusNode = parts(currentIdx): currentIdx = currentIdx + 1
             param.MinusNode = parts(currentIdx): currentIdx = currentIdx + 1
             param.PowerUnit = parts(currentIdx): currentIdx = currentIdx + 1
@@ -1212,31 +1365,31 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
             param.Fund = parts(currentIdx): currentIdx = currentIdx + 1
             param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
             param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
-        Case "F", "T"
+        Case mdmModeF, mdmModeT
             ' No options
     End Select
 
     ' --- Parse Sweep Options ---
     currentIdx = sweepTypeIdx + 1
-    Select Case UCase(param.SweepType)
-        Case "LIN"
+    Select Case param.SweepType
+        Case mdmSweepLIN
             param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Start = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Stop = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.NumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.StepSize = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "LOG"
+        Case mdmSweepLOG
             param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Start = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Stop = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.NumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.SweepScale = parts(currentIdx): currentIdx = currentIdx + 1
             param.TotalNumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "SYNC"
+        Case mdmSweepSYNC
             param.Ratio = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Offset = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.MasterSweep = parts(currentIdx): currentIdx = currentIdx + 1
-        Case "LIST"
+        Case mdmSweepLIST
             param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             Dim numValues As Long: numValues = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             Dim values() As Variant
@@ -1245,23 +1398,23 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
                 values(i) = parts(currentIdx): currentIdx = currentIdx + 1
             Next i
             param.ListValues = values
-        Case "CON"
+        Case mdmSweepCON
             param.Value = parts(currentIdx): currentIdx = currentIdx + 1
-        Case "AC"
+        Case mdmSweepAC
             param.Magnitude = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Phase = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "HB"
+        Case mdmSweepHB
             param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Value = parts(currentIdx): currentIdx = currentIdx + 1
             param.Order = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "EXP"
+        Case mdmSweepEXP
             param.InitialValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.PulsedValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.RiseDelay = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.RiseConst = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.FallDelay = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.FallConst = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "PULSE"
+        Case mdmSweepPULSE
             param.InitialValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.PulsedValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.DelayTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
@@ -1269,7 +1422,7 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
             param.FallTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.PulseWidth = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Period = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "PWL"
+        Case mdmSweepPWL
             Dim numPairs As Long: numPairs = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             For i = 1 To numPairs
                 param.TimeValuePairs(parts(currentIdx)) = parts(currentIdx + 1)
@@ -1277,20 +1430,20 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
             Next i
             param.StartTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.RepeatTimes = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "SFFM"
+        Case mdmSweepSFFM
             param.Offset = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Amplitude = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.CarrierFrequency = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.ModulIndex = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.SignalFrequency = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "SIN"
+        Case mdmSweepSIN
             param.Offset = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Amplitude = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Frequency = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.DelayTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.DampFactor = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Phase = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "TDR"
+        Case mdmSweepTDR
             param.InitialValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.PulsedValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.DelayTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
@@ -1299,7 +1452,7 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
             param.PulseWidth = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Period = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
             param.Resistance = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
-        Case "SEG"
+        Case mdmSweepSEG
             param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.NumSegments = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
             param.NumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
@@ -1337,37 +1490,40 @@ Private Function prvParseOutputParameter(ByVal line As String) As clsMdmOutputPa
     If UBound(parts) < 1 Then Exit Function
 
     param.Name = parts(0)
-    param.Mode = parts(1)
+    param.Mode = prvStringToOutputType(parts(1))
 
     Dim modeOptionsCount As Long
-    Select Case UCase(param.Mode)
-        Case "V", "N", "U": modeOptionsCount = 2
-        Case "I": modeOptionsCount = 2
-        Case "C", "G": modeOptionsCount = 2
-        Case "T": modeOptionsCount = 2
-        Case "S", "H", "Z", "K", "A", "Y": modeOptionsCount = 3
-        Case Else: modeOptionsCount = 0 ' For modes like U in the example
+    Select Case param.Mode
+        Case mdmTypeV, mdmTypeN, mdmTypeU: modeOptionsCount = 2
+        Case mdmTypeI: modeOptionsCount = 2
+        Case mdmTypeC, mdmTypeG: modeOptionsCount = 2
+        Case mdmTypeT: modeOptionsCount = 2
+        Case mdmTypeS, mdmTypeH, mdmTypeZ, mdmTypeK, mdmTypeA, mdmTypeY: modeOptionsCount = 3
+        Case Else: modeOptionsCount = 0
     End Select
 
     Dim currentIdx As Long
     currentIdx = 2
 
     If modeOptionsCount > 0 Then
-        Dim modeOptionsParts() As String
-        ReDim modeOptionsParts(0 To modeOptionsCount - 1)
         Dim i As Long
-        For i = 0 To modeOptionsCount - 1
-            modeOptionsParts(i) = parts(currentIdx + i)
-        Next i
-        currentIdx = currentIdx + modeOptionsCount
-
-        i = 0
-        Select Case UCase(param.Mode)
-            Case "V", "N", "U": param.ModeOptions("PlusNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("MinusNode") = modeOptionsParts(i)
-            Case "I": param.ModeOptions("ToNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("FromNode") = modeOptionsParts(i)
-            Case "C", "G": param.ModeOptions("HighNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("LowNode") = modeOptionsParts(i)
-            Case "T": param.ModeOptions("Node") = modeOptionsParts(i): i = i + 1: param.ModeOptions("PulseParam") = modeOptionsParts(i)
-            Case "S", "H", "Z", "K", "A", "Y": param.ModeOptions("Port1") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Port2") = modeOptionsParts(i): i = i + 1: param.ModeOptions("ACGround") = modeOptionsParts(i)
+        Select Case param.Mode
+            Case mdmTypeV, mdmTypeN, mdmTypeU
+                param.ModeOptions("PlusNode") = parts(currentIdx): currentIdx = currentIdx + 1
+                param.ModeOptions("MinusNode") = parts(currentIdx): currentIdx = currentIdx + 1
+            Case mdmTypeI
+                param.ModeOptions("ToNode") = parts(currentIdx): currentIdx = currentIdx + 1
+                param.ModeOptions("FromNode") = parts(currentIdx): currentIdx = currentIdx + 1
+            Case mdmTypeC, mdmTypeG
+                param.ModeOptions("HighNode") = parts(currentIdx): currentIdx = currentIdx + 1
+                param.ModeOptions("LowNode") = parts(currentIdx): currentIdx = currentIdx + 1
+            Case mdmTypeT
+                param.ModeOptions("Node") = parts(currentIdx): currentIdx = currentIdx + 1
+                param.ModeOptions("PulseParam") = parts(currentIdx): currentIdx = currentIdx + 1
+            Case mdmTypeS, mdmTypeH, mdmTypeZ, mdmTypeK, mdmTypeA, mdmTypeY
+                param.ModeOptions("Port1") = parts(currentIdx): currentIdx = currentIdx + 1
+                param.ModeOptions("Port2") = parts(currentIdx): currentIdx = currentIdx + 1
+                param.ModeOptions("ACGround") = parts(currentIdx): currentIdx = currentIdx + 1
         End Select
     End If
 

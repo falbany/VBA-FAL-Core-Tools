@@ -11,8 +11,8 @@ Option Explicit
 
 ' --- Base Properties ---
 Private pName As String
-Private pMode As String
-Private pSweepType As String
+Private pMode As MdmInputMode
+Private pSweepType As MdmSweepType
 
 ' --- Mode Options (Table 55) ---
 ' For Mode = V, U
@@ -98,17 +98,17 @@ Public Property Let Name(ByVal Value As String)
     pName = Value
 End Property
 
-Public Property Get Mode() As String
+Public Property Get Mode() As MdmInputMode
     Mode = pMode
 End Property
-Public Property Let Mode(ByVal Value As String)
+Public Property Let Mode(ByVal Value As MdmInputMode)
     pMode = Value
 End Property
 
-Public Property Get SweepType() As String
+Public Property Get SweepType() As MdmSweepType
     SweepType = pSweepType
 End Property
-Public Property Let SweepType(ByVal Value As String)
+Public Property Let SweepType(ByVal Value As MdmSweepType)
     pSweepType = Value
 End Property
 

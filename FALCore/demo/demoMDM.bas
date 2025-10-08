@@ -9,10 +9,12 @@ Public Sub RunAdvancedMdmDemo()
     Dim mdm As New clsMDM
     Debug.Print "--- Step 1: Creating and populating a new clsMDM object with complex numbers ---"
 
-    ' Add a structured ICCAP Input Parameter using new properties
+    ' Add a structured ICCAP Input Parameter using new properties and enums
     Dim freqInput As New clsMdmInputParameter
     freqInput.Name = "Freq"
-    freqInput.SweepType = "LOG"
+    freqInput.Mode = mdmModeF ' Frequency mode
+    freqInput.SweepType = mdmSweepLOG
+    freqInput.SweepOrder = 1
     freqInput.Start = 1000
     freqInput.Stop = 1000000
     freqInput.NumPoints = 3
@@ -21,7 +23,8 @@ Public Sub RunAdvancedMdmDemo()
     ' Add a structured ICCAP Output Parameter for a complex number
     Dim zOutput As New clsMdmOutputParameter
     zOutput.Name = "Z"
-    zOutput.Type = "C" ' C for Complex
+    zOutput.Mode = mdmTypeZ ' Z-parameters are complex
+    zOutput.Type = "B" ' Both measured and simulated
     zOutput.Unit = "Ohm"
     mdm.AddIccapOutput zOutput
 
@@ -114,10 +117,11 @@ Public Sub RunAdvancedMdmDemo()
     Debug.Print "Creating an invalid MDM object to test validation..."
     Dim invalidMdm As New clsMDM
 
-    ' Add a sweep definition that won't match the data, using new properties
+    ' Add a sweep definition that won't match the data, using new properties and enums
     Dim vIn As New clsMdmInputParameter
     vIn.Name = "Vd"
-    vIn.SweepType = "LIN"
+    vIn.Mode = mdmModeV
+    vIn.SweepType = mdmSweepLIN
     vIn.NumPoints = 5 ' Mismatch: We will only add 2 points
     vIn.Start = 0
     vIn.Stop = 1
@@ -126,6 +130,7 @@ Public Sub RunAdvancedMdmDemo()
     ' Add a valid output parameter
     Dim iOut As New clsMdmOutputParameter
     iOut.Name = "Id"
+    iOut.Mode = mdmTypeI
     iOut.Type = "M"
     invalidMdm.AddIccapOutput iOut
 
@@ -145,10 +150,11 @@ Public Sub RunAdvancedMdmDemo()
     Debug.Print "Validating the invalid MDM object..."
     If Not invalidMdm.Validate() Then
         Debug.Print "Result: INVALID. Errors were correctly detected:"
-        Dim errKey As Variant
-        For Each errKey In invalidMdm.ValidationErrors.Keys
-            Debug.Print "  - ERROR: " & invalidMdm.ValidationErrors(errKey)
-        Next errKey
+        ' Iterate through the new collection of structured error objects
+        Dim err As clsMdmValidationError
+        For Each err In invalidMdm.ValidationErrors
+            Debug.Print "  - " & err.ToString()
+        Next err
     Else
         Debug.Print "Result: VALID. Validation failed to detect errors."
     End If
@@ -164,16 +170,19 @@ Public Sub RunFluentInterfaceDemo()
     ' --- 1. Create and Populate an MDM Object using Method Chaining ---
     Debug.Print "--- Step 1: Creating a new clsMDM object using the fluent interface ---"
 
-    ' Create parameter definitions using new strongly-typed properties
+    ' Create parameter definitions using new strongly-typed properties and enums
     Dim vIn As New clsMdmInputParameter
     vIn.Name = "Vd"
-    vIn.SweepType = "LIN"
+    vIn.Mode = mdmModeV
+    vIn.SweepType = mdmSweepLIN
+    vIn.SweepOrder = 1
     vIn.NumPoints = 3
     vIn.Start = 0
     vIn.Stop = 1
 
     Dim iOut As New clsMdmOutputParameter
     iOut.Name = "Id"
+    iOut.Mode = mdmTypeI
     iOut.Type = "M"
 
     ' Use method chaining to build the object and its data block in a more concise way

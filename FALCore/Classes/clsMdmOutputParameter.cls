@@ -11,7 +11,7 @@ Option Explicit
 
 ' Private Member Variables
 Private pName As String
-Private pMode As String
+Private pMode As MdmOutputType
 Private pModeOptions As Dictionary
 Private pUnit As String
 Private pCompliance As String
@@ -26,11 +26,11 @@ Public Property Let Name(ByVal value As String)
     pName = value
 End Property
 
-Public Property Get Mode() As String
+Public Property Get Mode() As MdmOutputType
     Mode = pMode
 End Property
 
-Public Property Let Mode(ByVal value As String)
+Public Property Let Mode(ByVal value As MdmOutputType)
     pMode = value
 End Property
 
