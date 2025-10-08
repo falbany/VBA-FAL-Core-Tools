@@ -9,13 +9,13 @@ Public Sub RunAdvancedMdmDemo()
     Dim mdm As New clsMDM
     Debug.Print "--- Step 1: Creating and populating a new clsMDM object with complex numbers ---"
 
-    ' Add a structured ICCAP Input Parameter
+    ' Add a structured ICCAP Input Parameter using new properties
     Dim freqInput As New clsMdmInputParameter
     freqInput.Name = "Freq"
     freqInput.SweepType = "LOG"
-    freqInput.SweepOptions("Start") = "1e3"
-    freqInput.SweepOptions("Stop") = "1e6"
-    freqInput.SweepOptions("NumPoints") = 3
+    freqInput.Start = 1000
+    freqInput.Stop = 1000000
+    freqInput.NumPoints = 3
     mdm.AddIccapInput freqInput
 
     ' Add a structured ICCAP Output Parameter for a complex number
@@ -114,13 +114,13 @@ Public Sub RunAdvancedMdmDemo()
     Debug.Print "Creating an invalid MDM object to test validation..."
     Dim invalidMdm As New clsMDM
 
-    ' Add a sweep definition that won't match the data
+    ' Add a sweep definition that won't match the data, using new properties
     Dim vIn As New clsMdmInputParameter
     vIn.Name = "Vd"
     vIn.SweepType = "LIN"
-    vIn.SweepOptions("NumPoints") = 5 ' Mismatch: We will only add 2 points
-    vIn.SweepOptions("Start") = 0
-    vIn.SweepOptions("Stop") = 1
+    vIn.NumPoints = 5 ' Mismatch: We will only add 2 points
+    vIn.Start = 0
+    vIn.Stop = 1
     invalidMdm.AddIccapInput vIn
 
     ' Add a valid output parameter
@@ -164,13 +164,13 @@ Public Sub RunFluentInterfaceDemo()
     ' --- 1. Create and Populate an MDM Object using Method Chaining ---
     Debug.Print "--- Step 1: Creating a new clsMDM object using the fluent interface ---"
 
-    ' Create parameter definitions
+    ' Create parameter definitions using new strongly-typed properties
     Dim vIn As New clsMdmInputParameter
     vIn.Name = "Vd"
     vIn.SweepType = "LIN"
-    vIn.SweepOptions("NumPoints") = 3
-    vIn.SweepOptions("Start") = 0
-    vIn.SweepOptions("Stop") = 1
+    vIn.NumPoints = 3
+    vIn.Start = 0
+    vIn.Stop = 1
 
     Dim iOut As New clsMdmOutputParameter
     iOut.Name = "Id"

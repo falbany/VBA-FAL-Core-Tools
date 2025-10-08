@@ -245,9 +245,134 @@ Public Function ToMdmString() As String
             Set inputParam = prvIccapInputs(key)
             Dim lineBuilder As New StringBuilder
             lineBuilder.Append inputParam.Name & " " & inputParam.Mode & " "
-            For Each key In inputParam.ModeOptions.Keys: lineBuilder.Append inputParam.ModeOptions(key) & " ": Next key
+
+            ' --- Append Mode Options ---
+            Select Case UCase(inputParam.Mode)
+                Case "V", "U"
+                    lineBuilder.Append inputParam.PlusNode & " "
+                    lineBuilder.Append inputParam.MinusNode & " "
+                    lineBuilder.Append inputParam.Unit & " "
+                    lineBuilder.Append inputParam.Compliance & " "
+                Case "I"
+                    lineBuilder.Append inputParam.ToNode & " "
+                    lineBuilder.Append inputParam.FromNode & " "
+                    lineBuilder.Append inputParam.Unit & " "
+                    lineBuilder.Append inputParam.Compliance & " "
+                Case "P"
+                    lineBuilder.Append inputParam.ParamName & " "
+                    lineBuilder.Append inputParam.Unit & " "
+                Case "W"
+                    lineBuilder.Append inputParam.PlusNode & " "
+                    lineBuilder.Append inputParam.MinusNode & " "
+                    lineBuilder.Append inputParam.PowerUnit & " "
+                    lineBuilder.Append inputParam.Resistance & " "
+                    lineBuilder.Append inputParam.Fund & " "
+                    lineBuilder.Append inputParam.Unit & " "
+                    lineBuilder.Append inputParam.Compliance & " "
+                Case "F", "T"
+                    ' No options
+            End Select
+
             lineBuilder.Append inputParam.SweepType & " "
-            For Each key In inputParam.SweepOptions.Keys: lineBuilder.Append inputParam.SweepOptions(key) & " ": Next key
+
+            ' --- Append Sweep Options ---
+            Select Case UCase(inputParam.SweepType)
+                Case "LIN"
+                    lineBuilder.Append inputParam.SweepOrder & " "
+                    lineBuilder.Append inputParam.Start & " "
+                    lineBuilder.Append inputParam.Stop & " "
+                    lineBuilder.Append inputParam.NumPoints & " "
+                    lineBuilder.Append inputParam.StepSize & " "
+                Case "LOG"
+                    lineBuilder.Append inputParam.SweepOrder & " "
+                    lineBuilder.Append inputParam.Start & " "
+                    lineBuilder.Append inputParam.Stop & " "
+                    lineBuilder.Append inputParam.NumPoints & " "
+                    lineBuilder.Append inputParam.SweepScale & " "
+                    lineBuilder.Append inputParam.TotalNumPoints & " "
+                Case "SYNC"
+                    lineBuilder.Append inputParam.Ratio & " "
+                    lineBuilder.Append inputParam.Offset & " "
+                    lineBuilder.Append inputParam.MasterSweep & " "
+                Case "LIST"
+                    lineBuilder.Append inputParam.SweepOrder & " "
+                    If IsArray(inputParam.ListValues) Then
+                        lineBuilder.Append (UBound(inputParam.ListValues) - LBound(inputParam.ListValues) + 1) & " "
+                        Dim val As Variant
+                        For Each val In inputParam.ListValues
+                            lineBuilder.Append val & " "
+                        Next val
+                    End If
+                Case "CON"
+                    lineBuilder.Append inputParam.Value & " "
+                Case "AC"
+                    lineBuilder.Append inputParam.Magnitude & " "
+                    lineBuilder.Append inputParam.Phase & " "
+                Case "HB"
+                    lineBuilder.Append inputParam.SweepOrder & " "
+                    lineBuilder.Append inputParam.Value & " "
+                    lineBuilder.Append inputParam.Order & " "
+                Case "EXP"
+                    lineBuilder.Append inputParam.InitialValue & " "
+                    lineBuilder.Append inputParam.PulsedValue & " "
+                    lineBuilder.Append inputParam.RiseDelay & " "
+                    lineBuilder.Append inputParam.RiseConst & " "
+                    lineBuilder.Append inputParam.FallDelay & " "
+                    lineBuilder.Append inputParam.FallConst & " "
+                Case "PULSE"
+                    lineBuilder.Append inputParam.InitialValue & " "
+                    lineBuilder.Append inputParam.PulsedValue & " "
+                    lineBuilder.Append inputParam.DelayTime & " "
+                    lineBuilder.Append inputParam.RiseTime & " "
+                    lineBuilder.Append inputParam.FallTime & " "
+                    lineBuilder.Append inputParam.PulseWidth & " "
+                    lineBuilder.Append inputParam.Period & " "
+                Case "PWL"
+                    If Not inputParam.TimeValuePairs Is Nothing Then
+                        If inputParam.TimeValuePairs.Count > 0 Then
+                            lineBuilder.Append inputParam.TimeValuePairs.Count & " "
+                            Dim tKey As Variant
+                            For Each tKey In inputParam.TimeValuePairs.Keys
+                                lineBuilder.Append tKey & " " & inputParam.TimeValuePairs(tKey) & " "
+                            Next tKey
+                        End If
+                    End If
+                    lineBuilder.Append inputParam.StartTime & " "
+                    lineBuilder.Append inputParam.RepeatTimes & " "
+                Case "SFFM"
+                    lineBuilder.Append inputParam.Offset & " "
+                    lineBuilder.Append inputParam.Amplitude & " "
+                    lineBuilder.Append inputParam.CarrierFrequency & " "
+                    lineBuilder.Append inputParam.ModulIndex & " "
+                    lineBuilder.Append inputParam.SignalFrequency & " "
+                Case "SIN"
+                    lineBuilder.Append inputParam.Offset & " "
+                    lineBuilder.Append inputParam.Amplitude & " "
+                    lineBuilder.Append inputParam.Frequency & " "
+                    lineBuilder.Append inputParam.DelayTime & " "
+                    lineBuilder.Append inputParam.DampFactor & " "
+                    lineBuilder.Append inputParam.Phase & " "
+                Case "TDR"
+                    lineBuilder.Append inputParam.InitialValue & " "
+                    lineBuilder.Append inputParam.PulsedValue & " "
+                    lineBuilder.Append inputParam.DelayTime & " "
+                    lineBuilder.Append inputParam.RiseTime & " "
+                    lineBuilder.Append inputParam.FallTime & " "
+                    lineBuilder.Append inputParam.PulseWidth & " "
+                    lineBuilder.Append inputParam.Period & " "
+                    lineBuilder.Append inputParam.Resistance & " "
+                Case "SEG"
+                    lineBuilder.Append inputParam.SweepOrder & " "
+                    lineBuilder.Append inputParam.NumSegments & " "
+                    lineBuilder.Append inputParam.NumPoints & " "
+                    If IsArray(inputParam.SegmentValues) Then
+                        Dim segVal As Variant
+                        For Each segVal In inputParam.SegmentValues
+                            If Not IsEmpty(segVal) And Not IsNull(segVal) Then lineBuilder.Append segVal & " "
+                        Next segVal
+                    End If
+            End Select
+
             sb.Append Trim(lineBuilder.ToString) & vbCrLf
         Next key
     End If
@@ -1060,41 +1185,134 @@ Private Function prvParseInputParameter(ByVal line As String) As clsMdmInputPara
     Next i
 
     If sweepTypeIdx = -1 Then Exit Function ' No valid sweep type found
-
     param.SweepType = parts(sweepTypeIdx)
 
-    ' Extract mode options
-    Dim modeOptionsParts() As String
-    If sweepTypeIdx > 2 Then
-        ReDim modeOptionsParts(0 To sweepTypeIdx - 3)
-        For i = 2 To sweepTypeIdx - 1
-            modeOptionsParts(i - 2) = parts(i)
-        Next i
-    End If
-
-    ' Extract sweep options
-    Dim sweepOptionsParts() As String
-    If UBound(parts) > sweepTypeIdx Then
-        ReDim sweepOptionsParts(0 To UBound(parts) - sweepTypeIdx - 1)
-        For i = sweepTypeIdx + 1 To UBound(parts)
-            sweepOptionsParts(i - sweepTypeIdx - 1) = parts(i)
-        Next i
-    End If
-
-    ' Parse mode options based on mode
-    i = 0
+    ' --- Parse Mode Options ---
+    Dim currentIdx As Long
+    currentIdx = 2
     Select Case UCase(param.Mode)
-        Case "V", "U": param.ModeOptions("PlusNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("MinusNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Unit") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Compliance") = modeOptionsParts(i)
-        Case "I": param.ModeOptions("ToNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("FromNode") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Unit") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Compliance") = modeOptionsParts(i)
-        Case "P": param.ModeOptions("ParamName") = modeOptionsParts(i): i = i + 1: param.ModeOptions("Unit") = modeOptionsParts(i)
+        Case "V", "U"
+            param.PlusNode = parts(currentIdx): currentIdx = currentIdx + 1
+            param.MinusNode = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
+        Case "I"
+            param.ToNode = parts(currentIdx): currentIdx = currentIdx + 1
+            param.FromNode = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
+        Case "P"
+            param.ParamName = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
+        Case "W"
+            param.PlusNode = parts(currentIdx): currentIdx = currentIdx + 1
+            param.MinusNode = parts(currentIdx): currentIdx = currentIdx + 1
+            param.PowerUnit = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Resistance = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Fund = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Unit = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Compliance = parts(currentIdx): currentIdx = currentIdx + 1
+        Case "F", "T"
+            ' No options
     End Select
 
-    ' Parse sweep options based on sweep type
-    i = 0
+    ' --- Parse Sweep Options ---
+    currentIdx = sweepTypeIdx + 1
     Select Case UCase(param.SweepType)
-        Case "LIN": param.SweepOptions("SweepOrder") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("Start") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("Stop") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("NumPoints") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("StepSize") = sweepOptionsParts(i)
-        Case "SYNC": param.SweepOptions("Ratio") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("Offset") = sweepOptionsParts(i): i = i + 1: param.SweepOptions("MasterSweep") = sweepOptionsParts(i)
-        Case "CON": param.SweepOptions("Value") = sweepOptionsParts(i)
+        Case "LIN"
+            param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Start = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Stop = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.NumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.StepSize = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "LOG"
+            param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Start = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Stop = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.NumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.SweepScale = parts(currentIdx): currentIdx = currentIdx + 1
+            param.TotalNumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "SYNC"
+            param.Ratio = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Offset = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.MasterSweep = parts(currentIdx): currentIdx = currentIdx + 1
+        Case "LIST"
+            param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            Dim numValues As Long: numValues = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            Dim values() As Variant
+            ReDim values(0 To numValues - 1)
+            For i = 0 To numValues - 1
+                values(i) = parts(currentIdx): currentIdx = currentIdx + 1
+            Next i
+            param.ListValues = values
+        Case "CON"
+            param.Value = parts(currentIdx): currentIdx = currentIdx + 1
+        Case "AC"
+            param.Magnitude = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Phase = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "HB"
+            param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Value = parts(currentIdx): currentIdx = currentIdx + 1
+            param.Order = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "EXP"
+            param.InitialValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.PulsedValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.RiseDelay = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.RiseConst = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.FallDelay = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.FallConst = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "PULSE"
+            param.InitialValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.PulsedValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.DelayTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.RiseTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.FallTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.PulseWidth = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Period = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "PWL"
+            Dim numPairs As Long: numPairs = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            For i = 1 To numPairs
+                param.TimeValuePairs(parts(currentIdx)) = parts(currentIdx + 1)
+                currentIdx = currentIdx + 2
+            Next i
+            param.StartTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.RepeatTimes = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "SFFM"
+            param.Offset = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Amplitude = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.CarrierFrequency = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.ModulIndex = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.SignalFrequency = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "SIN"
+            param.Offset = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Amplitude = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Frequency = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.DelayTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.DampFactor = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Phase = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "TDR"
+            param.InitialValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.PulsedValue = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.DelayTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.RiseTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.FallTime = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.PulseWidth = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Period = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.Resistance = CDbl(parts(currentIdx)): currentIdx = currentIdx + 1
+        Case "SEG"
+            param.SweepOrder = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.NumSegments = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            param.NumPoints = CLng(parts(currentIdx)): currentIdx = currentIdx + 1
+            Dim segValues() As Variant
+            ReDim segValues(0 To 9) ' Max 10 values
+            For i = 0 To UBound(segValues)
+                If currentIdx <= UBound(parts) Then
+                    segValues(i) = parts(currentIdx): currentIdx = currentIdx + 1
+                Else
+                    Exit For
+                End If
+            Next i
+            param.SegmentValues = segValues
     End Select
 
     Set prvParseInputParameter = param
