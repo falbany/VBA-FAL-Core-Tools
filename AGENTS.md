@@ -60,6 +60,34 @@ Class modules (`.cls` files) should be organized into the following logical sect
 - Use descriptive names for functions and variables.
 - Private helper functions should be prefixed with `prv`.
 
+### File Header
+
+All `.bas` and `.cls` files must begin with a standardized header. This header provides essential metadata about the file, including its purpose, author, and revision history.
+
+**Template:**
+
+```vba
+' @Project: <ProjectName>
+' @Module:  <ModuleName>
+' @Author:  <AuthorName>
+' @Date:    <YYYY-MM-DD>
+' @Purpose: <Brief description of the module's purpose>
+'
+' @License: See LICENSE file for details.
+'
+' @Revision History:
+' --------------------------------------------------------------------------------------
+' Rev | Date       | Author          | Description
+' --------------------------------------------------------------------------------------
+' 1.0 | <YYYY-MM-DD> | <AuthorName>    | Initial Release
+' --------------------------------------------------------------------------------------
+```
+
+### File Encoding and Line Endings
+
+- **File Encoding**: All text files must be saved with `UTF-8` encoding.
+- **Line Endings**: Use Windows-style line endings (`CRLF`).
+
 ## Key Dependencies
 
 - **`clsMDM`**: This class depends on the `VBA-Dictionary` and `VBA-StringBuilder` submodules.
