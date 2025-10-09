@@ -243,3 +243,72 @@ Public Sub RunFluentInterfaceDemo()
     Debug.Print "--- Fluent Interface Demo Complete ---"
 
 End Sub
+
+Public Sub RunUsabilityDemo()
+    '@brief Demonstrates the new usability features like factory methods and direct data manipulation.
+
+    ' --- 1. Create MDM object using new Factory Methods ---
+    Debug.Print "--- Step 1: Creating a new clsMDM object using factory methods ---"
+    Dim mdm As New clsMDM
+    Dim iOut As New clsMdmOutputParameter
+
+    ' Define an output parameter
+    iOut.Name = "Id"
+    iOut.Mode = mdmTypeI
+    iOut.Type = "M"
+
+    ' Use method chaining with the new factory methods to define inputs
+    mdm.DefineConstantInput "Vg", 1, mdmModeV _
+       .DefineLinSweepInput "Vd", 1, 0, 2, 3 _
+       .AddIccapOutput iOut
+
+    ' Add two data blocks
+    mdm.AddDataBlock
+    mdm.AddDataBlock
+
+    Debug.Print "MDM object and parameters created successfully using factory methods."
+    Debug.Print ""
+
+    ' --- 2. Populate data using direct data manipulation methods ---
+    Debug.Print "--- Step 2: Populating data using AddValueToBlock ---"
+
+    ' Populate first block (Vg=1)
+    mdm.AddValueToBlock 0, "Vg", 0, 1
+    mdm.AddValueToBlock 0, "Vd", 0, 0
+    mdm.AddValueToBlock 0, "Id", 0, 0.01
+    mdm.AddValueToBlock 0, "Vd", 1, 1
+    mdm.AddValueToBlock 0, "Id", 1, 0.55
+    mdm.AddValueToBlock 0, "Vd", 2, 2
+    mdm.AddValueToBlock 0, "Id", 2, 1.1
+
+    ' Populate second block (Vg=2) - Note: This Vg is a block-level input value, not a sweep
+    mdm.AddValueToBlock 1, "Vg", 0, 2
+    mdm.AddValueToBlock 1, "Vd", 0, 0
+    mdm.AddValueToBlock 1, "Id", 0, 0.02
+    mdm.AddValueToBlock 1, "Vd", 1, 1
+    mdm.AddValueToBlock 1, "Id", 1, 1.2
+    mdm.AddValueToBlock 1, "Vd", 2, 2
+    mdm.AddValueToBlock 1, "Id", 2, 2.3
+
+    Debug.Print "Data populated using direct 'AddValueToBlock' method."
+    Debug.Print "Generated MDM String:"
+    Dim mdmString As String
+    mdmString = mdm.ToMdmString()
+    Debug.Print mdmString
+    Debug.Print ""
+
+    ' --- 3. Demonstrate Automatic Data Conversion on Parse ---
+    Debug.Print "--- Step 3: Parsing string with AutoConvert enabled by default ---"
+    Dim parsedMdm As New clsMDM
+    parsedMdm.ParseMdmString mdmString ' AutoConvert is True by default
+
+    ' Check the type of a parsed value. It should be Double, not String.
+    Dim val As Variant
+    val = parsedMdm.GetValue(0, "Id", 1)
+    Debug.Print "Value of Id(1) in block 0 is: " & val
+    Debug.Print "TypeName of the value is: " & TypeName(val) & " (should be Double)"
+    Debug.Print ""
+
+    Debug.Print "--- Usability Demo Complete ---"
+
+End Sub

@@ -92,6 +92,89 @@ Public Function AddIccapValue(ByVal key As String, ByVal value As String) As cls
     Set AddIccapValue = Me
 End Function
 
+Public Function DefineLinSweepInput(ByVal Name As String, ByVal SweepOrder As Long, ByVal StartValue As Double, ByVal StopValue As Double, ByVal NumPoints As Long, Optional ByVal Mode As MdmInputMode = mdmModeV, Optional ByVal PlusNode As String = "1", Optional ByVal MinusNode As String = "0", Optional ByVal Unit As String = "V", Optional ByVal Compliance As String = "100m") As clsMDM
+    '@brief Defines and adds a linear sweep input parameter. This is a convenience factory method.
+    '@param Name The name of the input parameter (e.g., "Vd").
+    '@param SweepOrder The order of the sweep (1 for innermost).
+    '@param StartValue The starting value for the sweep.
+    '@param StopValue The stopping value for the sweep.
+    '@param NumPoints The number of points in the sweep.
+    '@param Mode (Optional) The mode of the input (e.g., mdmModeV for voltage). Defaults to mdmModeV.
+    '@param PlusNode (Optional) The positive node. Defaults to "1".
+    '@param MinusNode (Optional) The negative node. Defaults to "0".
+    '@param Unit (Optional) The unit for the parameter. Defaults to "V".
+    '@param Compliance (Optional) The compliance limit. Defaults to "100m".
+    '@return The clsMDM instance for method chaining.
+    On Error GoTo ErrorHandler
+
+    Dim param As New clsMdmInputParameter
+    param.Name = Name
+    param.Mode = Mode
+    param.SweepType = mdmSweepLIN
+
+    ' Set mode-specific options
+    param.PlusNode = PlusNode
+    param.MinusNode = MinusNode
+    param.Unit = Unit
+    param.Compliance = Compliance
+
+    ' Set sweep-specific options
+    param.SweepOrder = SweepOrder
+    param.Start = StartValue
+    param.Stop = StopValue
+    param.NumPoints = NumPoints
+    If NumPoints > 1 Then
+        param.StepSize = (StopValue - StartValue) / (NumPoints - 1)
+    Else
+        param.StepSize = 0
+    End If
+
+    ' Add the parameter to the collection
+    prvIccapInputs(Name) = param
+
+    Set DefineLinSweepInput = Me
+    Exit Function
+
+ErrorHandler:
+    Set DefineLinSweepInput = Me ' Still return instance on error
+End Function
+
+Public Function DefineConstantInput(ByVal Name As String, ByVal Value As Variant, Optional ByVal Mode As MdmInputMode = mdmModeV, Optional ByVal PlusNode As String = "1", Optional ByVal MinusNode As String = "0", Optional ByVal Unit As String = "V", Optional ByVal Compliance As String = "100m") As clsMDM
+    '@brief Defines and adds a constant input parameter. This is a convenience factory method.
+    '@param Name The name of the input parameter (e.g., "V_Gate").
+    '@param Value The constant value for the parameter.
+    '@param Mode (Optional) The mode of the input (e.g., mdmModeV for voltage). Defaults to mdmModeV.
+    '@param PlusNode (Optional) The positive node. Defaults to "1".
+    '@param MinusNode (Optional) The negative node. Defaults to "0".
+    '@param Unit (Optional) The unit for the parameter. Defaults to "V".
+    '@param Compliance (Optional) The compliance limit. Defaults to "100m".
+    '@return The clsMDM instance for method chaining.
+    On Error GoTo ErrorHandler
+
+    Dim param As New clsMdmInputParameter
+    param.Name = Name
+    param.Mode = Mode
+    param.SweepType = mdmSweepCON
+
+    ' Set mode-specific options
+    param.PlusNode = PlusNode
+    param.MinusNode = MinusNode
+    param.Unit = Unit
+    param.Compliance = Compliance
+
+    ' Set sweep-specific options
+    param.Value = Value
+
+    ' Add the parameter to the collection
+    prvIccapInputs(Name) = param
+
+    Set DefineConstantInput = Me
+    Exit Function
+
+ErrorHandler:
+    Set DefineConstantInput = Me ' Still return instance on error
+End Function
+
 Public Function AddDataBlock(Optional ByVal dataBlock As clsMdmDataBlock = Nothing) As clsMdmDataBlock
     '@brief Adds a new data block to the MDM object. If no data block is provided, a new one is created.
     '@param dataBlock (Optional) An existing data block object to add.
@@ -114,6 +197,39 @@ Public Function AddDataBlock(Optional ByVal dataBlock As clsMdmDataBlock = Nothi
 End Function
 
 ' Other Public Methods
+Public Function AddValueToBlock(ByVal blockIndex As Long, ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant) As clsMDM
+    '@brief Adds or updates a single value in a specified data block. This is a convenience method that abstracts block retrieval.
+    '@param blockIndex The 0-based index of the data block to modify.
+    '@param Header The name of the column header.
+    '@param RowIndex The 0-based index of the row.
+    '@param Value The value to set for the cell.
+    '@return The clsMDM instance for method chaining.
+    On Error GoTo ErrorHandler
+
+    If blockIndex >= 0 And blockIndex < prvDataBlocks.Count Then
+        Dim dataBlock As clsMdmDataBlock
+        Set dataBlock = prvDataBlocks(blockIndex + 1) ' Collection is 1-based
+        dataBlock.AddValue Header, RowIndex, Value
+    End If
+
+    Set AddValueToBlock = Me
+    Exit Function
+
+ErrorHandler:
+    ' Optionally log error
+    Set AddValueToBlock = Me
+End Function
+
+Public Function SetValueInBlock(ByVal blockIndex As Long, ByVal Header As String, ByVal RowIndex As Long, ByVal Value As Variant) As clsMDM
+    '@brief Adds or updates a single value in a specified data block. Alias for AddValueToBlock.
+    '@param blockIndex The 0-based index of the data block to modify.
+    '@param Header The name of the column header.
+    '@param RowIndex The 0-based index of the row.
+    '@param Value The value to set for the cell.
+    '@return The clsMDM instance for method chaining.
+    Set SetValueInBlock = AddValueToBlock(blockIndex, Header, RowIndex, Value)
+End Function
+
 Public Function GetValue(ByVal blockIndex As Long, ByVal header As String, ByVal rowIndex As Long) As Variant
     '@brief Retrieves a single value from a specified data block.
     '@param blockIndex The 0-based index of the data block.
@@ -447,24 +563,34 @@ ErrorHandler:
     ToMdmString = ""
 End Function
 
-Public Function ParseMdmString(ByVal mdmContent As String) As Boolean
+Public Function ParseMdmString(ByVal mdmContent As String, Optional AutoConvert As Boolean = True) As Boolean
     '@brief Parses MDM data from a string.
     '@param mdmContent The string containing the MDM data.
+    '@param AutoConvert (Optional) If True, automatically converts numeric strings to numeric types after parsing.
     '@return True if the string was parsed successfully, False otherwise.
     On Error GoTo ErrorHandler
 
     prvMdmContent = mdmContent
+    Dim parsedOk As Boolean
+
+    ' Reset object state before parsing to ensure a clean slate
+    Class_Initialize
 
     If Len(prvMdmContent) > 0 Then
         If prvParseHeader() Then
-            ParseMdmString = prvParseDataBlocks()
+            parsedOk = prvParseDataBlocks()
         Else
-            ParseMdmString = False
+            parsedOk = False
         End If
     Else
-        ParseMdmString = False
+        parsedOk = False
     End If
 
+    If parsedOk And AutoConvert Then
+        Me.ConvertDataTypes
+    End If
+
+    ParseMdmString = parsedOk
     Exit Function
 
 ErrorHandler:
@@ -730,9 +856,10 @@ ErrorHandler:
     Debug.Print "Error in ExportToWorksheet: " & Err.Description
 End Sub
 
-Public Function ReadMdmFile(ByVal filePath As String) As Boolean
+Public Function ReadMdmFile(ByVal filePath As String, Optional AutoConvert As Boolean = True) As Boolean
     '@brief Reads the content of an MDM file and parses its header and data blocks.
     '@param filePath The full path to the MDM file.
+    '@param AutoConvert (Optional) If True, automatically converts numeric strings to numeric types after parsing.
     '@return True if the file was read and parsed successfully, False otherwise.
     On Error GoTo ErrorHandler
 
@@ -744,18 +871,12 @@ Public Function ReadMdmFile(ByVal filePath As String) As Boolean
     Dim fileNumber As Integer
     fileNumber = FreeFile
     Open filePath For Input As #fileNumber
-    prvMdmContent = Input$(LOF(fileNumber), fileNumber)
+    Dim mdmContent As String
+    mdmContent = Input$(LOF(fileNumber), fileNumber)
     Close #fileNumber
 
-    If Len(prvMdmContent) > 0 Then
-        If prvParseHeader() Then
-            ReadMdmFile = prvParseDataBlocks()
-        Else
-            ReadMdmFile = False
-        End If
-    Else
-        ReadMdmFile = False
-    End If
+    ' Delegate parsing to the ParseMdmString method
+    ReadMdmFile = Me.ParseMdmString(mdmContent, AutoConvert)
 
     Exit Function
 
