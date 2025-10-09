@@ -1,6 +1,6 @@
 # FALCore VBA Suite
 
-**Version: 1.1.0**
+**Version: 1.2.0**
 **Author: Florent ALBANY**
 
 ---
@@ -13,20 +13,23 @@ FALCore is a comprehensive library of VBA modules designed to accelerate applica
 
 - **Hybrid Approach**: The library offers both procedural modules and object-oriented classes, providing flexibility for different programming styles.
 - **Modular Design**: The suite is organized into distinct modules and classes, each focusing on a specific area (Files, Worksheets, Arrays, Plotting, etc.).
+- **Extensible with Submodules**: Includes a curated set of powerful third-party VBA libraries as git submodules for advanced functionality like JSON handling and high-performance operations.
 - **Robust & Reusable**: Functions and methods are built with error handling and are designed to be easily integrated into any VBA project.
 - **Well-Documented**: All public members include detailed header comments explaining their purpose, parameters, and usage.
 - **Consistent Naming**: The library follows a clear `Fal...` prefix convention, providing a clean namespace.
 
 ## Architecture Overview
 
-FALCore is structured into two main components:
+FALCore is structured into three main components:
 
 - **`/FALCore/Classes`**: Contains powerful, object-oriented class modules (`.cls`) for complex tasks.
 - **`/FALCore/Modules`**: Contains a wide range of procedural helper modules (`.bas`).
+- **`/modules`**: Contains third-party VBA libraries managed as Git submodules.
 
 ### Classes Overview
 
 - **`FalPlot.cls`**: A powerful class for creating and manipulating charts. It provides an object-oriented interface for plotting data and customizing every aspect of a chart's appearance.
+- **`clsMDM.cls`**: A robust class for handling Keysight's MDM (Measurement Data Model) files. It supports reading, creating, and exporting MDM data to various formats, including MDM strings, 2D arrays for Excel, and JSON.
 
 ### Modules Overview
 
@@ -40,54 +43,58 @@ FALCore is structured into two main components:
 - **`FalWork.bas`**: A comprehensive collection of functions for managing Workbooks and Worksheets.
 - **`FalXls.bas`**: A module for Excel-specific functions, including project-level utilities like creating summary sheets and exporting/importing all VBA components.
 
+### Submodules Overview
+
+This project includes several powerful third-party libraries managed as Git submodules. See the `modules/README.md` for more details.
+
+- **VBA-Dictionary**: A cross-platform `Dictionary` object.
+- **VBA-JSON**: A JSON parser and converter.
+- **VBA-StringBuilder**: For high-performance string concatenation.
+- **VBA-Better-Array**: A more powerful array class.
+- **VBA-Log**: A flexible logging framework.
+
 ## Installation
 
-To use the FALCore suite in your project, follow these steps:
+This project is designed to be built from source files using the included build script.
 
-1. In the VBA Editor (`Alt+F11`), right-click in the Project Explorer and select **Import File...**.
-2. Navigate to the `FALCore/Modules` directory and select all the `.bas` files.
-3. Go to **Tools -> References** in the VBA Editor.
-4. Ensure that **"Microsoft Scripting Runtime"** is checked. This is required for `Dictionary` objects and the `FileSystemObject` used in `FalFile` and `FalWork`.
+### Step 1: Clone the Repository and Submodules
+
+First, clone the repository. Because this project uses Git submodules, you must initialize them after cloning.
+
+```bash
+# Clone the main repository
+git clone <repository_url>
+cd <repository_name>
+
+# Initialize and fetch the submodules
+git submodule update --init --recursive
+```
+
+### Step 2: Build the VBA Project
+
+The `BuildFALCoreProject.bas` script automates the process of importing all necessary source files into a single, functional Excel workbook.
+
+1.  **Open Microsoft Excel** and create a new, blank workbook.
+2.  **Save the workbook** as `FALCore.xlsm` in the root directory of this project.
+3.  **Open the VBA Editor** (`Alt` + `F11`).
+4.  In the VBA Editor, go to **Insert > Module**.
+5.  Copy the entire content of `BuildFALCoreProject.bas` and paste it into the new module.
+6.  Go to **Tools -> References** and ensure that **"Microsoft Scripting Runtime"** is checked.
+7.  Run the `BuildProject` macro.
+8.  When prompted, select the root folder of the project.
+
+The script will import all modules and classes, creating a complete, runnable project in `FALCore.xlsm`.
 
 ## Quick Start Example
 
-Here is a simple example demonstrating how to use several modules from the FALCore suite together.
+The `demoMDM.bas` module (included by the build script) provides a comprehensive example of how to use the `clsMDM` class. To run it:
 
-```vba
-Sub FALCore_Demo()
-    ' 1. Initialize the logger to show all messages in the Immediate Window
-    FalLog.InitializeLogger Level:=llDebug, Destination:=ldImmediate
+1.  Open the built `FALCore.xlsm` file.
+2.  Open the VBA Editor (`Alt` + `F11`).
+3.  Open the Immediate Window (`Ctrl` + `G`).
+4.  In any module, type `RunAdvancedMdmDemo` and press Enter, or place your cursor inside the `RunAdvancedMdmDemo` sub and press `F5`.
 
-    FalLog.LogMessage llInfo, "Demo.Start", "FALCore demo started."
-
-    ' 2. Create a new workbook and a worksheet using FalWork
-    Dim wbk As Workbook
-    Set wbk = FalWork.Create_Workbook(MakeVisible:=True)
-    If wbk Is Nothing Then
-        FalLog.LogMessage llError, "Demo.Create", "Failed to create workbook."
-        Exit Sub
-    End If
-
-    Dim ws As Worksheet
-    Set ws = FalWork.Create_Worksheet("DemoSheet", wbk)
-    FalLog.LogMessage llDebug, "Demo.Setup", "Workbook and worksheet created successfully."
-
-    ' 3. Create a 2D array with FalArray and write it to the sheet with FalWork
-    Dim dataArray As Variant
-    dataArray = FalArray.a2D_Create(NumRows:=3, NumCols:=4, FillValue:="Test")
-
-    ' Write the array to the worksheet as values
-    If FalWork.Write_Array_To_Worksheet(dataArray, ws.Range("A1")) Then
-        FalLog.LogMessage llInfo, "Demo.Write", "Successfully wrote 2D array to DemoSheet!A1."
-    Else
-        FalLog.LogMessage llError, "Demo.Write", "Failed to write array to worksheet."
-    End If
-
-    ' 4. Clean up (optional)
-    ' wbk.Close SaveChanges:=False
-    FalLog.LogMessage llInfo, "Demo.End", "FALCore demo finished."
-End Sub
-```
+The demo will create an MDM object in memory, print its string and JSON representations to the Immediate Window, and create a new worksheet with the exported data.
 
 ## Author
 
